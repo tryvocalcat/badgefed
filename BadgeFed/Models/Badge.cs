@@ -2,6 +2,7 @@ namespace BadgeFed.Models
 {
     public class Badge
     {
+        public long Id { get; set; }
         public string Title { get; set; } = "";
         public string IssuedBy { get; set; } = "";
         public string Description { get; set; } = "";
@@ -12,5 +13,8 @@ namespace BadgeFed.Models
         public string IssuedTo { get; set; } = "";
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
+        public string FingerPrint { get; set; } = "";
+
+        public BadgeDefinition BadgeDefinition { get; set; } = new BadgeDefinition();
     }
 }
