@@ -1,0 +1,144 @@
+@page "/actor/create"
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+
+<h1>Create New Actor</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="@actor" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group mb-3">
+                        <label for="name">Name:</label>
+                        <InputText id="name" @bind-Value="actor.Name" class="form-control" />
+                        <ValidationMessage For="@(() => actor.Name)" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="summary">Summary:</label>
+                        <InputTextArea id="summary" @bind-Value="actor.Summary" class="form-control" rows="4" />
+                        <ValidationMessage For="@(() => actor.Summary)" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="avatar">Avatar:</label>
+                        <InputFile id="avatar" OnChange="HandleFileSelection" class="form-control" accept="image/*" />
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="text-danger mt-2">@errorMessage</div>
+                        }
+                        @if (imagePreview != null)
+                        {
+                            <div class="mt-3">
+                                <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" class="img-thumbnail" />
+                            </div>
+                        }
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span> Creating...</span>
+                        }
+                        else
+                        {
+                            <span>Create Actor</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ActorModel actor = new();
+    private IBrowserFile? selectedFile;
+    private string? imagePreview;
+    private string? errorMessage;
+    private bool isSubmitting = false;
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        selectedFile = e.File;
+        
+        if (selectedFile.Size > 2 * 1024 * 1024) // 2MB limit
+        {
+            errorMessage = "File size exceeds 2MB limit.";
+            selectedFile = null;
+            return;
+        }
+
+        var format = "image/jpeg";
+        var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+        var buffer = new byte[resizedImage.Size];
+        await resizedImage.OpenReadStream().ReadAsync(buffer);
+        
+        imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (selectedFile != null)
+            {
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
+                var path = Path.Combine(Environment.WebRootPath, "uploads", "avatars");
+                
+                // Ensure directory exists
+                Directory.CreateDirectory(path);
+                
+                var fullPath = Path.Combine(path, fileName);
+                
+                using var stream = selectedFile.OpenReadStream();
+                using var fileStream = new FileStream(fullPath, FileMode.Create);
+                await stream.CopyToAsync(fileStream);
+                
+                actor.AvatarPath = $"/uploads/avatars/{fileName}";
+            }
+            
+            // TODO: Save actor to database
+            // await actorService.CreateAsync(actor);
+            
+            // Redirect to actors list or details page
+            // NavigationManager.NavigateTo("/actors");
+            
+            // For demo purposes, just reset the form
+            actor = new();
+            selectedFile = null;
+            imagePreview = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating actor: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    public class ActorModel
+    {
+        //[Required(ErrorMessage = "Name is required")]
+        //[StringLength(100, ErrorMessage = "Name must be between {2} and {1} characters", MinimumLength = 2)]
+        public string Name { get; set; } = "";
+        
+        //[Required(ErrorMessage = "Summary is required")]
+        //[StringLength(500, ErrorMessage = "Summary must not exceed {1} characters")]
+        public string Summary { get; set; } = "";
+        
+        public string? AvatarPath { get; set; }
+    }
+}
