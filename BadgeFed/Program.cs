@@ -1,8 +1,12 @@
 using ActivityPubDotNet.Core;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using BadgeFed.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient();
+
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
@@ -10,6 +14,8 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<RepliesService>();
 builder.Services.AddScoped<ActorHelper>();
 builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server"));
+
+builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
 
 var app = builder.Build();
 

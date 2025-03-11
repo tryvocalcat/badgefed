@@ -1,78 +1,80 @@
+using BadgeFed.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BadgeFed.Controllers
 {
     [ApiController]
-    [Route("actors/{id}")]
+    [Route("actors/{domain}/{id}")]
     public class ActorController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly LocalDbService _localDbService;
 
-        public ActorController(IConfiguration configuration)
+        public ActorController(IConfiguration configuration, LocalDbService localDbService)
         {
             _configuration = configuration;
+            _localDbService = localDbService;
         }
 
         [HttpGet]
-        public IActionResult GetActor(string id)
+        public IActionResult GetActor(string domain, string actorName)
         {
-            var domain = _configuration["Domain"];
-            var actorName = _configuration["ActorName"];
-            var actorSummary = _configuration["ActorSummary"];
+            var actor = _localDbService.GetActorByFilter($"Username = \"{actorName}\" AND Domain = \"{domain}\"");
 
-            var actor = new
+            if (actor == null)
+            {
+                return NotFound("Account not found on this domain");
+            }
+
+            var baseUrlId = $"https://{domain}/actors/{domain}/{actorName}";
+
+            var actorResource = new
             {
                 @context = "https://www.w3.org/ns/activitystreams",
-                id = $"https://{domain}/actors/{id}",
+                id = $"{baseUrlId}",
                 type = "Person",
-                following = $"https://{domain}/actors/{id}/following",
-                followers = $"https://{domain}/actors/{id}/followers",
+                following = $"{baseUrlId}/following",
+                followers = $"{baseUrlId}/followers",
                 inbox = $"https://{domain}/inbox",
                 outbox = $"https://{domain}/outbox",
-                preferredUsername = id,
-                name = actorName,
-                summary = actorSummary,
-                url = $"https://{domain}/",
+                preferredUsername = actorName,
+                name = actor.FullName,
+                summary = actor.Summary,
+                url = actor.InformationUri,
                 discoverable = true,
                 memorial = false,
                 icon = new
                 {
                     type = "Image",
                     mediaType = "image/png",
-                    url = $"https://{domain}/img/avatar.png"
+                    url = $"https://{domain}/{actor.AvatarPath}"
                 },
                 image = new
                 {
                     type = "Image",
                     mediaType = "image/png",
-                    url = $"https://{domain}/img/avatar.png"
+                    url = $"https://{domain}/{actor.AvatarPath}"
                 },
                 publicKey = new
                 {
                     @context = "https://w3id.org/security/v1",
                     @type = "Key",
-                    id = $"https://{domain}/@{id}#main-key",
-                    owner = $"https://{domain}/@{id}",
-                    publicKeyPem = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA68oSTjzLryZ+lLIu8N5+\nCZdQPKaN6xZCY93uzJ8b4wjOecEykQcGU2J+ejOzMXHP4o4N+Rc0xnxyAs9ZN5AX\ndYSObpdfGQvrvdHanu+iTyRKETKMbSHtJzk5dZW8l+pPnX2YWKVgSfCG2SALZprg\nzxyhbtTLq8JoN8b5TgEA1B12Rya3aBNNXDT1/eeU+/HqwtKN2nLAdvACbccPAtg1\nVeKdcSgmS2o51JR4MjJWcCgM2HrAZUepF1XM59Yeq136QGviJpfAFX6gS7POvi7r\n3iaH0GzuUzR+WJSHgoJ65VzC9wy4Vpw/jt8CNtlW13iFRasHARTwFe+1FhuZayPG\neQIDAQAB\n-----END PUBLIC KEY-----"
+                    id = $"{baseUrlId}#main-key",
+                    owner = baseUrlId,
+                    publicKeyPem = actor.PublicKeyPem
                 },
                 attachment = new[]
                 {
                     new
                     {
                         type = "PropertyValue",
-                        name = "Blog",
-                        value = $"<a href=\"https://{domain}\" target=\"_blank\" rel=\"nofollow noopener noreferrer me\" translate=\"no\"><span class=\"invisible\">https://</span><span class=\"\">{domain}</span><span class=\"invisible\"></span></a>"
-                    },
-                    new
-                    {
-                        type = "PropertyValue",
-                        name = "GitHub",
-                        value = "<a href=\"https://github.com/tryvocalcat/activitypub-badges\" target=\"_blank\" rel=\"nofollow noopener noreferrer me\" translate=\"no\"><span class=\"invisible\">https://</span><span class=\"\">github.com/tryvocalcat/activitypub-badges</span><span class=\"invisible\"></span></a>"
+                        name = "Me",
+                        value = $"<a href=\"{actor.InformationUri}\" target=\"_blank\" rel=\"nofollow noopener noreferrer me\" translate=\"no\"><span class=\"invisible\">https://</span><span class=\"\">{actor.InformationUri}</span><span class=\"invisible\"></span></a>"
                     }
                 }
             };
 
-            return Ok(actor);
+            return Ok(actorResource);
         }
     }
 }
