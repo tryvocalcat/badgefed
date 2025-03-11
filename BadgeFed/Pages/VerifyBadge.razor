@@ -1,0 +1,89 @@
+@page "/badge/verify/{id}"
+
+@inject NavigationManager NavManager
+
+<h3 class="text-center">Badge Verification</h3>
+
+@if (badge == null)
+{
+    <div class="text-center">
+        <p>Loading...</p>
+    </div>
+}
+else
+{
+    <div class="card mx-auto" style="max-width: 600px;">
+        <div class="card-header text-center">
+            <img src="@badge.Image" alt="@badge.Title" class="img-fluid" style="max-width: 200px;" />
+        </div>
+        <div class="card-body">
+            <h4 class="card-title text-center">@badge.Title</h4>
+            <p class="card-text"><strong>Issued By:</strong> @badge.IssuedBy</p>
+            <p class="card-text"><strong>Description:</strong> @badge.Description</p>
+            <p class="card-text"><strong>Earning Criteria:</strong> @badge.EarningCriteria</p>
+            <p class="card-text"><strong>Issued Using:</strong> @badge.IssuedUsing</p>
+            <p class="card-text"><strong>Issued On:</strong> @badge.IssuedOn.ToShortDateString()</p>
+            <p class="card-text"><strong>Issued To:</strong> @badge.IssuedTo</p>
+            <p class="card-text"><strong>Accepted On:</strong> @(badge.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
+            <p class="card-text"><strong>Last Updated:</strong> @(badge.LastUpdated?.ToShortDateString() ?? "N/A")</p>
+        </div>
+    </div>
+
+    <div class="card-footer">
+        <h5 class="text-center">Comments</h5>
+        @if (comments == null || !comments.Any())
+        {
+            <p class="text-center">No comments yet.</p>
+        }
+        else
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var comment in comments)
+                {
+                    <li class="list-group-item">
+                        <strong>@comment.Author:</strong> @comment.Text
+                        <br />
+                        <small class="text-muted">@comment.DatePosted.ToShortDateString()</small>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @code {
+        private List<Comment> comments = new List<Comment>
+        {
+            new Comment { Author = "John Smith", Text = "Great badge!", DatePosted = DateTime.UtcNow.AddDays(-10) },
+            new Comment { Author = "Alice Johnson", Text = "Well deserved!", DatePosted = DateTime.UtcNow.AddDays(-5) }
+        };
+
+        public class Comment
+        {
+            public string Author { get; set; }
+            public string Text { get; set; }
+            public DateTime DatePosted { get; set; }
+        }
+    }
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private Badge? badge;
+
+    protected override void OnInitialized()
+    {
+        // Mock data; you can pull from DB or service calls for real usage
+        badge = new Badge {
+            Title = "Example Credential",
+            IssuedBy = "Example Organization",
+            Description = "Proves advanced knowledge in example technologies.",
+            Image = "https://example.com/image.png",
+            EarningCriteria = "Completed training and passed final exam.",
+            IssuedUsing = "Example Platform",
+            IssuedOn = DateTime.UtcNow.AddDays(-80),
+            IssuedTo = "Jane Doe",
+            AcceptedOn = DateTime.UtcNow.AddDays(-75),
+            LastUpdated = DateTime.UtcNow
+        };
+    }
+}
