@@ -1,0 +1,71 @@
+@page "/view/actor/{domain}/{username}"
+
+@inject NavigationManager NavManager
+@inject LocalDbService DbService
+
+@if (isLoading)
+{
+    <p>Loading actor details...</p>
+}
+else if (actor == null)
+{
+    <p>Actor not found.</p>
+}
+else
+{
+    <div>
+        <h2>@actor.FullName</h2>
+        <p>@actor.Summary</p>
+
+        @if (!string.IsNullOrEmpty(actor.AvatarPath))
+        {
+            <img src="@actor.AvatarPath" alt="@actor.FullName" width="150"/>
+        }
+
+        <p><strong>Domain:</strong> @actor.Domain</p>
+        <p><strong>Profile:</strong> <a href="@actor.InformationUri" target="_blank">@actor.InformationUri</a></p>
+  
+        <h3>Followers</h3>
+        
+        @if (followers.Count == 0)
+        {
+            <p>No followers yet.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var follower in followers)
+                {
+                    <li>@follower.FollowerUri (@follower.Domain)</li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+
+@code {
+    [Parameter] public string? Domain { get; set; }
+    [Parameter] public string? Username { get; set; }
+
+    private Actor? actor;
+    private List<Follower> followers = new();
+    private bool isLoading = true;
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        actor = DbService.GetActorByFilter($"Username = \"{Username}\" AND Domain = \"{Domain}\"");
+        
+        if (actor != null)
+        {
+            followers = DbService.GetFollowersByActorId(actor.Id);
+        }
+        
+        isLoading = false;
+    }
+}

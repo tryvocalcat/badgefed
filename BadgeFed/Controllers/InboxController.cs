@@ -12,21 +12,15 @@ namespace BadgeFed.Controllers
         private readonly ILogger<InboxController> _logger;
         private readonly FollowService _followService;
         private readonly RepliesService _repliesService;
-        private readonly ActorHelper _actorHelper;
-        private readonly ServerConfig _serverConfig;
-
+       
         public InboxController(
             ILogger<InboxController> logger,
             FollowService followService,
-            RepliesService repliesService,
-            ActorHelper actorHelper,
-            ServerConfig serverConfig)
+            RepliesService repliesService)
         {
             _logger = logger;
             _followService = followService;
             _repliesService = repliesService;
-            _actorHelper = actorHelper;
-            _serverConfig = serverConfig;
         }
 
         [HttpPost]
@@ -54,8 +48,7 @@ namespace BadgeFed.Controllers
             try
             {
                 _followService.Logger = _logger;
-                _actorHelper.Logger = _logger;
-
+                
                 if (message.IsFollow())
                 {
                     await _followService.Follow(message);
@@ -63,13 +56,13 @@ namespace BadgeFed.Controllers
                 else if (message.IsUndoFollow())
                 {
                     await _followService.Unfollow(message);
-                    _logger.LogDebug($"Fetching actor information from {message.Actor}");
+                    _logger.LogDebug($"Message received: {JsonSerializer.Serialize(message)}");
 
-                    var actor = await ActorHelper.FetchActorInformationAsync(message.Actor);
-                    _logger.LogInformation($"Actor: {actor.Id} - {actor.Name} - {actor.Url}");
+                    var follower = await ActorHelper.FetchActorInformationAsync(message.Actor);
+                    _logger.LogInformation($"Actor: {follower.Id} - {follower.Name} - {follower.Url}");
 
                     var uuid = Guid.NewGuid();
-                    var acceptRequest = new AcceptRequest
+                   /* var acceptRequest = new AcceptRequest
                     {
                         Context = "https://www.w3.org/ns/activitystreams",
                         Id = $"{_serverConfig.BaseDomain}/{uuid}",
@@ -77,9 +70,13 @@ namespace BadgeFed.Controllers
                         Object = JsonSerializer.Deserialize<dynamic>(JsonSerializer.Serialize(message, options), options)!
                     };
 
-                    var document = JsonSerializer.Serialize(acceptRequest, options);
-                    _logger.LogInformation($"Sending accept request to {actor.Inbox} - {document}");
-                    await _actorHelper.SendSignedRequest(document, new Uri(actor.Inbox));
+                    var document = JsonSerializer.Serialize(acceptRequest, options);*/
+                    //_logger.LogInformation($"Sending accept request to {follower.Inbox} - {document}");
+
+                    //var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+                    //var actorHelper = new ActorHelper(actor.PrivateKeyPem!, actor.KeyId, Logger);
+
+                    //await actorHelper.SendSignedRequest(document, new Uri(actor.Inbox));
                 }
                 else if (message.IsCreateActivity())
                 {

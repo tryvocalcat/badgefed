@@ -2,6 +2,7 @@ namespace ActivityPubDotNet.Core
 {
     public class InboxMessage
     {
+        public string? Id { get; set; }
         public string? Actor { get; set; }
         public string? Type { get; set; }
 

@@ -55,7 +55,10 @@ namespace BadgeFed.Controllers
                 }
             };
 
-            return Ok(new { subject, aliases, links });
+            return new JsonResult(new { subject, aliases, links })
+            {
+                ContentType = "application/activity+json"
+            };
         }
     }
 }

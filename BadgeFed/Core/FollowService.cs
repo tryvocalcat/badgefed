@@ -56,20 +56,20 @@ namespace ActivityPubDotNet.Core
             var target = message.Object!.ToString();
 
             // Actor is the account who wants to follow
-            var actor = await ActorHelper.FetchActorInformationAsync(message.Actor);
+            var follower = await ActorHelper.FetchActorInformationAsync(message.Actor);
 
-            Logger?.LogInformation($"Actor: {actor.Id} - {actor.Name} - {actor.Url} => Target: {target}");
+            Logger?.LogInformation($"Actor: {follower.Id} - {follower.Name} - {follower.Url} => Target: {target}");
 
             //'#accepts/follows/'
             var acceptRequest = new AcceptRequest()
             {
                 Context = "https://www.w3.org/ns/activitystreams",
-                Id = $"{target}#accepts/follows/{actor.Id}",
+                Id = $"{target}#accepts/follows/{follower.Id}",
                 Actor = $"{target}",
                 Object = new
                 {
                     message.Id,
-                    Actor = actor.Url,
+                    Actor = follower.Url,
                     Type = "Follow",
                     Object = $"{target}"
                 }
@@ -80,7 +80,9 @@ namespace ActivityPubDotNet.Core
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
-            await _actorHelper.SendSignedRequest(JsonSerializer.Serialize(acceptRequest, options), new Uri(actor.Inbox));
+            var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
+            await actorHelper.SendSignedRequest(JsonSerializer.Serialize(acceptRequest, options), new Uri(follower.Inbox));
 
             return acceptRequest;
         }

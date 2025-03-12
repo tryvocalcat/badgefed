@@ -11,17 +11,17 @@ namespace BadgeFed.Controllers
         {
             var accept = Request.Headers["Accept"].ToString();
 
-            if (accept.Contains("application/json"))
+            if (accept.Contains("application/json") || accept.Contains("application/activity"))
             {
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{id}.json");
                 if (System.IO.File.Exists(filePath))
                 {
                     var json = System.IO.File.ReadAllText(filePath);
-                    return Content(json, "application/json");
+                    return Content(json, "application/activity+json");
                 }
             }
 
-            return Redirect($"/badge/verify/{id}");
+            return Redirect($"/view/badge/{id}");
         }
     }
 }

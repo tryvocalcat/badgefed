@@ -12,7 +12,6 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<RepliesService>();
-builder.Services.AddScoped<ActorHelper>();
 builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server"));
 
 builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
