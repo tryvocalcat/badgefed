@@ -15,7 +15,31 @@ public class Actor
 
     public Uri? InformationUri { get; set; }
 
+    public Uri? Uri { get; set; }
+
     public string? Domain { get; set; }
 
     public string? PublicKeyPem { get; set; }
+
+    public string? PrivateKeyPem { get; set; }
+
+    public string? PublicKeyPemClean { 
+        get {
+            // replace all \\n in PublicKeyPem for \n
+            return PublicKeyPem?.Replace("\\n", "\n");
+        }
+    }
+
+    public string? PrivateKeyPemClean { 
+        get {
+            // replace all \\n in PrivateKeyPem for \n
+            return PrivateKeyPem?.Replace("\\n", "\n");
+        }
+    }
+
+    public string KeyId { 
+        get { 
+            return $"{Uri}#main-key";
+        }
+    }
 }
