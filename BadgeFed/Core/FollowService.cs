@@ -46,7 +46,32 @@ namespace ActivityPubDotNet.Core
         public Task Unfollow(InboxMessage message)
         {
             Logger?.LogInformation($"Unfollow action for actor: {message.Actor}");
-            // TODO: Implement unfollow logic
+            
+            /**
+
+            _logger.LogDebug($"Message received: {JsonSerializer.Serialize(message)}");
+
+                    var follower = await ActorHelper.FetchActorInformationAsync(message.Actor);
+                    _logger.LogInformation($"Actor: {follower.Id} - {follower.Name} - {follower.Url}");
+
+                    var uuid = Guid.NewGuid();
+                    var acceptRequest = new AcceptRequest
+                    {
+                        Context = "https://www.w3.org/ns/activitystreams",
+                        Id = $"{_serverConfig.BaseDomain}/{uuid}",
+                        Actor = $"{_serverConfig.BaseDomain}/{_serverConfig.ActorName}",
+                        Object = JsonSerializer.Deserialize<dynamic>(JsonSerializer.Serialize(message, options), options)!
+                    };
+
+                    var document = JsonSerializer.Serialize(acceptRequest, options);
+                    _logger.LogInformation($"Sending accept request to {follower.Inbox} - {document}");
+
+                    var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+                    var actorHelper = new ActorHelper(actor.PrivateKeyPem!, actor.KeyId, Logger);
+
+                    await actorHelper.SendSignedRequest(document, new Uri(actor.Inbox));
+            **/
+
             return Task.CompletedTask;
         }
 
@@ -55,8 +80,12 @@ namespace ActivityPubDotNet.Core
             // Target is the account to be followed
             var target = message.Object!.ToString();
 
+            var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+
+            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
+
             // Actor is the account who wants to follow
-            var follower = await ActorHelper.FetchActorInformationAsync(message.Actor);
+            var follower = await actorHelper.FetchActorInformationAsync(message.Actor);
 
             Logger?.LogInformation($"Actor: {follower.Id} - {follower.Name} - {follower.Url} => Target: {target}");
 
@@ -80,9 +109,7 @@ namespace ActivityPubDotNet.Core
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
-            var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
-            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
-            await actorHelper.SendSignedRequest(JsonSerializer.Serialize(acceptRequest, options), new Uri(follower.Inbox));
+            await actorHelper.SendPostSignedRequest(JsonSerializer.Serialize(acceptRequest, options), new Uri(follower.Inbox));
 
             return acceptRequest;
         }

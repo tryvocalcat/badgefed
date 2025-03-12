@@ -1,26 +1,41 @@
+using System.Security.Cryptography;
+using System.Text;
+using ActivityPubDotNet.Core;
 using BadgeFed.Models;
 
 namespace BadgeFed.Services;
 
 public class NotesService
 {
-    class NoteTag
+    
+
+    public static string GetLinkUniqueHash(string input)
     {
-        public string Type { get; set; }
-        public string Href { get; set; }
-        public string Name { get; set; }
+        using (MD5 md5 = MD5.Create())
+        {
+            // Convert the input string to a byte array and compute the hash.
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
+            byte[] hashBytes = md5.ComputeHash(inputBytes);
+
+            // Convert the byte array to a hexadecimal string representation.
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < hashBytes.Length; i++)
+            {
+                sb.Append(hashBytes[i].ToString("x2")); // "x2" means hexadecimal with two digits.
+            }
+
+            return sb.ToString();
+        }
     }
 
-    public static dynamic GetNote(string content, string url, Actor actor)
+    public static ActivityPubNote GetNote(string id, string content, string url, Actor actor)
     {
-        /*var itemHash = RssUtils.GetLinkUniqueHash(item.Link!);
-
-        var tags = new List<NoteTag>()
+        var tags = new List<ActivityPubNote.Tag>()
         {
             //new NoteTag() { Type = "Mention", Href = outboxConfig.AuthorUrl, Name = outboxConfig.AuthorUsername }
         };
 
-        var baseTagUrl = $"{actor.Uri}/tags";*/
+        var baseTagUrl = $"{actor.Domain}/tags";
 
         /*var itemTags = item?.Tags as List<string> ?? [];
 
@@ -37,52 +52,44 @@ public class NotesService
             }
         }*/
 
-       /* var noteId = $"{outboxConfig.Domain}/{outboxConfig.NotesPath}/{itemHash}";
+        var noteId = $"https://{actor.Domain}/badge/{id}";
 
-        var note = new
+        var note = new ActivityPubNote
         {
-            _context = "https://www.w3.org/ns/activitystreams",
-            id = noteId,
-            type = "Note",
-            hash = itemHash,
-            content,
-            url,
-            attributedTo = actor.Uri, // domain/@blog
-            to = new List<string>() { "https://www.w3.org/ns/activitystreams#Public" },
-            cc = new List<string>(),
-            published = DateTime.UtcNow, // Added current date and time
-            tag = tags,
-            replies = new
+            Id = noteId,
+            Type = "Note",
+            Content = content,
+            Url = url,
+            AttributedTo = actor.Uri?.ToString()!,
+            To = new List<string>() { "https://www.w3.org/ns/activitystreams#Public" },
+            Cc = new List<string>(),
+            Published = DateTime.UtcNow, // Added current date and time
+            Tags = tags,
+            Replies = new ActivityPubNote.Collection
             {
-                id = $"{outboxConfig.Domain}/{outboxConfig.RepliesPath}/{itemHash}",
-                type = "Collection",
-                first = new
+                Id = $"https://{actor.Domain}/comments/{id}",
+                Type = "Collection",
+                First = new ActivityPubNote.CollectionPage
                 {
-                    type = "CollectionPage",
-                    next = $"{outboxConfig.Domain}/{outboxConfig.RepliesPath}/{itemHash}?page=true",
-                    partOf = $"{outboxConfig.Domain}/{outboxConfig.RepliesPath}/{itemHash}",
-                    items = new List<string>()
+                    Type = "CollectionPage",
+                    Next = $"https://{actor.Domain}/comments/{id}?page=true",
+                    PartOf = $"https://{actor.Domain}/comments/{id}",
+                    Items = new List<string>()
                 }
             }
         };
-*/
-        return null;
-        //return note;
+
+        return note;
     }
 
-    public static dynamic GetCreateNote(dynamic note, Actor actor)
+    public static ActivityPubCreate GetCreateNote(ActivityPubNote note, Actor actor)
     {
-        var createNote = new {
-            _context = "https://www.w3.org/ns/activitystreams",
-            id = $"{note.id}/create",
-            type = "Create",
-            actor = actor.Uri,
-            to = new List<string>() { "https://www.w3.org/ns/activitystreams#Public" },
-            cc = new List<string>(),
-            published = note.published,
-            @object = note
+        return new ActivityPubCreate()
+        {
+            Id = $"{note.Id}/create",
+            Actor = actor.Uri?.ToString()!,
+            Published = note.Published,
+            Object = note
         };
-
-        return createNote;
     }
 }
