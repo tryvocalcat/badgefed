@@ -56,27 +56,6 @@ namespace BadgeFed.Controllers
                 else if (message.IsUndoFollow())
                 {
                     await _followService.Unfollow(message);
-                    _logger.LogDebug($"Message received: {JsonSerializer.Serialize(message)}");
-
-                    var follower = await ActorHelper.FetchActorInformationAsync(message.Actor);
-                    _logger.LogInformation($"Actor: {follower.Id} - {follower.Name} - {follower.Url}");
-
-                    var uuid = Guid.NewGuid();
-                   /* var acceptRequest = new AcceptRequest
-                    {
-                        Context = "https://www.w3.org/ns/activitystreams",
-                        Id = $"{_serverConfig.BaseDomain}/{uuid}",
-                        Actor = $"{_serverConfig.BaseDomain}/{_serverConfig.ActorName}",
-                        Object = JsonSerializer.Deserialize<dynamic>(JsonSerializer.Serialize(message, options), options)!
-                    };
-
-                    var document = JsonSerializer.Serialize(acceptRequest, options);*/
-                    //_logger.LogInformation($"Sending accept request to {follower.Inbox} - {document}");
-
-                    //var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
-                    //var actorHelper = new ActorHelper(actor.PrivateKeyPem!, actor.KeyId, Logger);
-
-                    //await actorHelper.SendSignedRequest(document, new Uri(actor.Inbox));
                 }
                 else if (message.IsCreateActivity())
                 {
