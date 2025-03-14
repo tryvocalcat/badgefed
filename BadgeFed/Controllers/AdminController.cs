@@ -64,6 +64,15 @@ namespace BadgeFed.Controllers
             return Ok(createNote);
         }
 
+        [HttpGet("process-badge-record/{id}")]
+        public async Task<IActionResult> ProcessBadge(string id)
+        {
+            // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
+            // - generate activitypub note
+            // - generate/update fingerprint
+            return Ok();
+        }
+
         [HttpGet("generate-test-badge/{id}")]
         public async Task<IActionResult> GenerateBadge(string id, [FromQuery] string account)
         {
