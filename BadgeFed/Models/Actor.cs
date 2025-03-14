@@ -51,4 +51,9 @@ public class Actor
             return $"{Uri}#main-key";
         }
     }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string FediverseHandle { get {
+        return "@" + Username + "@" + Domain;
+    }}
 }

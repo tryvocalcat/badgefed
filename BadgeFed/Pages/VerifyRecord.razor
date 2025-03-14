@@ -5,13 +5,14 @@
 @inject NavigationManager NavManager
 @inject LocalDbService DbService
 
+
 <HeadContent>
   <meta name="author" content="@badge!.IssuedBy" />
   <meta name="description" content="@badge.Description" />
   <meta property="og:type" content="article" />
   <meta property="og:title" content="@badge.Title" />
   <meta property="og:description" content="@badge.Description" />
-<meta property="og:url" content="@NavManager.Uri" />
+ <meta property="og:url" content="@NavManager.Uri" />
   <meta property="og:image" content="https://maho.dev/img/aicode1.png" />
   <meta name="fediverse:creator" content="@badge.IssuerFediverseHandle" />
 </HeadContent>
