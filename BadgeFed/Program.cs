@@ -16,6 +16,8 @@ builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Serve
 
 builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
 
+builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

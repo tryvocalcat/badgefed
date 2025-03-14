@@ -12,6 +12,7 @@ CREATE TABLE Actor (
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 ALTER TABLE Actor ADD COLUMN Username TEXT;
 ALTER TABLE Actor ADD COLUMN PublicKeyPem TEXT;
 ALTER TABLE Actor ADD COLUMN PrivateKeyPem TEXT;
@@ -23,26 +24,27 @@ BEGIN
     UPDATE Actor SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
 
-CREATE TABLE BadgeDefinition (
+CREATE TABLE Badge (
     Id INTEGER PRIMARY KEY,
     Title TEXT NOT NULL CHECK(length(Title) >= 2 AND length(Title) <= 100),
     Description TEXT CHECK(length(Description) <= 500),
     IssuedBy INTEGER NOT NULL,
     Image TEXT,
     EarningCriteria TEXT CHECK(length(EarningCriteria) <= 500),
+    BadgeType TEXT NOT NULL CHECK(BadgeType IN ('Achievement', 'Badge', 'Credential', 'Recognition', 'Milestone', 'Honor', 'Certification', 'Distinction')),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (IssuedBy) REFERENCES Actor(Id)
 );
 
-CREATE TRIGGER UpdateBadgeDefinitionTimestamp
-AFTER UPDATE ON BadgeDefinition
+CREATE TRIGGER UpdateBadgeTimestamp
+AFTER UPDATE ON Badge
 FOR EACH ROW
 BEGIN
-    UPDATE BadgeDefinition SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
+    UPDATE Badge SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
 
-CREATE TABLE Badge (
+CREATE TABLE BadgeRecord (
     Id INTEGER PRIMARY KEY,
     Title TEXT NOT NULL CHECK(length(Title) >= 2 AND length(Title) <= 100),
     IssuedBy TEXT NOT NULL,
@@ -51,27 +53,28 @@ CREATE TABLE Badge (
     EarningCriteria TEXT CHECK(length(EarningCriteria) <= 500),
     IssuedUsing TEXT,
     IssuedOn DATETIME NOT NULL,
-    IssuedTo INTEGER NOT NULL,
+    IssuedTo TEXT NOT NULL, -- it can be email, uri or fediversehandle
     AcceptedOn DATETIME,
     LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FingerPrint TEXT NOT NULL,
-    BadgeDefinitionId INTEGER NOT NULL,
-    FOREIGN KEY (BadgeDefinitionId) REFERENCES BadgeDefinition(Id),
-    FOREIGN KEY (IssuedTo) REFERENCES Recipient(Id)
+    FingerPrint TEXT NULL,
+    AcceptKey TEXT NULL,
+    BadgeId INTEGER NOT NULL,
+    FOREIGN KEY (BadgeId) REFERENCES BadgeId(Id)
 );
 
-CREATE TRIGGER UpdateBadgeTimestamp
-AFTER UPDATE ON Badge
+CREATE TRIGGER UpdateBadgeRecordTimestamp
+AFTER UPDATE ON BadgeRecord
 FOR EACH ROW
 BEGIN
-    UPDATE Badge SET LastUpdated = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
+    UPDATE BadgeRecord SET LastUpdated = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
     FullName TEXT NOT NULL CHECK(length(FullName) >= 2 AND length(FullName) <= 100),
-    Email TEXT NOT NULL CHECK(length(Email) <= 100),
-    FediverseHandle TEXT CHECK(length(FediverseHandle) <= 200),
+    Email TEXT NOT NULL CHECK(length(Email) <= 100) UNIQUE,
+    FediverseHandle TEXT CHECK(length(FediverseHandle) <= 200) UNIQUE,
+    ProfileUri TEXT NOT NULL UNIQUE,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );

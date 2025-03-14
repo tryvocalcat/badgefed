@@ -53,6 +53,15 @@
             </InputSelect>
         </label>
 
+        <label>Badge Type:
+            <InputSelect id="badgeType" @bind-Value="Model.BadgeType" class="form-control">
+                @foreach (var badgeType in Badge.BadgeTypes)
+                {
+                    <option value="@badgeType">@badgeType</option>
+                }
+            </InputSelect>
+        </label>
+
        <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
             @if (isSubmitting)
             {
@@ -69,7 +78,7 @@
 </EditForm>
 
 @code {
-    private BadgeDefinition? Model = new();
+    private Badge? Model = new();
 
     private IBrowserFile? selectedFile;
     private string? imagePreview;
@@ -128,6 +137,8 @@
                 
                 Model.Image = $"/uploads/badges/{fileName}";
             }
+
+            Console.WriteLine($"Saving badge: {Model.Image}");
 
             // TODO: Save actor to database
             LocalDbService.UpsertBadgeDefinition(Model);
