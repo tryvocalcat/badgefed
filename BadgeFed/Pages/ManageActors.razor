@@ -1,0 +1,71 @@
+@page "/admin/actor/manage"
+
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+
+<h1>Manage Actors</h1>
+
+@if (actors == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Summary</th>
+                <th>Avatar</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var actor in actors)
+            {
+                <tr>
+                    <td>@actor.FullName</td>
+                    <td>@actor.Summary</td>
+                    <td>
+                        <img src="@actor.AvatarPath" alt="Avatar" style="max-width: 100px; max-height: 100px;" class="img-thumbnail" />
+                    </td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => EditActor(actor)">Edit</button>
+                        <button class="btn btn-secondary" @onclick="() => ViewActor(actor)">View</button>	
+                        <button class="btn btn-danger" @onclick="() => DeleteActor(actor)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Actor> actors;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        actors = LocalDbService.GetActors();
+    }
+
+    private void EditActor(Actor actor)
+    {
+        NavigationManager.NavigateTo($"/admin/actor/edit/{actor.Id}");
+    }
+
+    private void ViewActor(Actor actor)
+    {
+        NavigationManager.NavigateTo(actor.Uri?.ToString());
+    }
+
+    private async void DeleteActor(Actor actor)
+    {
+        LocalDbService.DeleteActor(actor.Id);
+        actors = LocalDbService.GetActors();
+    }
+}
