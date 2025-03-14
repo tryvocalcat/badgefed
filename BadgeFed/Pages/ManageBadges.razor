@@ -1,0 +1,69 @@
+@page "/admin/badge/manage"
+
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+
+<h1>Manage Bagdges</h1>
+
+@if (badges == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Issued By</th>
+                <th>Image</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var badge in badges)
+            {
+                <tr>
+                    <td>@badge.Title</td>
+                    <td>@badge.IssuedBy</td>
+                     <img src="@badge.Image" alt="Avatar" style="max-width: 100px; max-height: 100px;" class="img-thumbnail" />
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => EditBadge(badge)">Edit</button>
+                        <button class="btn btn-secondary" @onclick="() => ViewBadge(badge)">View</button>	
+                        <button class="btn btn-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<BadgeDefinition?> badges;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        badges = LocalDbService.GetAllBadgeDefinitions();
+    }
+
+    private void EditBadge(BadgeDefinition badge)
+    {
+        NavigationManager.NavigateTo($"/admin/badge/edit/{badge.Id}");
+    }
+
+    private void ViewBadge(BadgeDefinition badge)
+    {
+        NavigationManager.NavigateTo($"/view/badge/{badge.Id}");
+    }
+
+    private void DeleteBadge(BadgeDefinition badge)
+    {
+        LocalDbService.DeleteBadgeDefinition(badge.Id);
+        badges = LocalDbService.GetAllBadgeDefinitions();
+    }
+}
