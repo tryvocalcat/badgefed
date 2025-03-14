@@ -63,6 +63,14 @@
                         <ValidationMessage For="@(() => Model.Domain)" />
                     </label>
 
+                    <label for="summary">PublicKey:
+                        <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" rows="6" />
+                    </label>
+
+                     <label for="summary">PrivateKey:
+                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" rows="6" />
+                    </label>
+
                     <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
                         @if (isSubmitting)
                         {

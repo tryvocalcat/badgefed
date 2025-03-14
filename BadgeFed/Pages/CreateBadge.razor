@@ -1,4 +1,156 @@
 @page "/admin/badge/create"
-@using BadgeFed.Models
 @using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+@inject IConfiguration Configuration
+
+<h1>Create New Badge</h1>
+
+<EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="badgeForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+        <label for="title">Title:
+            <InputText id="name" @bind-Value="Model!.Title" />
+            <ValidationMessage For="@(() => Model.Title)" />
+        </label>
+
+        <label for="description">Description:
+            <InputTextArea id="description" @bind-Value="Model.Description" rows="4" />
+            <ValidationMessage For="@(() => Model.Description)" />
+        </label>
+
+        <label for="avatar">
+            Avatar:
+            <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="text-danger mt-2">@errorMessage</div>
+            }
+            @if (imagePreview != null)
+            {
+                <div class="mt-3">
+                    <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" class="img-thumbnail" />
+                </div>
+            }
+        </label>
+
+        <label for="earningCriteria">Earning Criteria:
+            <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" />
+            <ValidationMessage For="@(() => Model.EarningCriteria)" />
+        </label>
+        
+        <label for="issuedBy">Issued By:
+            <InputSelect id="actorId" @bind-Value="Model.IssuedBy" class="form-control">
+                <option value="0">-- Select an issuer --</option>
+                @foreach (var actor in actors)
+                {
+                    <option value="@actor.Id">@actor.FullName - @actor.Username @actor.Domain</option>
+                }
+            </InputSelect>
+        </label>
+
+       <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span> Creating...</span>
+            }
+            else
+            {
+                <span>Create Badge</span>
+            }
+        </button>
+
+        <button @onclick="ClearForm">Clear form</button>
+</EditForm>
+
+@code {
+    private BadgeDefinition? Model = new();
+
+    private IBrowserFile? selectedFile;
+    private string? imagePreview;
+    private string? errorMessage;
+    private bool isSubmitting = false;
+
+    private List<Actor> actors;
+
+    protected override void OnInitialized()
+    {
+        actors = LocalDbService.GetActors();
+
+        Model ??= new();
+    }
+
+    private void ClearForm() => Model = new();
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        selectedFile = e.File;
+        
+        if (selectedFile.Size > 2 * 1024 * 1024) // 2MB limit
+        {
+            errorMessage = "File size exceeds 2MB limit.";
+            selectedFile = null;
+            return;
+        }
+
+        var format = "image/jpeg";
+        var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+        var buffer = new byte[resizedImage.Size];
+        await resizedImage.OpenReadStream().ReadAsync(buffer);
+        
+        imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (selectedFile != null)
+            {
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
+                var path = Path.Combine(Environment.WebRootPath, "uploads", "badges");
+                
+                // Ensure directory exists
+                Directory.CreateDirectory(path);
+                
+                var fullPath = Path.Combine(path, fileName);
+                
+                using var stream = selectedFile.OpenReadStream();
+                using var fileStream = new FileStream(fullPath, FileMode.Create);
+                await stream.CopyToAsync(fileStream);
+                
+                Model.Image = $"/uploads/badges/{fileName}";
+            }
+
+            // TODO: Save actor to database
+            LocalDbService.UpsertBadgeDefinition(Model);
+            
+            // Redirect to actors list or details page
+            NavigationManager.NavigateTo("/admin/badge/manage");
+            
+            // For demo purposes, just reset the form
+            Model = new();
+
+            selectedFile = null;
+            imagePreview = null;
+
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating badge: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+    
+}
