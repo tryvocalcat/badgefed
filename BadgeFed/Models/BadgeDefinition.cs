@@ -2,11 +2,13 @@ namespace BadgeFed.Models
 {
     public class BadgeDefinition
     {
+        public long Id { get; set; }
+
         public string Title { get; set; } = "";
         
         public string Description { get; set; } = "";
 
-        public Actor IssuedBy { get; set; } = new Actor();
+        public long IssuedBy { get; set; }
         
         public string Image { get; set; } = "";
         

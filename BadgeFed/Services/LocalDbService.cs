@@ -241,4 +241,117 @@ public class LocalDbService
 
         command.ExecuteNonQuery();
     }
+
+    public void UpsertBadgeDefinition(BadgeDefinition badge)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        if (badge.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO BadgeDefinition (Title, Description, IssuedBy, Image, EarningCriteria, CreatedAt, UpdatedAt)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @EarningCriteria, datetime('now'), datetime('now'));
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE BadgeDefinition SET 
+                    Title = @Title, 
+                    Description = @Description, 
+                    IssuedBy = @IssuedBy, 
+                    Image = @Image, 
+                    EarningCriteria = @EarningCriteria, 
+                    UpdatedAt = datetime('now')
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", badge.Id);
+        }
+
+        command.Parameters.AddWithValue("@Title", badge.Title);
+        command.Parameters.AddWithValue("@Description", badge.Description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IssuedBy", badge.IssuedBy);
+        command.Parameters.AddWithValue("@Image", badge.Image ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@EarningCriteria", badge.EarningCriteria ?? (object)DBNull.Value);
+
+        if (badge.Id == 0)
+        {
+            badge.Id = Convert.ToInt32(command.ExecuteScalar());
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public List<BadgeDefinition> GetAllBadgeDefinitions()
+    {
+        var badges = new List<BadgeDefinition>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM BadgeDefinition";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            badges.Add(new BadgeDefinition
+            {
+                Id = reader.GetInt64(0),
+                Title = reader.GetString(1),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                IssuedBy = reader.GetInt32(3),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString()
+            });
+        }
+
+        return badges;
+    }
+
+    public BadgeDefinition GetBadgeDefinitionById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM BadgeDefinition WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new BadgeDefinition
+            {
+                Id = reader.GetInt64(0),
+                Title = reader.GetString(1),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                IssuedBy = reader.GetInt32(3),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString()
+            };
+        }
+
+        return null;
+    }
+
+    public void DeleteBadgeDefinition(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM BadgeDefinition WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
+    }
 }
