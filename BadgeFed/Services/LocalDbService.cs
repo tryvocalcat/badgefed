@@ -322,6 +322,80 @@ public class LocalDbService
         return badges;
     }
 
+    public Recipient GetRecipientByIssuedTo(string issuedTo)
+    {
+        var issuedToType = Recipient.GetAssignedToType(issuedTo);
+
+        string filter = "FALSE";
+
+        var recipient = new Recipient();
+
+        switch(issuedToType)
+        {
+            case "email":
+                recipient = new Recipient { Email = issuedTo };
+                filter = "Email = @IssuedTo";
+                break;
+            case "fediverse":
+                recipient = new Recipient { FediverseHandle = issuedTo };
+                filter = "FediverseHandle = @IssuedTo";
+                break;
+            case "profileuri":
+                recipient = new Recipient { ProfileUri = issuedTo };
+                filter = "ProfileUri = @IssuedTo";
+                break;
+            default:
+                recipient = new Recipient { FullName = issuedTo };
+                return recipient;
+                break;
+        }
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = $"SELECT * FROM Recipient WHERE {filter}";
+
+        command.Parameters.AddWithValue("@IssuedTo", issuedTo);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            recipient.Id = reader.GetInt64(0);
+            recipient.FullName = reader["FullName"] == DBNull.Value ? null : reader["FullName"].ToString();
+            recipient.Email = reader["Email"] == DBNull.Value ? null : reader["Email"].ToString();
+            recipient.FediverseHandle = reader["FediverseHandle"] == DBNull.Value ? null : reader["FediverseHandle"].ToString();
+            recipient.ProfileUri = reader["ProfileUri"] == DBNull.Value ? null : reader["ProfileUri"].ToString();
+        }
+
+        return recipient;
+    }
+
+    public Badge UpsertRecipient(Recipient recipient)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO Recipient (FullName, Email, FediverseHandle, ProfileUri)
+            VALUES (@FullName, @Email, @FediverseHandle, @ProfileUri);
+            SELECT last_insert_rowid();
+        ";
+
+        command.Parameters.AddWithValue("@FullName", recipient.FullName ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Email", recipient.Email ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@FediverseHandle", recipient.FediverseHandle ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ProfileUri", recipient.ProfileUri ?? (object)DBNull.Value);
+
+        recipient.Id = Convert.ToInt64(command.ExecuteScalar());
+
+        transaction.Commit();
+
+        return new Badge { Id = recipient.Id };
+    }
+
     public Badge GetBadgeDefinitionById(long id)
     {
         using var connection = GetConnection();
@@ -361,6 +435,29 @@ public class LocalDbService
         command.ExecuteNonQuery();
     }
 
+    public void AcceptBadgeRecord(BadgeRecord badgeRecord)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE BadgeRecord SET 
+                AcceptedOn = @AcceptedOn,
+                AcceptKey = null,
+                IssuedTo = @IssuedTo
+            WHERE Id = @Id;
+        ";
+
+        command.Parameters.AddWithValue("@Id", badgeRecord.Id);
+        command.Parameters.AddWithValue("@AcceptedOn", DateTime.UtcNow);
+        command.Parameters.AddWithValue("@IssuedTo", badgeRecord.IssuedTo);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
     public void CreateBadgeRecord(BadgeRecord record)
     {
         using var connection = GetConnection();
@@ -396,6 +493,40 @@ public class LocalDbService
         record.Id = Convert.ToInt64(command.ExecuteScalar());
 
         transaction.Commit();
+    }
+
+    public BadgeRecord? GetBadgeToAccept(long id, string key)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM BadgeRecord WHERE Id = @Id AND AcceptKey = @AcceptKey";
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@AcceptKey", key);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            return new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedUsing = reader["IssuedUsing"] == DBNull.Value ? null : reader["IssuedUsing"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedTo = reader.GetString(reader.GetOrdinal("IssuedTo")),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) }
+            };
+        }
+
+        return null;
     }
 
     public List<BadgeRecord> GetBadgeRecords(string issuedTo = null, long? badgeId = null)
