@@ -43,7 +43,7 @@ else
 }
 
 @code {
-    private List<BadgeDefinition?> badges;
+    private List<Badge?> badges;
     private string errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -51,17 +51,17 @@ else
         badges = LocalDbService.GetAllBadgeDefinitions();
     }
 
-    private void EditBadge(BadgeDefinition badge)
+    private void EditBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/admin/badge/edit/{badge.Id}");
     }
 
-    private void ViewBadge(BadgeDefinition badge)
+    private void ViewBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/view/badge/{badge.Id}");
     }
 
-    private void DeleteBadge(BadgeDefinition badge)
+    private void DeleteBadge(Badge badge)
     {
         LocalDbService.DeleteBadgeDefinition(badge.Id);
         badges = LocalDbService.GetAllBadgeDefinitions();

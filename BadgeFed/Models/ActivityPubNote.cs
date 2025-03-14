@@ -23,7 +23,7 @@ public class ActivityPubNote
     [JsonPropertyName("attributedTo")]
     public string AttributedTo { get; set; }
 
-    public Badge BadgeMetadata { get; set; }
+    public BadgeRecord BadgeMetadata { get; set; }
 
     [JsonPropertyName("to")]
     public List<string> To { get; set; } = new List<string> { "https://www.w3.org/ns/activitystreams#Public" };
