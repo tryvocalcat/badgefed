@@ -1,0 +1,140 @@
+@page "/accept/grant/{id}/{key}"
+@using ActivityPubDotNet.Core
+@using System.Text.Json
+@inject NavigationManager NavManager
+@inject LocalDbService DbService
+@using BadgeFed.Models
+
+<h3 class="text-center">Accept Badge</h3>
+
+@if (BadgeRecord == null)
+{
+    <div class="text-center">
+        <p>Badge record not found or was already accepted.</p>
+    </div>
+}
+else
+{
+    <div class="alert alert-info text-center mb-4">
+        <h4><i class="oi oi-star"></i> Congratulations!</h4>
+        <p>You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
+    </div>
+
+    <div class="card mx-auto" style="max-width: 600px;">
+        <div class="card-header text-center">
+            <img src="@BadgeRecord.Image" alt="@BadgeRecord.Title" class="img-fluid" style="max-width: 200px;" />
+        </div>
+        <div class="card-body">
+            <h4 class="card-title
+            text-center">@BadgeRecord.Title</h4>
+            <p class="card-text"><strong>Issued By:</strong> @Actor.FullName - [@Actor.FediverseHandle]</p>
+            <p class="card-text"><strong>Description:</strong> @BadgeRecord.Description</p>
+            <p class="card-text"><strong>Earning Criteria:</strong> @BadgeRecord.EarningCriteria</p>
+            <p class="card-text"><strong>Issued On:</strong> @BadgeRecord.IssuedOn.ToShortDateString()</p>
+            <p class="card-text"><strong>Issued To:</strong> @BadgeRecord.IssuedTo</p>
+        </div>
+    </div>
+    
+    <form @onsubmit="HandleValidSubmit" method="post">
+        @if (Model.Id > 0)
+        {
+            <div>
+                <p><strong>Full Name:</strong> @Model.FullName</p>
+            </div>
+            <div>
+                <p><strong>Email:</strong> @Model.Email</p>
+            </div>
+            <div>
+                <p><strong>Fediverse Handle:</strong> @Model.FediverseHandle</p>
+            </div>
+            <div>
+                <p><strong>Profile URI:</strong> @Model.ProfileUri</p>
+            </div>
+        } else {
+        <div class="form-group mb-3">
+            <label for="fullName">Full Name:</label>
+            <input type="text" id="fullName" class="form-control" @bind="Model.FullName" required />
+        </div>
+        <div class="form-group mb-3">
+            <label for="email">Email:</label>
+            <input type="email" id="email" class="form-control" @bind="Model.Email" required />
+        </div>
+        <div class="form-group mb-3">
+            <label for="fediverseHandle">Fediverse Handle:</label>
+            <input type="text" id="fediverseHandle" class="form-control" @bind="Model.FediverseHandle" />
+        </div>
+        <div class="form-group mb-3">
+            <label for="profileUri">Profile URI:</label>
+            <input type="url" id="profileUri" class="form-control" @bind="Model.ProfileUri" />
+        </div>
+        }
+
+        <div class="form-group form-check mt-4 mb-3">
+            <input type="checkbox" id="certifyCheck" class="form-check-input" @bind="certificationCompleted" />
+            <label for="certifyCheck" class="form-check-label">
+                By checking this box I certify I completed the earning criteria
+            </label>
+        </div>
+        <br />
+        <button type="submit" class="btn btn-primary">Accept Badge</button>
+    </form>
+}
+
+@code 
+{
+    [Parameter] public string Id { get; set; }
+    [Parameter] public string Key { get; set; }
+
+    public Recipient? Model = new();
+
+    public BadgeRecord BadgeRecord;
+
+    private bool certificationCompleted;
+
+    public Badge Badge;
+
+    public Actor Actor;
+
+
+    public async Task HandleValidSubmit()
+    {
+        if (!certificationCompleted)
+        {
+            return;
+        }
+
+        // TODO: Update recipient
+        if (Model.Id == 0)
+        {
+            DbService.UpsertRecipient(Model);
+        }
+
+        BadgeRecord.IssuedTo = !string.IsNullOrEmpty(Model.Email) ? Model.Email : 
+                       !string.IsNullOrEmpty(Model.FediverseHandle) ? Model.FediverseHandle : 
+                       Model.ProfileUri;
+       
+        DbService.AcceptBadgeRecord(BadgeRecord);
+
+        NavManager.NavigateTo("/");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var id = long.Parse(Id);
+        var record = DbService.GetBadgeToAccept(id, Key);
+
+        if (record == null)
+        {
+            // Badge record not found, redirect to error page or show message
+            return;
+        }
+
+        Model = DbService.GetRecipientByIssuedTo(record.IssuedTo);
+
+        Badge = DbService.GetBadgeDefinitionById(record.Badge.Id);
+
+        Actor = DbService.GetActorById(Badge.IssuedBy);
+
+        BadgeRecord = record;
+    }
+}
