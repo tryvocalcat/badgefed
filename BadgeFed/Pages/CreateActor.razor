@@ -1,9 +1,11 @@
-@page "/actor/create"
+@page "/admin/actor/create"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+@inject IConfiguration Configuration
 
 <h1>Create New Actor</h1>
 
@@ -11,25 +13,23 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <EditForm Model="@actor" OnValidSubmit="HandleValidSubmit">
+                <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="actorForm">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
+                    
+                    <label for="name">Full Name:
+                        <InputText id="name" @bind-Value="Model!.FullName" />
+                        <ValidationMessage For="@(() => Model.FullName)" />
+                    </label>
 
-                    <div class="form-group mb-3">
-                        <label for="name">Full Name:</label>
-                        <InputText id="name" @bind-Value="actor.FullName" class="form-control" />
-                        <ValidationMessage For="@(() => actor.FullName)" />
-                    </div>
+                    <label for="summary">Summary:
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" rows="4" />
+                        <ValidationMessage For="@(() => Model.Summary)" />
+                    </label>
 
-                    <div class="form-group mb-3">
-                        <label for="summary">Summary:</label>
-                        <InputTextArea id="summary" @bind-Value="actor.Summary" class="form-control" rows="4" />
-                        <ValidationMessage For="@(() => actor.Summary)" />
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label for="avatar">Avatar:</label>
-                        <InputFile id="avatar" OnChange="HandleFileSelection" class="form-control" accept="image/*" />
+                    <label for="avatar">
+                        Avatar:
+                        <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
                         @if (!string.IsNullOrEmpty(errorMessage))
                         {
                             <div class="text-danger mt-2">@errorMessage</div>
@@ -40,7 +40,28 @@
                                 <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" class="img-thumbnail" />
                             </div>
                         }
-                    </div>
+                    </label>
+
+                    <label for="username">Username:
+                        <InputText id="username" @bind-Value="Model!.Username" />
+                        <ValidationMessage For="@(() => Model.Username)" />
+                    </label>
+
+                    <label for="informationUri">Information URI:
+                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" />
+                        <ValidationMessage For="@(() => Model.InformationUri)" />
+                    </label>
+
+                    <label for="domain">Domain:
+                        <InputSelect id="domain" @bind-Value="Model!.Domain" class="form-control">
+                            <option value="">-- Select a domain --</option>
+                            @foreach (var domain in availableDomains)
+                            {
+                                <option value="@domain">@domain</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => Model.Domain)" />
+                    </label>
 
                     <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
                         @if (isSubmitting)
@@ -53,6 +74,8 @@
                             <span>Create Actor</span>
                         }
                     </button>
+
+                    <button @onclick="ClearForm">Clear form</button>
                 </EditForm>
             </div>
         </div>
@@ -60,11 +83,23 @@
 </div>
 
 @code {
-    private Actor actor = new();
+    private Actor? Model = new();
+
     private IBrowserFile? selectedFile;
     private string? imagePreview;
     private string? errorMessage;
     private bool isSubmitting = false;
+
+    private List<string> availableDomains = []; 
+
+    protected override void OnInitialized()
+    {
+        availableDomains = Configuration.GetSection("BadgesDomains").Get<string[]>().ToList();
+        
+        Model ??= new();
+    }
+
+    private void ClearForm() => Model = new();
 
     private async Task HandleFileSelection(InputFileChangeEventArgs e)
     {
@@ -105,19 +140,22 @@
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
                 
-                actor.AvatarPath = $"/uploads/avatars/{fileName}";
+                Model.AvatarPath = $"/uploads/avatars/{fileName}";
             }
             
             // TODO: Save actor to database
-            // await actorService.CreateAsync(actor);
+            LocalDbService.UpsertActor(Model);
             
             // Redirect to actors list or details page
-            // NavigationManager.NavigateTo("/actors");
+            NavigationManager.NavigateTo("/admin/actor/manage");
             
             // For demo purposes, just reset the form
-            actor = new();
+            Model = new();
+
             selectedFile = null;
             imagePreview = null;
+
+
         }
         catch (Exception ex)
         {

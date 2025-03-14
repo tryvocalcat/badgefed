@@ -1,23 +1,30 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace BadgeFed.Models;
 
 public class Actor
 {
     public long Id { get; set; }
-    //[Required(ErrorMessage = "Name is required")]
-    //[StringLength(100, ErrorMessage = "Name must be between {2} and {1} characters", MinimumLength = 2)]
+    
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(200, ErrorMessage = "Name must be between {2} and {1} characters", MinimumLength = 2)]
     public string FullName { get; set; } = "";
     
-    //[Required(ErrorMessage = "Summary is required")]
-    //[StringLength(500, ErrorMessage = "Summary must not exceed {1} characters")]
+    [Required(ErrorMessage = "Summary is required")]
+    [StringLength(500, ErrorMessage = "Summary must not exceed {1} characters")]
     public string Summary { get; set; } = "";
     
     public string? AvatarPath { get; set; }
 
     public string Username { get; set; } = "";
 
-    public Uri? InformationUri { get; set; }
+    public string? InformationUri { get; set; }
 
-    public Uri? Uri { get; set; }
+    public Uri? Uri {
+        get {
+            return new Uri($"https://{Domain}/actors/{Domain}/{Username}");
+        }
+    }
 
     public string? Domain { get; set; }
 

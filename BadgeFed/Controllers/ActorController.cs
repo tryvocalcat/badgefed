@@ -48,7 +48,7 @@ namespace BadgeFed.Controllers
                 PreferredUsername = actorName,
                 Name = actor.FullName,
                 Summary = actor.Summary,
-                Url = actor.InformationUri?.ToString()!,
+                Url = actor.InformationUri!,
                 Discoverable = true,
                 Memorial = false,
                 Icon = new ActivityPubImage
