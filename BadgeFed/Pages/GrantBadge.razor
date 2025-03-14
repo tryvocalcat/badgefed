@@ -1,0 +1,64 @@
+@page "/admin/badge/grant/{badgeId}"
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+@inject IConfiguration Configuration
+@inject BadgeService BadgeService
+
+<h1>Grant Badge</h1>
+
+<EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="grantBadgeForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <label>
+        Recipient:
+        <legend>This information is used to prefill email, profile id, fediverse handle or name, trying to detect the type.</legend>
+        <InputText id="recipient" @bind-Value="Model!.IssuedTo" />
+    </label>
+
+    <button type="submit" class="btn btn-primary">Grant Badge</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public string BadgeId { get; set; }
+
+    private BadgeGrant Model = new();
+   
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (long.TryParse(BadgeId, out long badgeIdValue))
+        {
+            Model.BadgeId = badgeIdValue;
+        }
+        else
+        {
+            errorMessage = $"Invalid badge ID format: {BadgeId}";
+            NavigationManager.NavigateTo("/admin/badges");
+        }
+    }
+
+    public class BadgeGrant
+    {
+        public long BadgeId { get; set; }
+
+        public string IssuedTo { get; set; } = "";
+    }
+
+    private void HandleValidSubmit()
+    {
+        var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
+
+        var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, Model.IssuedTo);
+
+        LocalDbService.CreateBadgeRecord(badgeRecord);
+        
+        NavigationManager.NavigateTo("/admin/records/manage");
+    }
+}

@@ -1,0 +1,55 @@
+@page "/admin/records/manage"
+
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+
+<h1>Manage Badge Grant Records</h1>
+
+@if (records == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Badge Title</th>
+                <th>Issued To</th>
+                <th>Issued By</th>
+                <th>Issued On</th>
+                <th>Accepted On</th>
+                <th>Accept Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var record in records)
+            {
+                <tr>
+                    <td>@record.Title</td>
+                    <td>@record.IssuedTo</td>
+                    <td>@record.IssuedBy</td>
+                    <td>@record.IssuedOn</td>
+                    <td>@record.AcceptedOn</td>
+                    <td>
+                        <a href="/accept/@record.Id/@record.AcceptKey">/accept/@record.Id/@record.AcceptKey</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<BadgeRecord?> records;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        records = LocalDbService.GetBadgeRecords();
+    }
+}
