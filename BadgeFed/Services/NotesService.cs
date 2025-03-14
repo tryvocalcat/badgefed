@@ -7,8 +7,6 @@ namespace BadgeFed.Services;
 
 public class NotesService
 {
-    
-
     public static string GetLinkUniqueHash(string input)
     {
         using (MD5 md5 = MD5.Create())
