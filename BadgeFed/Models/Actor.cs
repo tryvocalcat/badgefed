@@ -13,6 +13,8 @@ public class Actor
     
     public string? AvatarPath { get; set; }
 
+    public string Username { get; set; } = "";
+
     public Uri? InformationUri { get; set; }
 
     public Uri? Uri { get; set; }

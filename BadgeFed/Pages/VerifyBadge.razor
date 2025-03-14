@@ -1,4 +1,20 @@
 @page "/view/badge/{id}"
+@using ActivityPubDotNet.Core
+@using System.Text.Json
+
+@inject NavigationManager NavManager
+@inject LocalDbService DbService
+
+<HeadContent>
+  <meta name="author" content="@badge!.IssuedBy" />
+  <meta name="description" content="@badge.Description" />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="@badge.Title" />
+  <meta property="og:description" content="@badge.Description" />
+<meta property="og:url" content="@NavManager.Uri" />
+  <meta property="og:image" content="https://maho.dev/img/aicode1.png" />
+  <meta name="fediverse:creator" content="@badge.FediverseHandle" />
+</HeadContent>
 
 @inject NavigationManager NavManager
 
@@ -68,10 +84,22 @@ else
 
 @code {
     [Parameter] public string? Id { get; set; }
+
     private Badge? badge;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{Id}.json");
+                
+        if (!System.IO.File.Exists(filePath))
+        {
+            throw new Exception("Not found");
+        }
+                
+        var json = System.IO.File.ReadAllText(filePath);
+
+        var note = JsonSerializer.Deserialize<ActivityPubNote>(json);
+
         // Mock data; you can pull from DB or service calls for real usage
         badge = new Badge {
             Title = "Example Credential",
@@ -85,5 +113,7 @@ else
             AcceptedOn = DateTime.UtcNow.AddDays(-75),
             LastUpdated = DateTime.UtcNow
         };
+
+        badge = BadgeService.GetBadgeFromNote(note!);
     }
 }

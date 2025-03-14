@@ -15,6 +15,15 @@ namespace BadgeFed.Models
         public DateTime? LastUpdated { get; set; }
         public string FingerPrint { get; set; } = "";
 
+        [System.Text.Json.Serialization.JsonIgnore]
         public BadgeDefinition BadgeDefinition { get; set; } = new BadgeDefinition();
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Actor Actor { get; set; } = new Actor();
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string FediverseHandle { get {
+            return "@" + Actor.Username + "@" + Actor.Domain;
+        }}
     }
 }
