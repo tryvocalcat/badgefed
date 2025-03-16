@@ -1,6 +1,6 @@
-# ActivityPub Badges
+# BadgeFed - ActivityPub Badges
 
-ActivityPub Badges is a minimalistic implementation of a badge system similar to Credly, built using .NET and leveraging the ActivityPub protocol.
+BadgeFed aka ActivityPub Badges is a minimalistic implementation of a badge system similar to Credly, built using .NET and leveraging the ActivityPub protocol.
 
 ## Features
 
@@ -13,7 +13,7 @@ ActivityPub Badges is a minimalistic implementation of a badge system similar to
 
 ### Prerequisites
 
-- .NET 6.0 SDK or later
+- .NET 9.0 SDK or later
 
 ### Installation
 
