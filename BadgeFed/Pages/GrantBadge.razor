@@ -1,4 +1,4 @@
-@page "/admin/badge/grant/{badgeId}"
+@page "/admin/grant/{badgeId}"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
@@ -40,7 +40,7 @@
         else
         {
             errorMessage = $"Invalid badge ID format: {BadgeId}";
-            NavigationManager.NavigateTo("/admin/badges");
+            NavigationManager.NavigateTo("/admin/badges/manage");
         }
     }
 

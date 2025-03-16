@@ -13,8 +13,11 @@ namespace BadgeFed.Models
         public string IssuedTo { get; set; } = "";
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
         public string FingerPrint { get; set; } = "";
 
+        [System.Text.Json.Serialization.JsonIgnore]
         public string AcceptKey { get; set; } = "";
 
         [System.Text.Json.Serialization.JsonIgnore]

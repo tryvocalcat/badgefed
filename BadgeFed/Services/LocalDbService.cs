@@ -12,10 +12,10 @@ public class LocalDbService
 
     private readonly string dbPath;
 
-    public static LocalDbService GetInstance(string username)
+    public static LocalDbService GetInstance(string dbName)
     {
         string currentDirectory = Directory.GetCurrentDirectory();
-        string filePath = Path.Combine(currentDirectory, $"{username.ToLowerInvariant()}.db");
+        string filePath = Path.Combine(currentDirectory, $"{dbName.ToLowerInvariant()}.db");
         return new LocalDbService(filePath);
     }
 
@@ -25,6 +25,11 @@ public class LocalDbService
         this.connectionString = $"Data Source={dbPath};Version=3;";
 
         CreateDb();
+    }
+
+    public static LocalDbService GetGlobalDatabase()
+    {
+        return GetInstance("_global.db");
     }
 
     public SQLiteConnection GetConnection()
@@ -458,6 +463,26 @@ public class LocalDbService
         transaction.Commit();
     }
 
+    public void UpdateBadgeSignature(BadgeRecord badgeRecord)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE BadgeRecord SET 
+                FingerPrint = @FingerPrint
+            WHERE Id = @Id;
+        ";
+
+        command.Parameters.AddWithValue("@Id", badgeRecord.Id);
+        command.Parameters.AddWithValue("@FingerPrint", badgeRecord.FingerPrint);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
     public void CreateBadgeRecord(BadgeRecord record)
     {
         using var connection = GetConnection();
@@ -529,7 +554,57 @@ public class LocalDbService
         return null;
     }
 
-    public List<BadgeRecord> GetBadgeRecords(string issuedTo = null, long? badgeId = null)
+    public List<BadgeRecord> GetBadgeRecordsToProcess(long? id = null)
+    {
+        // retrieve badges without fingerprint, no acceptkey, but acceptedOn
+        var records = new List<BadgeRecord>();
+
+        var whereClause = new List<string>();
+
+        using var connection = GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+       
+        if (id.HasValue)
+        {
+            whereClause.Add("Id = @Id");
+            command.Parameters.AddWithValue("@Id", id.Value);
+        }
+
+        command.CommandText = @"SELECT * FROM BadgeRecord 
+                 WHERE (FingerPrint IS NULL OR FingerPrint = '')
+                 AND (AcceptKey IS NULL OR AcceptKey = '')
+                 AND AcceptedOn IS NOT NULL " +
+                 (whereClause.Count > 0 ? " AND " + string.Join(" AND ", whereClause) : "");
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            records.Add(new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedUsing = reader["IssuedUsing"] == DBNull.Value ? null : reader["IssuedUsing"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedTo = reader.GetString(reader.GetOrdinal("IssuedTo")),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) }
+            });
+        }
+
+        return records;
+    }
+
+    public List<BadgeRecord> GetBadgeRecords(string issuedTo = null, long? id = null)
     {
         var records = new List<BadgeRecord>();
         using var connection = GetConnection();
@@ -544,14 +619,17 @@ public class LocalDbService
             command.Parameters.AddWithValue("@IssuedTo", issuedTo);
         }
         
-        if (badgeId.HasValue)
+        if (id.HasValue)
         {
-            whereClause.Add("BadgeId = @BadgeId");
-            command.Parameters.AddWithValue("@BadgeId", badgeId.Value);
+            whereClause.Add("Id = @Id");
+            command.Parameters.AddWithValue("@Id", id.Value);
         }
 
         command.CommandText = "SELECT * FROM BadgeRecord" + 
             (whereClause.Count > 0 ? " WHERE " + string.Join(" AND ", whereClause) : "");
+
+        Console.WriteLine(command.CommandText);
+        Console.WriteLine(command.Parameters.Count);
 
         using var reader = command.ExecuteReader();
 
