@@ -1,4 +1,4 @@
-@page "/admin/badge/manage"
+@page "/admin/badges/manage"
 
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
@@ -9,6 +9,10 @@
 
 <h1>Manage Bagdges</h1>
 
+<div class="mb-3">
+    <a href="/admin/badge/create" class="btn btn-success">Create New Badge</a>
+</div>
+
 @if (badges == null)
 {
     <p>Loading...</p>
@@ -18,6 +22,7 @@ else
     <table class="table">
         <thead>
             <tr>
+                <th>Id</th>
                 <th>Title</th>
                 <th>Issued By</th>
                 <th>Image</th>
@@ -28,11 +33,12 @@ else
             @foreach (var badge in badges)
             {
                 <tr>
+                    <td>@badge.Id</td>
                     <td>@badge.Title</td>
                     <td>@badge.IssuedBy</td>
                      <img src="@badge.Image" alt="Avatar" style="max-width: 100px; max-height: 100px;" class="img-thumbnail" />
                     <td>
-                        <button class="btn btn-primary" @onclick="() => EditBadge(badge)">Edit</button>
+                        <button class="btn btn-primary" @onclick="() => GrantBadge(badge)">Grant</button>
                         <button class="btn btn-secondary" @onclick="() => ViewBadge(badge)">View</button>	
                         <button class="btn btn-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
                     </td>
@@ -51,9 +57,9 @@ else
         badges = LocalDbService.GetAllBadgeDefinitions();
     }
 
-    private void EditBadge(Badge badge)
+    private void GrantBadge(Badge badge)
     {
-        NavigationManager.NavigateTo($"/admin/badge/edit/{badge.Id}");
+        NavigationManager.NavigateTo($"/admin/grant/{badge.Id}");
     }
 
     private void ViewBadge(Badge badge)

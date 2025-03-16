@@ -7,21 +7,118 @@
 
 
 <HeadContent>
-  <meta name="author" content="@badge!.IssuedBy" />
-  <meta name="description" content="@badge.Description" />
+  <meta name="author" content="@badgeRecord!.IssuedBy" />
+  <meta name="description" content="@badgeRecord.Title was issued by @actor.FullName to @badgeRecord.IssuedTo" />
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="@badge.Title" />
-  <meta property="og:description" content="@badge.Description" />
- <meta property="og:url" content="@NavManager.Uri" />
-  <meta property="og:image" content="https://maho.dev/img/aicode1.png" />
-  <meta name="fediverse:creator" content="@badge.IssuerFediverseHandle" />
+  <meta property="og:title" content="@badgeRecord.Title was issued by @actor.FullName to @badgeRecord.IssuedTo" />
+  <meta property="og:description" content="@badgeRecord.Description" />
+  <meta property="og:url" content="@NavManager.Uri" />
+  <meta property="og:image" content="@ogImage" />
+  <meta name="fediverse:creator" content="@badgeRecord.IssuerFediverseHandle" />
 </HeadContent>
 
 @inject NavigationManager NavManager
 
-<h3 class="text-center">Badge Verification</h3>
+<style>
+      body {
+            margin: 2rem;
+            background-color: #f9f9f9;
+            font-family: Arial, sans-serif;
+        }
+        .badge-container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .badge-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background-color: #f0f0f0;
+            padding: 5px;
+        }
+        .badge-header p {
+            margin: 12px;
+        }
+        .badge-header img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+        }
+        .badge-image {
+            max-width: 200px;
+            display: block;
+            margin: auto;
+        }
+        .badge-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .badge-meta {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .badge-meta p {
+            margin: 0.5rem 0;
+        }
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .tag {
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+</style>
 
-@if (badge == null)
+ <div >
+        <div class="badge-header">
+                <p>This verified @badge.BadgeType was issued to <strong><a href="@recipient?.ProfileUri">@(recipient?.FullName ?? @badgeRecord.IssuedTo)</a></strong> on <strong>@badgeRecord.IssuedOn.ToString("MMMM yyyy")</strong></p>
+                 <p>Status: <span class="tag is-success">Verified</span></p>
+        </div>
+        <section class="card">
+            <div class="card-content">
+                <div class="columns">
+                    <div class="column is-4">
+                        <figure class="image">
+                            <img src="@badgeRecord.Image" alt="Badge Image" class="badge-image img-fluid" style="max-width: 100%;">
+                        </figure>
+                    </div>
+                    <div class="column is-8">
+                        <h2 class="title is-3">@badgeRecord.Title</h2>
+                        <p>Issued by: <strong><a href="@actor?.Uri">@actor.FullName</a></strong></p>
+                        <p>@badgeRecord.Description</p>
+                        <p>
+                            <strong>Earning Criteria</strong><br />
+                            @badgeRecord.EarningCriteria
+                        </p>
+                       
+                        <p class="card-text"><strong>Accepted On:</strong> @(badgeRecord.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="card-footer">
+                <a href="https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=@badgeRecord.Title&organizationId=1337&issueYear=2025&
+issueMonth=2&expirationYear=2020&expirationMonth=5&certUrl=https%3A%2F%2Fdocs.microsoft.com
+%2Fen-us%2Flearn%2Fcertifications%2Fd365-functional-consultant-sales&certId=1234" class="card-footer-item">Share on LinkedIn</a>
+                <a href="#" class="card-footer-item">View Issuer</a>
+            </footer>
+        </section>
+    </div>
+<br />
+<div>
+@if (badgeRecord == null)
 {
     <div class="text-center">
         <p>Loading...</p>
@@ -29,25 +126,10 @@
 }
 else
 {
-    <div class="card mx-auto" style="max-width: 600px;">
-        <div class="card-header text-center">
-            <img src="@badge.Image" alt="@badge.Title" class="img-fluid" style="max-width: 200px;" />
-        </div>
-        <div class="card-body">
-            <h4 class="card-title text-center">@badge.Title</h4>
-            <p class="card-text"><strong>Issued By:</strong> @badge.IssuedBy</p>
-            <p class="card-text"><strong>Description:</strong> @badge.Description</p>
-            <p class="card-text"><strong>Earning Criteria:</strong> @badge.EarningCriteria</p>
-            <p class="card-text"><strong>Issued Using:</strong> @badge.IssuedUsing</p>
-            <p class="card-text"><strong>Issued On:</strong> @badge.IssuedOn.ToShortDateString()</p>
-            <p class="card-text"><strong>Issued To:</strong> @badge.IssuedTo</p>
-            <p class="card-text"><strong>Accepted On:</strong> @(badge.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
-            <p class="card-text"><strong>Last Updated:</strong> @(badge.LastUpdated?.ToShortDateString() ?? "N/A")</p>
-        </div>
-    </div>
-
-    <div class="card-footer">
+    <div >
         <h5 class="text-center">Comments</h5>
+        
+        <div>
         @if (comments == null || !comments.Any())
         {
             <p class="text-center">No comments yet.</p>
@@ -65,56 +147,69 @@ else
                 }
             </ul>
         }
+        </div>
     </div>
-
-    @code {
-        private List<Comment> comments = new List<Comment>
-        {
-            new Comment { Author = "John Smith", Text = "Great badge!", DatePosted = DateTime.UtcNow.AddDays(-10) },
-            new Comment { Author = "Alice Johnson", Text = "Well deserved!", DatePosted = DateTime.UtcNow.AddDays(-5) }
-        };
-
-        public class Comment
-        {
-            public string Author { get; set; }
-            public string Text { get; set; }
-            public DateTime DatePosted { get; set; }
-        }
-    }
 }
+</div>
+
 
 @code {
+    
+    private List<Comment> comments = new List<Comment>
+    {
+        
+    };
+
+    public class Comment
+    {
+        public string Author { get; set; }
+        public string Text { get; set; }
+        public DateTime DatePosted { get; set; }
+    }
+
     [Parameter] public string? Id { get; set; }
 
-    private BadgeRecord? badge;
+    private BadgeRecord? badgeRecord;
+
+    private Badge? badge;
+
+    private Actor? actor;
+
+    private ActivityPubNote? note;
+
+    private Recipient? recipient;
+
+    private string ogImage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{Id}.json");
-                
-        if (!System.IO.File.Exists(filePath))
+        var recordId = long.Parse(Id);
+        
+        // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
+        var records = DbService.GetBadgeRecords(null, recordId);
+        
+        if (records.Count() == 0)
         {
-            throw new Exception("Not found");
+            return;
         }
-                
-        var json = System.IO.File.ReadAllText(filePath);
 
-        var note = JsonSerializer.Deserialize<ActivityPubNote>(json);
+        badgeRecord = records.FirstOrDefault();
+        badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
 
-        // Mock data; you can pull from DB or service calls for real usage
-        badge = new BadgeRecord {
-            Title = "Example Credential",
-            IssuedBy = "Example Organization",
-            Description = "Proves advanced knowledge in example technologies.",
-            Image = "https://example.com/image.png",
-            EarningCriteria = "Completed training and passed final exam.",
-            IssuedUsing = "Example Platform",
-            IssuedOn = DateTime.UtcNow.AddDays(-80),
-            IssuedTo = "Jane Doe",
-            AcceptedOn = DateTime.UtcNow.AddDays(-75),
-            LastUpdated = DateTime.UtcNow
-        };
+        badgeRecord.Badge = badge;
+        actor = DbService.GetActorById(badge.IssuedBy);
 
-        badge = BadgeService.GetBadgeRecordFromNote(note!);
+        badgeRecord.Actor = actor;
+
+        var originalImage = badgeRecord.Image;
+        
+        var extension = Path.GetExtension(originalImage);
+        var directory = Path.GetDirectoryName(originalImage);
+        var filename = Path.GetFileNameWithoutExtension(originalImage);
+
+        var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
+        ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
+
+        recipient = DbService.GetRecipientByIssuedTo(badgeRecord.IssuedTo);
     }
 }

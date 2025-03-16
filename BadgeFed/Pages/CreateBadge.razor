@@ -134,6 +134,8 @@
                 using var stream = selectedFile.OpenReadStream();
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
+
+                ImageService.ModifyImageForPageShare(fullPath);
                 
                 Model.Image = $"/uploads/badges/{fileName}";
             }

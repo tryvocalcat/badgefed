@@ -27,7 +27,4 @@ public class ActivityPubCreate
 
     [JsonPropertyName("object")]
     public object Object { get; set; }
-
-    [JsonPropertyName("signature")]
-    public dynamic Signature { get; set; }
 }

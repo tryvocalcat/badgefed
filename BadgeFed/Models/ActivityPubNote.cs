@@ -23,6 +23,7 @@ public class ActivityPubNote
     [JsonPropertyName("attributedTo")]
     public string AttributedTo { get; set; }
 
+    [JsonPropertyName("vocalcat:badges")]
     public BadgeRecord BadgeMetadata { get; set; }
 
     [JsonPropertyName("to")]

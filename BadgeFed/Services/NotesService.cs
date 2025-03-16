@@ -74,7 +74,8 @@ public class NotesService
                     PartOf = $"https://{actor.Domain}/comments/{id}",
                     Items = new List<string>()
                 }
-            }
+            },
+            BadgeMetadata = new BadgeRecord()
         };
 
         return note;
