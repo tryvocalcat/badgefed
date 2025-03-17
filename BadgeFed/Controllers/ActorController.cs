@@ -22,7 +22,7 @@ namespace BadgeFed.Controllers
         {
             var accept = Request.Headers["Accept"].ToString();
 
-            if (!accept.Contains("application/json") && !accept.Contains("application/activity"))
+            if (!accept.Contains("application/json") && !accept.Contains("application/activity") && !accept.Contains("application/ld+json"))
             {
                 return Redirect($"/view/actor/{domain}/{actorName}");
             }
@@ -40,7 +40,7 @@ namespace BadgeFed.Controllers
             {
                 Context = "https://www.w3.org/ns/activitystreams",
                 Id = $"{baseUrlId}",
-                Type = "Person",
+                Type = "Service",
                 Following = $"{baseUrlId}/following",
                 Followers = $"{baseUrlId}/followers",
                 Inbox = $"https://{domain}/inbox",
@@ -72,6 +72,38 @@ namespace BadgeFed.Controllers
             };
 
             return new JsonResult(actorResource)
+            {
+                ContentType = "application/activity+json"
+            };
+        }
+
+        [HttpGet]
+        [Route("followers")]
+        public IActionResult GetFollowers(string domain, string actorName)
+        {
+            var actor = _localDbService.GetActorByFilter($"Username = \"{actorName}\" AND Domain = \"{domain}\"");
+
+            if (actor == null)
+            {
+                return NotFound("Account not found on this domain");
+            }
+
+            var followers = _localDbService.GetFollowersByActorId(actor.Id);
+
+            var orderedItems = followers.Select(follower => follower.FollowerUri).ToList();
+
+            var orderedItemsObjects = orderedItems.Cast<dynamic>().ToList();
+
+            var followersCollection = new ActivityPubCollection
+            {
+                Context = "https://www.w3.org/ns/activitystreams",
+                Id = $"https://{domain}/actors/{domain}/{actorName}/followers",
+                Type = "Collection",
+                TotalItems = followers.Count,
+                OrderedItems = orderedItemsObjects
+            };
+
+            return new JsonResult(followersCollection)
             {
                 ContentType = "application/activity+json"
             };

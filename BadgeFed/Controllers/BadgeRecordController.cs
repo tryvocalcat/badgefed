@@ -11,7 +11,7 @@ namespace BadgeFed.Controllers
         {
             var accept = Request.Headers["Accept"].ToString();
 
-            if (accept.Contains("application/json") || accept.Contains("application/activity"))
+            if (accept.Contains("application/json") || accept.Contains("application/activity") || accept.Contains("application/ld+json"))
             {
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "records", $"{id}.json");
                 
