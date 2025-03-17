@@ -1,6 +1,9 @@
 using ActivityPubDotNet.Core;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using BadgeFed.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +20,14 @@ builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Serve
 builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
 
 builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(option =>
+    {
+        option.LoginPath = "/admin";
+        option.LogoutPath = "/admin/authentication/logout";
+        option.AccessDeniedPath = "/";
+    });
 
 var app = builder.Build();
 
