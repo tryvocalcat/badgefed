@@ -1,4 +1,4 @@
-@page "/admin/badge/create"
+@page "/admin/badges/create"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
@@ -146,7 +146,7 @@
             LocalDbService.UpsertBadgeDefinition(Model);
             
             // Redirect to actors list or details page
-            NavigationManager.NavigateTo("/admin/badge/manage");
+            NavigationManager.NavigateTo("/admin/badges");
             
             // For demo purposes, just reset the form
             Model = new();

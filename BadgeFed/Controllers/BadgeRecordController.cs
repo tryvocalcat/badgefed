@@ -21,6 +21,7 @@ namespace BadgeFed.Controllers
                 }
                 
                 var json = System.IO.File.ReadAllText(filePath);
+                
                 return Content(json, "application/activity+json");
             }
 

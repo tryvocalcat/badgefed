@@ -1,4 +1,4 @@
-@page "/admin/actor/create"
+@page "/admin/actors/create"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
@@ -155,7 +155,7 @@
             LocalDbService.UpsertActor(Model);
             
             // Redirect to actors list or details page
-            NavigationManager.NavigateTo("/admin/actor/manage");
+            NavigationManager.NavigateTo("/admin/actors");
             
             // For demo purposes, just reset the form
             Model = new();
