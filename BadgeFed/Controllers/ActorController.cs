@@ -22,7 +22,7 @@ namespace BadgeFed.Controllers
         {
             var accept = Request.Headers["Accept"].ToString();
 
-            if (!accept.Contains("application/json") && !accept.Contains("application/activity") && !accept.Contains("application/ld+json"))
+            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
                 return Redirect($"/view/actor/{domain}/{actorName}");
             }
