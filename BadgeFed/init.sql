@@ -53,7 +53,9 @@ CREATE TABLE BadgeRecord (
     EarningCriteria TEXT CHECK(length(EarningCriteria) <= 500),
     IssuedUsing TEXT,
     IssuedOn DATETIME NOT NULL,
-    IssuedTo TEXT NOT NULL, -- it can be email, uri or fediversehandle
+    IssuedToEmail TEXT NOT NULL,
+    IssuedToName TEXT NOT NULL,
+    IssuedToActorUri TEXT NOT NULL,
     AcceptedOn DATETIME,
     LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP,
     FingerPrint TEXT NULL,

@@ -1,16 +1,42 @@
 ﻿@inherits LayoutComponentBase
 
-<header class="container">
-  <hgroup>
-    <h1>BadgeFed</h1>
-    <p>and Decentralized, Open-Source, and Fediverse-Powered Badge Verification System.</p>
-  </hgroup>
-  
-</header>
+<nav class="navbar" style="display: none;">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="#">🚀 My Site</a>
+                <span class="navbar-burger" data-target="navMenu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
+            </div>
+            <div id="navMenu" class="navbar-menu">
+                <div class="navbar-end">
+                    <a class="navbar-item" href="#">Home</a>
+                    <a class="navbar-item" href="#">About</a>
+                    <a class="navbar-item" href="#">Contact</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-<main class="container"> @Body </main>
 
-<footer class="container">
+ <section class="hero is-info">
+        <div class="hero-body">
+            <div class="container">
+                <h1 class="title">Welcome to BadgeFed</h1>
+                <h2 class="subtitle">An Open, Decentralized, and Fediverse-Powered Badge Verification System</h2>
+               
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="section">
+       @Body
+    </section>
+
+<footer class="footer">
     <small
       >Built by <a href="https://www.vocalcat.com">VocalCat</a> •
       <a href="https://github.com/tryvocalcat/activitypub-badges"

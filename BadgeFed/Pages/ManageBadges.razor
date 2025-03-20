@@ -1,4 +1,4 @@
-@page "/admin/badges/manage"
+@page "/admin/badges"
 
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
@@ -7,46 +7,55 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 
-<h1>Manage Bagdges</h1>
 
-<div class="mb-3">
-    <a href="/admin/badge/create" class="btn btn-success">Create New Badge</a>
-</div>
+    <h1 class="title">Manage Badges</h1>
 
-@if (badges == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Title</th>
-                <th>Issued By</th>
-                <th>Image</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var badge in badges)
-            {
-                <tr>
-                    <td>@badge.Id</td>
-                    <td>@badge.Title</td>
-                    <td>@badge.IssuedBy</td>
-                     <img src="@badge.Image" alt="Avatar" style="max-width: 100px; max-height: 100px;" class="img-thumbnail" />
-                    <td>
-                        <button class="btn btn-primary" @onclick="() => GrantBadge(badge)">Grant</button>
-                        <button class="btn btn-secondary" @onclick="() => ViewBadge(badge)">View</button>	
-                        <button class="btn btn-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+    <div class="mb-4 has-text-right">
+        <a href="/admin/badges/create" class="button is-success">Create New Badge</a>
+    </div>
+
+    @if (badges == null)
+    {
+        <div class="notification is-info">Loading...</div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Title</th>
+                        <th>Issued By</th>
+                        <th>Image</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var badge in badges)
+                    {
+                        <tr>
+                            <td>@badge.Id</td>
+                            <td>@badge.Title</td>
+                            <td>@badge.IssuedBy</td>
+                            <td>
+                                <figure class="image is-64x64">
+                                    <img src="@badge.Image" alt="Badge Image">
+                                </figure>
+                            </td>
+                            <td>
+                                <div class="buttons">
+                                    <button class="button is-primary" @onclick="() => GrantBadge(badge)">Grant</button>
+                                    <button class="button is-link" @onclick="() => ViewBadge(badge)">View</button>
+                                    <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 
 @code {
     private List<Badge?> badges;
