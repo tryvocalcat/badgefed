@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BadgeFed.Controllers
 {
     [ApiController]
-    [Route("admin/record")]
+    [Route("admin/grant")]
     public class AdminBadgeController : ControllerBase
     {
         private readonly IConfiguration _configuration;
@@ -22,7 +22,7 @@ namespace BadgeFed.Controllers
         {
             var recordId = long.Parse(id);
             
-            var records = _localDbService.GetBadgeRecords(null, recordId);
+            var records = _localDbService.GetBadgeRecords(recordId);
 
             var record = records.FirstOrDefault()!;
 
@@ -34,12 +34,16 @@ namespace BadgeFed.Controllers
             record.Actor = actor;
             
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{id}.json");
+
             
             if (!System.IO.File.Exists(filePath))
             {
                 return NotFound("Badge not found");
             }
             
+            
+            Console.WriteLine("Badge found");
+
             var json = System.IO.File.ReadAllText(filePath);
 
             var note = System.Text.Json.JsonSerializer.Deserialize<ActivityPubDotNet.Core.ActivityPubNote>(json);
@@ -53,15 +57,26 @@ namespace BadgeFed.Controllers
             // Actor is the account who wants to follow
             var serializedNote = System.Text.Json.JsonSerializer.Serialize(createNote);    
 
-            foreach(var follower in followers) {
-                var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
+            Console.WriteLine($"Serialized note: {serializedNote}");	
+            Console.WriteLine($"Followers: {followers.Count}");
 
-                await actorHelper.SendPostSignedRequest(serializedNote, new Uri(fediverseInfo.Inbox));
+            foreach(var follower in followers) {
+                try {
+                    var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
+
+                    await actorHelper.SendPostSignedRequest(serializedNote, new Uri(fediverseInfo.Inbox));
+
+                    Console.WriteLine($"Sent note to {follower.FollowerUri}");
+                } catch (Exception e) {
+                    Console.WriteLine($"Failed to send note to {follower.FollowerUri}");
+                    Console.WriteLine(e.Message);
+                }
             }
 
-            return Ok(createNote);
+            return Redirect("/admin/grants");
         }
 
+        /** Process signs and create a badgenote **/
         [HttpGet("{id}/process")]
         public async Task<IActionResult> ProcessBadge(string id)
         {
@@ -83,10 +98,8 @@ namespace BadgeFed.Controllers
                 record.Badge = badge;
                 record.Actor = actor;
 
-                var recipient = _localDbService.GetRecipientByIssuedTo(record.IssuedTo);
-
                 // - generate activitypub note
-                var note = BadgeService.GetNoteFromBadgeRecord(record, recipient);
+                var note = BadgeService.GetNoteFromBadgeRecord(record);
 
                 var badgeService = new BadgeService(_localDbService);
 
@@ -103,8 +116,9 @@ namespace BadgeFed.Controllers
                 // - update record
                 _localDbService.UpdateBadgeSignature(record);
             }
-            
-            return Ok();
+
+            // Redirect to the grants administration page after processing
+            return Redirect("/admin/grants");
         }
     }
 }

@@ -59,10 +59,11 @@ public class BadgeService
     {
         if (name.StartsWith("@"))
             name = name.Substring(1);
+
         return $"<a href=\"{link}\" class=\"u-url mention\">@<span>{name}</span></a>";
     }
 
-    public static ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record, Recipient recipient)
+    public static ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
     {
         string template = @"<h1>{BadgeTitle}</h1>
         
@@ -85,16 +86,15 @@ public class BadgeService
             .Replace("{IssuedOn}", record.IssuedOn.ToString())
             .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor.Uri.ToString()))
             .Replace("{AcceptedOn}", record.AcceptedOn?.ToString() ?? "Not accepted")
-            .Replace("{IssuedTo}", GetMention(recipient.FediverseHandle ?? recipient.FullName, recipient.ProfileUri))
+            .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri))
             .Replace("{BadgeUrl}", url);
 
         Console.WriteLine(content);
 
         var note = NotesService.GetNote(
-            record.Id.ToString(),
+            record,
             content,
-            url,
-            record.Actor);
+            url);
 
         note.BadgeMetadata = record;
 
@@ -103,22 +103,10 @@ public class BadgeService
 
     public static BadgeRecord GetBadgeRecordFromNote(ActivityPubNote note)
     {
-        var badge = new BadgeRecord
-        {
-            Id = long.Parse(note.Id.Split('/').Last()),
-            Title = note.Content,
-            Description = note.Content,
-            IssuedBy = note.AttributedTo,
-            IssuedOn = note.Published,
-            IssuedTo = note.To?.FirstOrDefault() ?? "",
-            Image = "test.png",
-            FingerPrint = "0001"
-        };
-
-        return badge;
+        throw new NotImplementedException();
     }
 
-    public BadgeRecord GetGrantBadgeRecord(Badge badge, string recipient)
+    public BadgeRecord GetGrantBadgeRecord(Badge badge, Recipient recipient)
     {
         var acceptKey = Guid.NewGuid().ToString();
 
@@ -131,7 +119,9 @@ public class BadgeService
             IssuedBy = actor.Uri!.ToString(),
             IssuedOn = DateTime.UtcNow,
             Image = badge.Image,
-            IssuedTo = recipient,
+            IssuedToName = recipient?.Name ?? string.Empty,
+            IssuedToSubjectUri = recipient?.ProfileUri ?? string.Empty,
+            IssuedToEmail = recipient?.Email ?? string.Empty,
             EarningCriteria = badge.EarningCriteria,
             AcceptedOn = null,
             Badge = badge,

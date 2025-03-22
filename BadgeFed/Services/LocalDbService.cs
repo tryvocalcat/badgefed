@@ -327,56 +327,57 @@ public class LocalDbService
         return badges;
     }
 
-    public Recipient GetRecipientByIssuedTo(string issuedTo)
+    public Recipient GetRecipientByIssuedTo(BadgeRecord record)
     {
-        var issuedToType = Recipient.GetAssignedToType(issuedTo);
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
 
         string filter = "FALSE";
 
         var recipient = new Recipient();
 
-        switch(issuedToType)
+        if (!string.IsNullOrEmpty(record.IssuedToEmail))
         {
-            case "email":
-                recipient = new Recipient { Email = issuedTo };
-                filter = "Email = @IssuedTo";
-                break;
-            case "fediverse":
-                recipient = new Recipient { FediverseHandle = issuedTo };
-                filter = "FediverseHandle = @IssuedTo";
-                break;
-            case "profileuri":
-                recipient = new Recipient { ProfileUri = issuedTo };
-                filter = "ProfileUri = @IssuedTo";
-                break;
-            default:
-                recipient = new Recipient { FullName = issuedTo };
-                return recipient;
-                break;
+            filter = "Email = @IssuedTo";
+            command.Parameters.AddWithValue("@IssuedTo", record.IssuedToEmail);
+        }
+        else if (!string.IsNullOrEmpty(record.IssuedToSubjectUri))
+        {
+            filter = "ProfileUri = @IssuedTo";
+            command.Parameters.AddWithValue("@IssuedTo", record.IssuedToSubjectUri);
         }
 
-        using var connection = GetConnection();
-        connection.Open();
-
-        var command = connection.CreateCommand();
         command.CommandText = $"SELECT * FROM Recipient WHERE {filter}";
-
-        command.Parameters.AddWithValue("@IssuedTo", issuedTo);
 
         using var reader = command.ExecuteReader();
         if (reader.Read())
         {
             recipient.Id = reader.GetInt64(0);
-            recipient.FullName = reader["FullName"] == DBNull.Value ? null : reader["FullName"].ToString();
+            recipient.Name = reader["Name"] == DBNull.Value ? null : reader["Name"].ToString();
             recipient.Email = reader["Email"] == DBNull.Value ? null : reader["Email"].ToString();
-            recipient.FediverseHandle = reader["FediverseHandle"] == DBNull.Value ? null : reader["FediverseHandle"].ToString();
             recipient.ProfileUri = reader["ProfileUri"] == DBNull.Value ? null : reader["ProfileUri"].ToString();
+        }
+
+        if (string.IsNullOrEmpty(recipient.Name) && !string.IsNullOrEmpty(record.IssuedToName))
+        {
+            recipient.Name = record.IssuedToName;
+        }
+
+        if (string.IsNullOrEmpty(recipient.Email) && !string.IsNullOrEmpty(record.IssuedToEmail))
+        {
+            recipient.Email = record.IssuedToEmail;
+        }
+
+        if (string.IsNullOrEmpty(recipient.ProfileUri) && !string.IsNullOrEmpty(record.IssuedToSubjectUri))
+        {
+            recipient.ProfileUri = record.IssuedToSubjectUri;
         }
 
         return recipient;
     }
-
-    public Badge UpsertRecipient(Recipient recipient)
+    public Recipient UpsertRecipient(Recipient recipient)
     {
         using var connection = GetConnection();
         connection.Open();
@@ -384,21 +385,26 @@ public class LocalDbService
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Recipient (FullName, Email, FediverseHandle, ProfileUri)
-            VALUES (@FullName, @Email, @FediverseHandle, @ProfileUri);
+            INSERT INTO Recipient (Name, Email, ProfileUri, IsActivityPubActor, CreatedAt, UpdatedAt)
+            VALUES (@Name, @Email, @ProfileUri, @IsActivityPubActor, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(Email) DO UPDATE SET
+                Name = excluded.Name,
+                ProfileUri = excluded.ProfileUri,
+                IsActivityPubActor = excluded.IsActivityPubActor,
+                UpdatedAt = CURRENT_TIMESTAMP;
             SELECT last_insert_rowid();
         ";
 
-        command.Parameters.AddWithValue("@FullName", recipient.FullName ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@Email", recipient.Email ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@FediverseHandle", recipient.FediverseHandle ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@ProfileUri", recipient.ProfileUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Name", recipient.Name);
+        command.Parameters.AddWithValue("@Email", recipient.Email);
+        command.Parameters.AddWithValue("@ProfileUri", recipient.ProfileUri);
+        command.Parameters.AddWithValue("@IsActivityPubActor", recipient.IsActivityPubActor);
 
         recipient.Id = Convert.ToInt64(command.ExecuteScalar());
 
         transaction.Commit();
 
-        return new Badge { Id = recipient.Id };
+        return recipient;
     }
 
     public Badge GetBadgeDefinitionById(long id)
@@ -451,13 +457,15 @@ public class LocalDbService
             UPDATE BadgeRecord SET 
                 AcceptedOn = @AcceptedOn,
                 AcceptKey = null,
-                IssuedTo = @IssuedTo
+                IssuedToSubjectUri = @IssuedToSubjectUri,
+                IssuedToName = @IssuedToName
             WHERE Id = @Id;
         ";
 
         command.Parameters.AddWithValue("@Id", badgeRecord.Id);
         command.Parameters.AddWithValue("@AcceptedOn", DateTime.UtcNow);
-        command.Parameters.AddWithValue("@IssuedTo", badgeRecord.IssuedTo);
+        command.Parameters.AddWithValue("@IssuedToSubjectUri", badgeRecord.IssuedToSubjectUri);
+        command.Parameters.AddWithValue("@IssuedToName", badgeRecord.IssuedToName);
 
         command.ExecuteNonQuery();
         transaction.Commit();
@@ -493,12 +501,12 @@ public class LocalDbService
         command.CommandText = @"
             INSERT INTO BadgeRecord (
                 Title, IssuedBy, Description, Image, EarningCriteria, 
-                IssuedUsing, IssuedOn, IssuedTo,
+                 IssuedOn, IssuedToSubjectUri, IssuedToName, IssuedToEmail,
                 AcceptKey, BadgeId
             )
             VALUES (
                 @Title, @IssuedBy, @Description, @Image, @EarningCriteria,
-                @IssuedUsing, @IssuedOn, @IssuedTo,
+                 @IssuedOn, @IssuedToSubjectUri, @IssuedToName, @IssuedToEmail,
                 @AcceptKey, @BadgeId
             );
             SELECT last_insert_rowid();
@@ -509,9 +517,10 @@ public class LocalDbService
         command.Parameters.AddWithValue("@Description", record.Description ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@Image", record.Image ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@EarningCriteria", record.EarningCriteria ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@IssuedUsing", record.IssuedUsing ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@IssuedOn", record.IssuedOn);
-        command.Parameters.AddWithValue("@IssuedTo", record.IssuedTo);
+        command.Parameters.AddWithValue("@IssuedToSubjectUri", record.IssuedToSubjectUri);
+        command.Parameters.AddWithValue("@IssuedToName", record.IssuedToName);
+        command.Parameters.AddWithValue("@IssuedToEmail", record.IssuedToEmail);
         command.Parameters.AddWithValue("@AcceptKey", record.AcceptKey);
         command.Parameters.AddWithValue("@BadgeId", record.Badge!.Id!);
 
@@ -541,9 +550,10 @@ public class LocalDbService
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
-                IssuedUsing = reader["IssuedUsing"] == DBNull.Value ? null : reader["IssuedUsing"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
-                IssuedTo = reader.GetString(reader.GetOrdinal("IssuedTo")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
+                IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
@@ -591,9 +601,10 @@ public class LocalDbService
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
-                IssuedUsing = reader["IssuedUsing"] == DBNull.Value ? null : reader["IssuedUsing"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
-                IssuedTo = reader.GetString(reader.GetOrdinal("IssuedTo")),
+                IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
@@ -604,7 +615,7 @@ public class LocalDbService
         return records;
     }
 
-    public List<BadgeRecord> GetBadgeRecords(string issuedTo = null, long? id = null)
+    public List<BadgeRecord> GetBadgeRecords(long? id = null)
     {
         var records = new List<BadgeRecord>();
         using var connection = GetConnection();
@@ -613,12 +624,6 @@ public class LocalDbService
         var command = connection.CreateCommand();
         var whereClause = new List<string>();
 
-        if (!string.IsNullOrEmpty(issuedTo))
-        {
-            whereClause.Add("IssuedTo = @IssuedTo");
-            command.Parameters.AddWithValue("@IssuedTo", issuedTo);
-        }
-        
         if (id.HasValue)
         {
             whereClause.Add("Id = @Id");
@@ -628,8 +633,7 @@ public class LocalDbService
         command.CommandText = "SELECT * FROM BadgeRecord" + 
             (whereClause.Count > 0 ? " WHERE " + string.Join(" AND ", whereClause) : "");
 
-        Console.WriteLine(command.CommandText);
-        Console.WriteLine(command.Parameters.Count);
+        Console.WriteLine($"{command.CommandText} - Id = {id}");
 
         using var reader = command.ExecuteReader();
 
@@ -643,9 +647,10 @@ public class LocalDbService
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
-                IssuedUsing = reader["IssuedUsing"] == DBNull.Value ? null : reader["IssuedUsing"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
-                IssuedTo = reader.GetString(reader.GetOrdinal("IssuedTo")),
+                IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
