@@ -98,7 +98,6 @@ namespace ActivityPubDotNet.Core
             using (RSA rsa = RSA.Create())
             {
 
-                Console.WriteLine(this._privatePem);
                 rsa.ImportFromPem(this._privatePem);
 
                 string digest = $"SHA-256={CreateHashSha256(document)}";
@@ -115,6 +114,7 @@ namespace ActivityPubDotNet.Core
                 string signature = Convert.ToBase64String(signatureBytes);
 
                 Logger?.LogInformation($"Using key: {this._keyId}");
+                Console.WriteLine($"Using key: {this._keyId}");
 
                 // Build the HTTP signature header
                 // string header = $"keyId=\"{privateKeyId}\",headers=\"(request-target) host date digest\",signature=\"{signature}\",algorithm=\"rsa-sha256\"";
