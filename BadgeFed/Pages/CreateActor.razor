@@ -7,85 +7,127 @@
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
 
+@layout BadgeFed.Components.AdminLayout
+
 <h1>Create New Actor</h1>
+<div class="columns">
+    <div class="column is-half">
+        <div class="box">
+            <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="actorForm">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                
+                <div class="field">
+                    <label class="label" for="name">Full Name</label>
+                    <div class="control">
+                        <InputText id="name" @bind-Value="Model!.FullName" class="input" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
+                </div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="actorForm">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-                    
-                    <label for="name">Full Name:
-                        <InputText id="name" @bind-Value="Model!.FullName" />
-                        <ValidationMessage For="@(() => Model.FullName)" />
-                    </label>
+                <div class="field">
+                    <label class="label" for="summary">Summary</label>
+                    <div class="control">
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
+                </div>
 
-                    <label for="summary">Summary:
-                        <InputTextArea id="summary" @bind-Value="Model.Summary" rows="4" />
-                        <ValidationMessage For="@(() => Model.Summary)" />
-                    </label>
+                <div class="field">
+                    <label class="label" for="avatar">Avatar</label>
+                    <div class="control">
+                        <div class="file has-name">
+                            <label class="file-label">
+                                <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" class="file-input" />
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">Choose a file…</span>
+                                </span>
+                                <span class="file-name">@(selectedFile?.Name ?? "No file selected")</span>
+                            </label>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <p class="help is-danger">@errorMessage</p>
+                    }
+                    @if (imagePreview != null)
+                    {
+                        <div class="mt-3">
+                            <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" />
+                        </div>
+                    }
+                </div>
 
-                    <label for="avatar">
-                        Avatar:
-                        <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="text-danger mt-2">@errorMessage</div>
-                        }
-                        @if (imagePreview != null)
-                        {
-                            <div class="mt-3">
-                                <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" class="img-thumbnail" />
-                            </div>
-                        }
-                    </label>
+                <div class="field">
+                    <label class="label" for="username">Username</label>
+                    <div class="control">
+                        <InputText id="username" @bind-Value="Model!.Username" class="input" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.Username)" class="help is-danger" />
+                </div>
 
-                    <label for="username">Username:
-                        <InputText id="username" @bind-Value="Model!.Username" />
-                        <ValidationMessage For="@(() => Model.Username)" />
-                    </label>
+                <div class="field">
+                    <label class="label" for="informationUri">Information URI</label>
+                    <div class="control">
+                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" class="input" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.InformationUri)" class="help is-danger" />
+                </div>
 
-                    <label for="informationUri">Information URI:
-                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" />
-                        <ValidationMessage For="@(() => Model.InformationUri)" />
-                    </label>
+                <div class="field">
+                    <label class="label" for="domain">Domain</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <InputSelect id="domain" @bind-Value="Model!.Domain">
+                                <option value="">-- Select a domain --</option>
+                                @foreach (var domain in availableDomains)
+                                {
+                                    <option value="@domain">@domain</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <ValidationMessage For="@(() => Model.Domain)" class="help is-danger" />
+                </div>
 
-                    <label for="domain">Domain:
-                        <InputSelect id="domain" @bind-Value="Model!.Domain" class="form-control">
-                            <option value="">-- Select a domain --</option>
-                            @foreach (var domain in availableDomains)
+                <div class="field">
+                    <label class="label" for="public-key">PublicKey</label>
+                    <div class="control">
+                        <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" class="textarea" rows="6" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label" for="private-key">PrivateKey</label>
+                    <div class="control">
+                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" />
+                    </div>
+                </div>
+
+                <div class="field is-grouped mt-4">
+                    <div class="control">
+                        <button type="submit" class="button is-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
                             {
-                                <option value="@domain">@domain</option>
+                                <span class="icon is-small">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                                <span>Creating...</span>
                             }
-                        </InputSelect>
-                        <ValidationMessage For="@(() => Model.Domain)" />
-                    </label>
-
-                    <label for="summary">PublicKey:
-                        <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" rows="6" />
-                    </label>
-
-                     <label for="summary">PrivateKey:
-                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" rows="6" />
-                    </label>
-
-                    <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
-                        @if (isSubmitting)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            <span> Creating...</span>
-                        }
-                        else
-                        {
-                            <span>Create Actor</span>
-                        }
-                    </button>
-
-                    <button @onclick="ClearForm">Clear form</button>
-                </EditForm>
-            </div>
+                            else
+                            {
+                                <span>Create Actor</span>
+                            }
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button type="button" @onclick="ClearForm" class="button is-light">Clear form</button>
+                    </div>
+                </div>
+            </EditForm>
         </div>
     </div>
 </div>

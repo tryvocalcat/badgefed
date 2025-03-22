@@ -8,9 +8,16 @@ namespace BadgeFed.Models
         public string Description { get; set; } = "";
         public string Image { get; set; } = "";
         public string EarningCriteria { get; set; } = "";
-        public string IssuedUsing { get; set; } = "";
+        
         public DateTime IssuedOn { get; set; }
-        public string IssuedTo { get; set; } = "";
+        
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string IssuedToEmail { get; set; } = "";
+        
+        public string IssuedToName { get; set; } = "";
+
+        public string IssuedToSubjectUri { get; set; } = "";
+     
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
 
