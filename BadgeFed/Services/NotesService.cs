@@ -26,14 +26,19 @@ public class NotesService
         }
     }
 
-    public static ActivityPubNote GetNote(string id, string content, string url, Actor actor)
+    public static ActivityPubNote GetNote(BadgeRecord record, string content, string url)
     {
+        var id = record.Id;
+
         var tags = new List<ActivityPubNote.Tag>()
         {
-            //new NoteTag() { Type = "Mention", Href = outboxConfig.AuthorUrl, Name = outboxConfig.AuthorUsername }
+            new ActivityPubNote.Tag() { Type = "Mention", Href = record.Actor.Uri?.ToString(), Name = record.Actor.FediverseHandle },
+            new ActivityPubNote.Tag() { Type = "Mention", Href = record.IssuedToSubjectUri, Name = $"@{record.IssuedToName}" },
         };
 
-        var baseTagUrl = $"{actor.Domain}/tags";
+        var actor = record.Actor;
+
+        var baseTagUrl = $"{record.Actor.Domain}/tags";
 
         /*var itemTags = item?.Tags as List<string> ?? [];
 
@@ -59,8 +64,13 @@ public class NotesService
             Content = content,
             Url = url,
             AttributedTo = actor.Uri?.ToString()!,
-            To = new List<string>() { "https://www.w3.org/ns/activitystreams#Public" },
-            Cc = new List<string>(),
+            To = new List<string>() { 
+                "https://www.w3.org/ns/activitystreams#Public",
+                record.IssuedToSubjectUri
+            },
+            Cc = new List<string>() {
+                record.IssuedToSubjectUri
+            },
             Published = DateTime.UtcNow, // Added current date and time
             Tags = tags,
             Replies = new ActivityPubNote.Collection

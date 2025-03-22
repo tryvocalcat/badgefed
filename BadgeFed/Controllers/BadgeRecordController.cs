@@ -11,21 +11,21 @@ namespace BadgeFed.Controllers
         {
             var accept = Request.Headers["Accept"].ToString();
 
-            if (accept.Contains("application/json") || accept.Contains("application/activity") || accept.Contains("application/ld+json"))
+            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "records", $"{id}.json");
-                
-                if (!System.IO.File.Exists(filePath))
-                {
-                    return NotFound("Badge record not found");
-                }
-                
-                var json = System.IO.File.ReadAllText(filePath);
-                
-                return Content(json, "application/activity+json");
+                return Redirect($"/view/record/{id}");
             }
-
-            return Redirect($"/view/record/{id}");
+            
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{id}.json");
+            
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound("Badge record not found");
+            }
+            
+            var json = System.IO.File.ReadAllText(filePath);
+            
+            return Content(json, "application/activity+json");
         }
     }
 }
