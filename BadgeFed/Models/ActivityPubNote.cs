@@ -35,7 +35,7 @@ public class ActivityPubNote
     [JsonPropertyName("published")]
     public DateTime Published { get; set; } = DateTime.UtcNow;
 
-    [JsonPropertyName("tags")]
+    [JsonPropertyName("tag")]
     public List<Tag> Tags { get; set; } = [];
 
     [JsonPropertyName("replies")]
@@ -43,8 +43,11 @@ public class ActivityPubNote
 
     public class Tag
     {
+        [JsonPropertyName("type")]
         public string Type { get; set; }
+        [JsonPropertyName("href")]
         public string Href { get; set; }
+        [JsonPropertyName("name")]
         public string Name { get; set; }
     }
 

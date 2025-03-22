@@ -7,74 +7,114 @@
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
 
-<h1>Create New Badge</h1>
+@layout BadgeFed.Components.AdminLayout
 
+<h1>Create New Badge</h1>
 <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="badgeForm">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
-        <label for="title">Title:
-            <InputText id="name" @bind-Value="Model!.Title" />
-            <ValidationMessage For="@(() => Model.Title)" />
-        </label>
+    <div class="field">
+        <label class="label" for="title">Title</label>
+        <div class="control">
+            <InputText id="name" @bind-Value="Model!.Title" class="input" />
+        </div>
+        <ValidationMessage For="@(() => Model.Title)" class="help is-danger" />
+    </div>
 
-        <label for="description">Description:
-            <InputTextArea id="description" @bind-Value="Model.Description" rows="4" />
-            <ValidationMessage For="@(() => Model.Description)" />
-        </label>
+    <div class="field">
+        <label class="label" for="description">Description</label>
+        <div class="control">
+            <InputTextArea id="description" @bind-Value="Model.Description" rows="4" class="textarea" />
+        </div>
+        <ValidationMessage For="@(() => Model.Description)" class="help is-danger" />
+    </div>
 
-        <label for="avatar">
-            Avatar:
-            <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="text-danger mt-2">@errorMessage</div>
-            }
-            @if (imagePreview != null)
-            {
-                <div class="mt-3">
-                    <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" class="img-thumbnail" />
-                </div>
-            }
-        </label>
+    <div class="field">
+        <label class="label" for="avatar">Avatar</label>
+        <div class="control">
+            <div class="file has-name">
+                <label class="file-label">
+                    <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" class="file-input" />
+                    <span class="file-cta">
+                        <span class="file-icon">
+                            <i class="fas fa-upload"></i>
+                        </span>
+                        <span class="file-label">Choose a file…</span>
+                    </span>
+                    <span class="file-name">@(selectedFile?.Name ?? "No file selected")</span>
+                </label>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p class="help is-danger">@errorMessage</p>
+        }
+        @if (imagePreview != null)
+        {
+            <div class="mt-3">
+                <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" />
+            </div>
+        }
+    </div>
 
-        <label for="earningCriteria">Earning Criteria:
-            <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" />
-            <ValidationMessage For="@(() => Model.EarningCriteria)" />
-        </label>
-        
-        <label for="issuedBy">Issued By:
-            <InputSelect id="actorId" @bind-Value="Model.IssuedBy" class="form-control">
-                <option value="0">-- Select an issuer --</option>
-                @foreach (var actor in actors)
+    <div class="field">
+        <label class="label" for="earningCriteria">Earning Criteria</label>
+        <div class="control">
+            <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" class="textarea" />
+        </div>
+        <ValidationMessage For="@(() => Model.EarningCriteria)" class="help is-danger" />
+    </div>
+    
+    <div class="field">
+        <label class="label" for="issuedBy">Issued By</label>
+        <div class="control">
+            <div class="select is-fullwidth">
+                <InputSelect id="actorId" @bind-Value="Model.IssuedBy">
+                    <option value="0">-- Select an issuer --</option>
+                    @foreach (var actor in actors)
+                    {
+                        <option value="@actor.Id">@actor.FullName - @actor.Username @actor.Domain</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <div class="field">
+        <label class="label">Badge Type</label>
+        <div class="control">
+            <div class="select is-fullwidth">
+                <InputSelect id="badgeType" @bind-Value="Model.BadgeType">
+                    @foreach (var badgeType in Badge.BadgeTypes)
+                    {
+                        <option value="@badgeType">@badgeType</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <div class="field is-grouped mt-5">
+        <div class="control">
+            <button type="submit" class="button is-primary" disabled="@isSubmitting">
+                @if (isSubmitting)
                 {
-                    <option value="@actor.Id">@actor.FullName - @actor.Username @actor.Domain</option>
+                    <span class="icon is-small">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span>Creating...</span>
                 }
-            </InputSelect>
-        </label>
-
-        <label>Badge Type:
-            <InputSelect id="badgeType" @bind-Value="Model.BadgeType" class="form-control">
-                @foreach (var badgeType in Badge.BadgeTypes)
+                else
                 {
-                    <option value="@badgeType">@badgeType</option>
+                    <span>Create Badge</span>
                 }
-            </InputSelect>
-        </label>
-
-       <button type="submit" class="btn btn-primary mt-3" disabled="@isSubmitting">
-            @if (isSubmitting)
-            {
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                <span> Creating...</span>
-            }
-            else
-            {
-                <span>Create Badge</span>
-            }
-        </button>
-
-        <button @onclick="ClearForm">Clear form</button>
+            </button>
+        </div>
+        <div class="control">
+            <button @onclick="ClearForm" type="button" class="button is-light">Clear form</button>
+        </div>
+    </div>
 </EditForm>
 
 @code {

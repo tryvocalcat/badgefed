@@ -6,7 +6,7 @@
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
-
+@layout BadgeFed.Components.AdminLayout
 <h1>Manage Badge Grant Records</h1>
 
 @if (records == null)
@@ -33,16 +33,18 @@ else
                 <tr>
                     <td>@record.Id</td>
                     <td>@record.Title</td>
-                    <td>@record.IssuedTo</td>
+                    <td><a href="@record.IssuedToSubjectUri">@record.IssuedToName</a></td>
                     <td>@record.IssuedBy</td>
                     <td>@record.IssuedOn</td>
                     <td>@record.AcceptedOn</td>
                     <td>
                         @if (string.IsNullOrEmpty(record.AcceptKey)) {
                             if (string.IsNullOrEmpty(record.FingerPrint)) {
-                                <a href="/admin/grant/@record.Id/process">Process</a>
+                                <a href="/admin/grant/@record.Id/process" class="button is-primary is-small">Process</a>
                             } else {
-                                <a href="/admin/grant/@record.Id/broadcast">Broadcast</a>
+                                <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Broadcast</a>
+
+                                <a href="/view/record/@record.Id" class="button is-info is-small">View</a>
                             }
                         } else {
                             <a href="/accept/grant/@record.Id/@record.AcceptKey">/accept/grant/@record.Id/@record.AcceptKey</a>
