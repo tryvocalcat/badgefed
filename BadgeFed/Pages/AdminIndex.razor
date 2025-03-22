@@ -1,9 +1,11 @@
-@page "/admin/index"
+@page "/admin/"
 
 @using BadgeFed.Models
 
 @inject NavigationManager NavigationManager
 @attribute [Authorize]
+
+@layout BadgeFed.Components.AdminLayout
 
 <div class="container">
     <h1 class="title has-text-centered">Badge Administration</h1>

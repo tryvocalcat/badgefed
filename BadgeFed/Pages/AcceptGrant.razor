@@ -4,80 +4,99 @@
 @inject NavigationManager NavManager
 @inject LocalDbService DbService
 @using BadgeFed.Models
-
-<h3 class="text-center">Accept Badge</h3>
+@inject HttpClient HttpClient
 
 @if (BadgeRecord == null)
 {
-    <div class="text-center">
+    <div class="has-text-centered">
         <p>Badge record not found or was already accepted.</p>
     </div>
 }
 else
 {
-    <div class="alert alert-info text-center mb-4">
-        <h4><i class="oi oi-star"></i> Congratulations!</h4>
-        <p>You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
-    </div>
-
-    <div class="card mx-auto" style="max-width: 600px;">
-        <div class="card-header text-center">
-            <img src="@BadgeRecord.Image" alt="@BadgeRecord.Title" class="img-fluid" style="max-width: 200px;" />
-        </div>
-        <div class="card-body">
-            <h4 class="card-title
-            text-center">@BadgeRecord.Title</h4>
-            <p class="card-text"><strong>Issued By:</strong> @Actor.FullName - [@Actor.FediverseHandle]</p>
-            <p class="card-text"><strong>Description:</strong> @BadgeRecord.Description</p>
-            <p class="card-text"><strong>Earning Criteria:</strong> @BadgeRecord.EarningCriteria</p>
-            <p class="card-text"><strong>Issued On:</strong> @BadgeRecord.IssuedOn.ToShortDateString()</p>
-            <p class="card-text"><strong>Issued To:</strong> @BadgeRecord.IssuedTo</p>
+<div class="notification is-link has-text-centered mb-5">
+    <h4 class="title is-3 has-text-weight-bold">
+        <span class="icon has-text-white">
+            <i class="oi oi-star"></i>
+        </span> 
+        Congratulations!
+    </h4>
+    <p class="subtitle is-5 has-text-white">You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
+</div>
+<div class="card" style="max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 8px;">
+    <div class="card-header has-text-centered" style="background-color: #f7f7f7; border-bottom: 1px solid #ddd;">
+        <div class="card-header-title is-centered">
+            <img src="@BadgeRecord.Image" alt="@BadgeRecord.Title" class="image is-128x128" style="border-radius: 8px;"/>
         </div>
     </div>
-    
+    <div class="card-content">
+        <h4 class="title is-4 has-text-centered has-text-weight-semibold">@BadgeRecord.Title</h4>
+        <div class="content">
+            <p class="mb-2"><strong>Issued By:</strong> <a href="@Actor.Uri" class="has-text-link">@Actor.FullName</a></p>
+            <p class="mb-2"><strong>Description:</strong> @BadgeRecord.Description</p>
+            <p class="mb-2"><strong>Earning Criteria:</strong> @BadgeRecord.EarningCriteria</p>
+            <p class="mb-2"><strong>Issued On:</strong> @BadgeRecord.IssuedOn.ToShortDateString()</p>
+        </div>
+    </div>
+ <div class="card-content">
+    <!-- Form Section -->
     <form @onsubmit="HandleValidSubmit" method="post">
-        @if (Model.Id > 0)
-        {
-            <div>
-                <p><strong>Full Name:</strong> @Model.FullName</p>
-            </div>
-            <div>
-                <p><strong>Email:</strong> @Model.Email</p>
-            </div>
-            <div>
-                <p><strong>Fediverse Handle:</strong> @Model.FediverseHandle</p>
-            </div>
-            <div>
-                <p><strong>Profile URI:</strong> @Model.ProfileUri</p>
-            </div>
-        } else {
-        <div class="form-group mb-3">
-            <label for="fullName">Full Name:</label>
-            <input type="text" id="fullName" class="form-control" @bind="Model.FullName" required />
+        <div class="notification is-warning mb-4">
+            <p><strong>Note:</strong> The following information will be permanently associated with this badge once accepted. Please ensure all details are correct.</p>
         </div>
-        <div class="form-group mb-3">
-            <label for="email">Email:</label>
-            <input type="email" id="email" class="form-control" @bind="Model.Email" required />
-        </div>
-        <div class="form-group mb-3">
-            <label for="fediverseHandle">Fediverse Handle:</label>
-            <input type="text" id="fediverseHandle" class="form-control" @bind="Model.FediverseHandle" />
-        </div>
-        <div class="form-group mb-3">
-            <label for="profileUri">Profile URI:</label>
-            <input type="url" id="profileUri" class="form-control" @bind="Model.ProfileUri" />
-        </div>
-        }
 
-        <div class="form-group form-check mt-4 mb-3">
-            <input type="checkbox" id="certifyCheck" class="form-check-input" @bind="certificationCompleted" />
-            <label for="certifyCheck" class="form-check-label">
-                By checking this box I certify I completed the earning criteria
-            </label>
+        <!-- Profile URI Input -->
+        <div class="field mb-3">
+            <label class="label" for="profileUri">Profile URI:</label>
+            <div class="control">
+                <input type="url" id="profileUri" class="input is-rounded" @bind="Model.ProfileUri" placeholder="e.g., https://mastodon.social/@@username" />
+            </div>
+            <p class="help is-info">
+                Enter your profile URL (e.g., https://mastodon.social/@@username, https://linkedin/in/username).
+            </p>
+            <div class="control mt-2">
+                <button class="button is-outlined is-primary is-rounded" @onclick="ValidateProfileUrl" type="button">Validate</button>
+            </div>
+            <p class="help is-info">
+                @ValidationProfileMessage
+            </p>
         </div>
-        <br />
-        <button type="submit" class="btn btn-primary">Accept Badge</button>
-    </form>
+
+        <!-- Full Name Input -->
+        <div class="field mb-3">
+            <label class="label" for="fullName">Full Name:</label>
+            <div class="control">
+                <input type="text" id="fullName" class="input is-rounded" @bind="Model.Name" required placeholder="Enter your full name"/>
+            </div>
+        </div>
+
+        <!-- Email Input -->
+        <div class="field mb-3">
+            <label class="label" for="email">Email:</label>
+            <div class="control">
+                <input type="email" id="email" class="input is-rounded" @bind="Model.Email" required placeholder="Enter your email address"/>
+            </div>
+        </div>
+
+        <!-- Certification Checkbox -->
+        <div class="field mt-4 mb-3">
+            <div class="control">
+                <label class="checkbox">
+                    <input type="checkbox" id="certifyCheck" @bind="certificationCompleted" />
+                    By checking this box I certify I completed the earning criteria.
+                </label>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="field">
+            <div class="control">
+                <button type="submit" class="button is-primary is-fullwidth is-medium is-rounded">Accept Badge</button>
+            </div>
+        </div>
+    </form></div>
+</div>
+
 }
 
 @code 
@@ -95,6 +114,116 @@ else
 
     public Actor Actor;
 
+    public string ValidationProfileMessage { get; set; }
+
+    public async Task ValidateProfileUrl()
+    {
+        ValidationProfileMessage = "Checking ...";
+
+        if (string.IsNullOrWhiteSpace(Model.ProfileUri))
+        {
+            ValidationProfileMessage = "Profile URI is required.";
+            return;
+        }
+
+        // check if it starts as https://
+        if (!Model.ProfileUri.StartsWith("https://"))
+        {
+            ValidationProfileMessage = "Profile URI must start with https://";
+            return;
+        }
+
+        // check if it is a valid URL
+        if (!Uri.TryCreate(Model.ProfileUri, UriKind.Absolute, out _))
+        {
+            ValidationProfileMessage = "Invalid URL.";
+            return;
+        }
+
+
+        try
+        {
+            // send custom headers
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", "BadgeFed/1.0");
+            HttpClient.DefaultRequestHeaders.Add("Accept", "application/ld+json");
+
+            // Try to fetch the URL to verify it exists
+            var response = await HttpClient.GetAsync(Model.ProfileUri);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ValidationProfileMessage = "✓ Valid URL";
+
+                 // Check for ActivityPub / JSON-LD content
+                var contentType = response.Content.Headers.ContentType?.MediaType;
+
+                if (contentType != null && 
+                    (contentType.Contains("application/ld+json") || 
+                    contentType.Contains("application/activity+json")))
+                {
+                    Model.IsActivityPubActor = true;
+                    ValidationProfileMessage += "✓ ActivityPub endpoint.";
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+
+                // Try to parse the content as ActivityPub actor
+                try 
+                {
+                    var contentObj = JsonDocument.Parse(content);
+                    var root = contentObj.RootElement;
+
+                    Console.WriteLine(content);
+                                    
+                    // Check if this looks like an ActivityPub actor
+                    if (root.TryGetProperty("type", out var typeElement) && 
+                        (typeElement.GetString()?.Equals("Person", StringComparison.OrdinalIgnoreCase) == true ||
+                         typeElement.GetString()?.Equals("Organization", StringComparison.OrdinalIgnoreCase) == true ||
+                         typeElement.GetString()?.Equals("Service", StringComparison.OrdinalIgnoreCase) == true ||
+                         typeElement.GetString()?.Equals("Application", StringComparison.OrdinalIgnoreCase) == true))
+                    {
+                        Console.WriteLine(typeElement);
+                        Model.IsActivityPubActor = true;
+
+                        // Get name if available
+                        if (root.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                        {
+                            var actorName = nameElement.GetString();
+
+                            if (!string.IsNullOrEmpty(actorName))
+                            {
+                                Model.Name = actorName;
+                                ValidationProfileMessage += " ✓ Name autofilled from profile.";
+                            }
+                        }
+                        // Try to get preferredUsername as fallback
+                        else if (root.TryGetProperty("preferredUsername", out var usernameElement) && 
+                                 usernameElement.ValueKind == JsonValueKind.String)
+                        {
+                            var username = usernameElement.GetString();
+                            if (!string.IsNullOrEmpty(username))
+                            {
+                                Model.Name = username;
+                                ValidationProfileMessage += " ✓ Name autofilled from profile.";
+                            }
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not valid JSON or JSON-LD, continue with other checks
+                }
+            }
+            else
+            {
+                ValidationProfileMessage = $"URL returned status code {(int)response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ValidationProfileMessage = $"Error: {ex.Message}";
+        }
+    }
 
     public async Task HandleValidSubmit()
     {
@@ -103,16 +232,14 @@ else
             return;
         }
 
-        // TODO: Update recipient
-        if (Model.Id == 0)
-        {
-            DbService.UpsertRecipient(Model);
-        }
+        DbService.UpsertRecipient(Model);
 
-        BadgeRecord.IssuedTo = !string.IsNullOrEmpty(Model.Email) ? Model.Email : 
-                       !string.IsNullOrEmpty(Model.FediverseHandle) ? Model.FediverseHandle : 
-                       Model.ProfileUri;
-       
+        var issuedTo = Model.ProfileUri; //Model.IsActivityPubActor ? : $"https://{Actor.Domain}/recipients/{Actor.Domain}/{Model.Id}";
+
+        BadgeRecord.IssuedToName = Model.Name;
+        BadgeRecord.IssuedToSubjectUri = issuedTo;
+        BadgeRecord.IssuedToEmail = string.Empty;
+
         DbService.AcceptBadgeRecord(BadgeRecord);
 
         NavManager.NavigateTo("/");
@@ -129,7 +256,9 @@ else
             return;
         }
 
-        Model = DbService.GetRecipientByIssuedTo(record.IssuedTo);
+        Model = DbService.GetRecipientByIssuedTo(record);
+Console.WriteLine(JsonSerializer.Serialize(record));
+        Console.WriteLine(JsonSerializer.Serialize(Model));
 
         Badge = DbService.GetBadgeDefinitionById(record.Badge.Id);
 

@@ -8,6 +8,8 @@
 @inject IConfiguration Configuration
 @inject BadgeService BadgeService
 
+@layout BadgeFed.Components.AdminLayout
+
 <section class="section">
     <div class="container">
         <h1 class="title">Grant Badge</h1>
@@ -20,6 +22,16 @@
                 <p class="help">All grants generate a unique link to accept the grant, independently if the following fields are provided.</p>
                 
                  <div class="mt-3">
+                    <label class="label">Fediverse Profile URL (optional)</label>
+                    <p class="help">If provided, we'll send a notification to this fediverse account when a badge is granted. <br />
+                        This value <strong>cannot</strong> be modified during badge acceptance.
+                    </p>
+                    <div class="control">
+                        <InputText id="profileUri" @bind-Value="ProfileUri" class="input" placeholder="https://..." />
+                    </div>
+                </div>
+
+                <div class="mt-3">
                     <label class="label">Name (optional)</label>
                     <p class="help">The user can change the name when accepting the badge and it is public information.</p>
                     <div class="control">
@@ -38,23 +50,13 @@
                         <InputText id="email" @bind-Value="Email" class="input" placeholder="recipient@example.com" />
                     </div>
                 </div>
-                
-                <div class="mt-3">
-                    <label class="label">Fediverse Profile URL (optional)</label>
-                    <p class="help">If provided, we'll send a notification to this fediverse account when a badge is granted. <br />
-                        This value <strong>cannot</strong> be modified during badge acceptance.
-                    </p>
-                    <div class="control">
-                        <InputText id="profileUri" @bind-Value="ProfileUri" class="input" placeholder="https://..." />
-                    </div>
-                </div>
-                </div>
+            </div>
 
-                <div class="field">
-                    <div class="control">
-                        <button type="submit" class="button is-primary">Grant Badge</button>
-                    </div>
+            <div class="field">
+                <div class="control">
+                    <button type="submit" class="button is-primary">Grant Badge</button>
                 </div>
+            </div>
            
         </form>
     </div>
@@ -83,7 +85,7 @@
         else
         {
             errorMessage = $"Invalid badge ID format: {BadgeId}";
-            NavigationManager.NavigateTo("/admin/badges/manage");
+            NavigationManager.NavigateTo("/admin/badges");
         }
     }
 
@@ -98,12 +100,12 @@
     {
         var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
 
-        Model.IssuedTo = "";
+        var recipient = new Recipient() { ProfileUri = ProfileUri, Name = Name, Email = Email };
 
-        var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, Model.IssuedTo);
+        var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
 
         LocalDbService.CreateBadgeRecord(badgeRecord);
         
-        NavigationManager.NavigateTo("/admin/records/manage");
+        NavigationManager.NavigateTo("/admin/grants");
     }
 }
