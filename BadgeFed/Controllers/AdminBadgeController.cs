@@ -76,6 +76,49 @@ namespace BadgeFed.Controllers
             return Redirect("/admin/grants");
         }
 
+        [HttpGet("{id}/notify")]
+        public async Task<IActionResult> NotifyAcceptLink(string id)
+        {
+            var recordId = long.Parse(id);
+            // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
+            var records = _localDbService.GetBadgeRecords(recordId);
+            
+            if (records.Count == 0)
+            {
+                return NotFound("No badges to notify");
+            }
+
+            var record = records.FirstOrDefault()!;
+
+            var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
+
+            var actor = _localDbService.GetActorById(badge.IssuedBy);
+
+            record.Badge = badge;
+            record.Actor = actor;
+
+            var note = NotesService.GetPrivateBadgeNotificationNote(record);
+
+            var createAction = NotesService.GetCreateNote(note, actor);
+
+            var serializedPayload = System.Text.Json.JsonSerializer.Serialize(createAction);
+
+            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+           
+            try {
+                var fediverseInfo = await actorHelper.FetchActorInformationAsync(record.IssuedToSubjectUri);
+
+                await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
+
+                Console.WriteLine($"Sent note to {record.IssuedToSubjectUri}");
+            } catch (Exception e) {
+                Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
+                Console.WriteLine(e.Message);
+            }
+
+            return Redirect("/admin/grants");
+        }
+
         /** Process signs and create a badgenote **/
         [HttpGet("{id}/process")]
         public async Task<IActionResult> ProcessBadge(string id)
