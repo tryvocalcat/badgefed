@@ -51,11 +51,10 @@ CREATE TABLE BadgeRecord (
     Description TEXT CHECK(length(Description) <= 500),
     Image TEXT,
     EarningCriteria TEXT CHECK(length(EarningCriteria) <= 500),
-    IssuedUsing TEXT,
     IssuedOn DATETIME NOT NULL,
     IssuedToEmail TEXT NOT NULL,
     IssuedToName TEXT NOT NULL,
-    IssuedToActorUri TEXT NOT NULL,
+    IssuedToSubjectUri TEXT NOT NULL,
     AcceptedOn DATETIME,
     LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP,
     FingerPrint TEXT NULL,
@@ -73,10 +72,10 @@ END;
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
-    FullName TEXT NOT NULL CHECK(length(FullName) >= 2 AND length(FullName) <= 100),
-    Email TEXT NOT NULL CHECK(length(Email) <= 100) UNIQUE,
-    FediverseHandle TEXT CHECK(length(FediverseHandle) <= 200) UNIQUE,
+    Name TEXT NOT NULL CHECK(length(Name) >= 2 AND length(Name) <= 100),
+    Email TEXT CHECK(length(Email) <= 100),
     ProfileUri TEXT NOT NULL UNIQUE,
+    IsActivityPubActor BOOLEAN DEFAULT FALSE,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
