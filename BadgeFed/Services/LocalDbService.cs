@@ -387,9 +387,9 @@ public class LocalDbService
         command.CommandText = @"
             INSERT INTO Recipient (Name, Email, ProfileUri, IsActivityPubActor, CreatedAt, UpdatedAt)
             VALUES (@Name, @Email, @ProfileUri, @IsActivityPubActor, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT(Email) DO UPDATE SET
+            ON CONFLICT(ProfileUri) DO UPDATE SET
                 Name = excluded.Name,
-                ProfileUri = excluded.ProfileUri,
+                Email = excluded.Email,
                 IsActivityPubActor = excluded.IsActivityPubActor,
                 UpdatedAt = CURRENT_TIMESTAMP;
             SELECT last_insert_rowid();

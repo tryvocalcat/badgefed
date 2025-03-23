@@ -65,36 +65,7 @@ public class BadgeService
 
     public static ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
     {
-        string template = @"<h1>{BadgeTitle}</h1>
-        
-        <p>The verified {BadgeType} was issued to {IssuedTo}</p>
-
-        <p><strong>{BadgeDescription}</strong></p>
-
-        <p>Earning Criteria: {EarningCriteria}. <br />Issued on: {IssuedOn}<br />Accepted On: {AcceptedOn}</p>
-        
-        <p>Verify the {BadgeType} at <a href='{BadgeUrl}'>{BadgeUrl}</a></p>
-        ";
-
-        var url = $"https://{record.Actor.Domain}/record/{record.Id}";
-
-        var content = template
-            .Replace("{BadgeType}", record.Badge.BadgeType)
-            .Replace("{BadgeTitle}", record.Title)
-            .Replace("{BadgeDescription}", record.Description)
-            .Replace("{EarningCriteria}", record.EarningCriteria)
-            .Replace("{IssuedOn}", record.IssuedOn.ToString())
-            .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor.Uri.ToString()))
-            .Replace("{AcceptedOn}", record.AcceptedOn?.ToString() ?? "Not accepted")
-            .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri))
-            .Replace("{BadgeUrl}", url);
-
-        Console.WriteLine(content);
-
-        var note = NotesService.GetNote(
-            record,
-            content,
-            url);
+        var note = NotesService.GetBadgeNote(record);
 
         note.BadgeMetadata = record;
 
