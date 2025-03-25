@@ -113,5 +113,5 @@ VALUES ('Charlie', 'charlie@example.com', '@charlie@fediverse.example'),
     ('Dana', 'dana@example.com', '@dana@fediverse.example');
 
 INSERT INTO Badge (Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, IssuedUsing, IssuedOn, IssuedTo, FingerPrint, BadgeDefinitionId)
-VALUES ('First Badge', 'Alice', 'This is the first badge issued', '/images/first_badge.png', 'Image of badge', 'Complete the first task', 'System', '2023-01-01 10:00:00', 1, 'abc123', 1),
-    ('Second Badge', 'Bob', 'This is the second badge issued', '/images/second_badge.png', 'Image of badge', 'Complete the second task', 'System', '2023-01-02 11:00:00', 2, 'def456', 2);
+VALUES ('First Badge', 'Alice', 'This is the first badge issued', '/images/first_badge.png', 'Round badge with a smiling cartoon cat over a banner than reads "Fediverse"', 'Complete the first task', 'System', '2023-01-01 10:00:00', 1, 'abc123', 1),
+    ('Second Badge', 'Bob', 'This is the second badge issued', '/images/second_badge.png', 'Hexagonal blue and gray badge with the word "Certified" at the top and "Fediverse user" at the bottom"', 'Complete the second task', 'System', '2023-01-02 11:00:00', 2, 'def456', 2);
