@@ -11,6 +11,7 @@ namespace BadgeFed.Models
         public long IssuedBy { get; set; }
         
         public string Image { get; set; } = "";
+        public string ImageAltText { get; set; } = "";
         
         public string EarningCriteria { get; set; } = "";
 
