@@ -71,7 +71,7 @@
                         <div class="card">
                             <div class="card-image">
                                 <figure class="image is-square">
-                                    <img src="@badge.ImageUrl" alt="@badge.Name badge">
+                                    <img src="@badge.ImageUrl" alt="@badge.ImageAltText">
                                 </figure>
                             </div>
                             <div class="card-content">
@@ -197,6 +197,7 @@
         public string Name { get; set; }
         public string Description { get; set; }
         public string ImageUrl { get; set; }
+        public string ImageAltText { get; set; }
         public string RecipientName { get; set; }
         public DateTime IssuedAt { get; set; }
     }    

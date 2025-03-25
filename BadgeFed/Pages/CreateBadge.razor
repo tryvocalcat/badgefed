@@ -59,6 +59,14 @@
     </div>
 
     <div class="field">
+        <label class="label" for="imageAltText">Image alt text</label>
+        <div class="control">
+            <InputTextArea id="imageAltText" @bind-Value="Model.ImageAltText" rows="12" class="textarea" />
+        </div>
+        <ValidationMessage For="@(() => Model.ImageAltText)" class="help is-danger" />
+    </div>
+
+    <div class="field">
         <label class="label" for="earningCriteria">Earning Criteria</label>
         <div class="control">
             <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" class="textarea" />
