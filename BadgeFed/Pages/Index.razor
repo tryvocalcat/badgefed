@@ -46,46 +46,7 @@
         </div>
     </div>
 
-    <section class="section" style="display: none;">
-        <h2 class="title is-4">Recent Badges</h2>
-
-        @if (RecentBadges == null)
-        {
-            <div class="has-text-centered">
-                <div class="loader is-loading"></div>
-                <p>Loading latest badges...</p>
-            </div>
-        }
-        else if (!RecentBadges.Any())
-        {
-            <div class="notification is-info">
-                No badges have been issued recently.
-            </div>
-        }
-        else
-        {
-            <div class="columns is-multiline">
-                @foreach (var badge in RecentBadges)
-                {
-                    <div class="column is-3">
-                        <div class="card">
-                            <div class="card-image">
-                                <figure class="image is-square">
-                                    <img src="@badge.ImageUrl" alt="@badge.Name badge">
-                                </figure>
-                            </div>
-                            <div class="card-content">
-                                <p class="title is-5">@badge.Name</p>
-                                <p class="subtitle is-6">Issued to: @badge.RecipientName</p>
-                                <time datetime="@badge.IssuedAt.ToString("o")">@badge.IssuedAt.ToShortDateString()</time>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-    </section>
-
+    
     <section class="section">
         <h2 class="title is-4">Actors in this Instance</h2>
         <p class="subtitle is-6">Follow these actors to interact with them from your ActivityPub server</p>
@@ -113,7 +74,7 @@
                             <article class="media">
                                 <div class="media-left">
                                     <figure class="image is-64x64">
-                                        <img class="is-rounded" src="" alt="@actor.FullName">
+                                        <img class="is-rounded" src="@actor.AvatarPath" alt="@actor.FullName">
                                     </figure>
                                 </div>
                                 <div class="media-content">
@@ -151,7 +112,7 @@
 
 @code {
     private InstanceInfoDefinition InstanceInfo { get; set; }
-    private List<Badge> RecentBadges { get; set; }
+   
     private List<Actor> Actors { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -190,14 +151,4 @@
         public int UserCount { get; set; }
         public int BadgeCount { get; set; }
     }
-
-    public class Badge
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
-        public string RecipientName { get; set; }
-        public DateTime IssuedAt { get; set; }
-    }    
 }

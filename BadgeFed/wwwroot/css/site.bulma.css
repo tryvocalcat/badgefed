@@ -1,7 +1,7 @@
 
 /** BULMA.CSS **/
 
-:root {
+.rootXX {
     --black: hsl(0, 0%, 10%);
     --black-bis: hsl(0, 0%, 12%);
     --black-ter: hsl(0, 0%, 18%);
@@ -80,8 +80,6 @@
 
 body {
     font-family: Inter, SF Pro, Segoe UI, Roboto, Oxygen, Ubuntu, Helvetica Neue, Helvetica, Arial, sans-serif;
-    background-color: #f5f6f8;
-    color: #333;
     line-height: 1.5;
 }
 
@@ -108,7 +106,6 @@ img {
 
 /* Badge-specific styling */
 .badge-view {
-    background: #fff;
     border-radius: 8px;
     padding: 2em;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

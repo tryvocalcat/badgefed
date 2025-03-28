@@ -1,28 +1,17 @@
 @inherits LayoutComponentBase
 
- <section class="hero is-success">
-    <div class="hero-body">
-        <div class="container">
-            <h1 class="title">Welcome to BadgeFed</h1>
-            <h2 class="subtitle">An Open, Decentralized, and Fediverse-Powered Badge Verification System</h2>
-            
-        </div>
-    </div>
-</section>
-
-
 <NavMenu />
 
 <!-- Main Content -->
 <section class="section">
-    @Body
+    <div class="container">
+        @Body
+    </div>
 </section>
 
-<footer class="footer">
-    <small
-      >Built by <a href="https://www.vocalcat.com">VocalCat</a> •
-      <a href="https://github.com/tryvocalcat/activitypub-badges"
-        >Source code</a
-      ></small
-    >
+<footer class="footer has-text-centered has-background-white-ter py-3">
+    <div class="container">
+        <small>Built by <a href="https://www.vocalcat.com">VocalCat</a> • 
+        <a href="https://github.com/tryvocalcat/activitypub-badges">Source code</a></small>
+    </div>
 </footer>
