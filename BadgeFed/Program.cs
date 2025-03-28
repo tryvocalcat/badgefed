@@ -32,6 +32,7 @@ builder.Services.AddScoped<RepliesService>();
 builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server"));
 
 builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
+builder.Services.AddSingleton<BadgeProcessor>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
@@ -49,6 +50,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     o.ClientSecret = "onelittlesecret";
     o.SaveTokens = true;
 });
+
+builder.Services.AddHostedService<JobExecutor>();
+builder.Services.AddScoped<JobProcessor>();
 
 var app = builder.Build();
 

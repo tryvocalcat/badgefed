@@ -39,24 +39,57 @@ public class LocalDbService
 
     private void CreateDb()
     {
+    }
+
+    public void UpsertBadgeComment(string badgeUri, string noteId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO BadgeComments (BadgeUri, NoteId)
+            VALUES (@BadgeUri, @NoteId)
+            ON CONFLICT(BadgeUri, NoteId) DO NOTHING;
+        ";
+
+        command.Parameters.AddWithValue("@BadgeUri", badgeUri);
+        command.Parameters.AddWithValue("@NoteId", noteId);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public List<(string BadgeUri, string NoteId)> GetBadgeComments(string badgeUri = null)
+    {
+        var result = new List<(string BadgeUri, string NoteId)>();
+        
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS Actor (
-                Id INTEGER PRIMARY KEY,
-                Name TEXT NOT NULL,
-                Summary TEXT,
-                AvatarPath TEXT,
-                InformationUri TEXT,
-                Domain TEXT,
-                CreatedAt DATETIME NOT NULL,
-                UpdatedAt DATETIME NOT NULL,
-                PublicKeyPem TEXT
-            );
-        ";
-        command.ExecuteNonQuery();
+        
+        if (string.IsNullOrEmpty(badgeUri))
+        {
+            command.CommandText = "SELECT BadgeUri, NoteId FROM BadgeComments";
+        }
+        else
+        {
+            command.CommandText = "SELECT BadgeUri, NoteId FROM BadgeComments WHERE BadgeUri = @BadgeUri";
+            command.Parameters.AddWithValue("@BadgeUri", badgeUri);
+        }
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add((
+                reader.GetString(0),
+                reader.GetString(1)
+            ));
+        }
+
+        return result;
     }
 
     public void UpsertActor(Actor actor)
@@ -377,6 +410,7 @@ public class LocalDbService
 
         return recipient;
     }
+
     public Recipient UpsertRecipient(Recipient recipient)
     {
         using var connection = GetConnection();
@@ -432,6 +466,70 @@ public class LocalDbService
         }
 
         return null;
+    }
+
+    public long PeekNotifyGrantId()
+    {
+       // the oldest badgerecords that acceptKey is not null and not empty and acceptedOn is null
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT id FROM BadgeRecord WHERE AcceptKey IS NOT NULL AND 
+            AcceptKey != '' AND AcceptedOn IS NULL 
+            AND NotifiedOfGrant = FALSE ORDER BY IssuedOn ASC LIMIT 1";
+
+        using var reader = command.ExecuteReader();
+
+        if (reader.Read())
+        {
+            return reader.GetInt64(0);
+        }
+
+        return 0;
+    }
+
+    public void NotifyGrant(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE BadgeRecord SET 
+                NotifiedOfGrant = TRUE
+            WHERE Id = @Id;
+        ";
+
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public long PeekProcessGrantId()
+    {
+       // the oldest badgerecords that acceptKey is not null and not empty and acceptedOn is null
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT id FROM BadgeRecord WHERE
+                (AcceptKey = '' OR AcceptKey IS NULL) 
+            AND AcceptedOn IS NOT NULL 
+            AND (FingerPrint = '' OR FingerPrint IS NULL) ORDER BY IssuedOn ASC LIMIT 1";
+
+        using var reader = command.ExecuteReader();
+
+        if (reader.Read())
+        {
+            return reader.GetInt64(0);
+        }
+
+        return 0;
     }
 
     public void DeleteBadgeDefinition(long id)

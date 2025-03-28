@@ -128,9 +128,13 @@ public class NotesService
 
         <p><strong>{BadgeDescription}</strong></p>
 
-        <p>Earning Criteria: {EarningCriteria}. <br />Issued on: {IssuedOn}<br />Accepted On: {AcceptedOn}</p>
+        <p>Earning Criteria: {EarningCriteria}. <br /><br />
         
-        <p>Verify the {BadgeType} at <a href='{BadgeUrl}'>{BadgeUrl}</a></p>
+        <small>
+        Issued on: {IssuedOn}<br />Accepted On: {AcceptedOn}<br />
+        </p>
+        
+        <p>Verify the {BadgeType} <a href='{BadgeUrl}'>here</a>.</p>
         ";
 
         var url = $"https://{record.Actor.Domain}/record/{record.Id}";
@@ -146,7 +150,9 @@ public class NotesService
             .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor.Uri.ToString(), tags))
             .Replace("{AcceptedOn}", record.AcceptedOn?.ToString() ?? "Not accepted")
             .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags))
-            .Replace("{BadgeUrl}", url);
+            .Replace("{BadgeUrl}", url)
+            .Replace("{BadgeId}", record.Id.ToString())
+            .Replace("{Fingerprint}", record.FingerPrint);
 
         var actor = record.Actor;
         

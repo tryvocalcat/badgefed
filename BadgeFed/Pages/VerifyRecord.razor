@@ -85,7 +85,9 @@
 
  <div >
         <div class="badge-header">
-                <p>This verified @badge.BadgeType was issued to <strong><a href="@badgeRecord?.IssuedToSubjectUri">@(badgeRecord.IssuedToName)</a></strong> on <strong>@badgeRecord.IssuedOn.ToString("MMMM yyyy")</strong></p>
+                <p>This verified @badge.BadgeType was issued to
+                     <strong><a href="@badgeRecord?.IssuedToSubjectUri">@(badgeRecord.IssuedToName)</a></strong> 
+                     on <strong>@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</strong></p>
                  <p>Status: <span class="tag is-success">Verified</span></p>
         </div>
         <section class="card">
@@ -106,6 +108,7 @@
                         </p>
                        
                         <p class="card-text"><strong>Accepted On:</strong> @(badgeRecord.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
+                        <p class="card-text"><strong>Fingerprint:</strong> @(badgeRecord.FingerPrint.ToUpper() ?? "-")</p>
                     </div>
                 </div>
             </div>
