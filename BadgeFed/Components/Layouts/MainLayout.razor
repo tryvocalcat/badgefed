@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+
+<nav class="navbar is-info is-spaced">
+  <div class="container">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">
+        <span class="has-text-weight-bold is-size-4">BadgeFed</span>
+      </a>
+      <span class="navbar-burger" data-target="navMenu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    </div>
+    
+    <div id="navMenu" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="/">Home</a>
+        <a class="navbar-item" href="https://www.vocalcat.com/badgefed">About</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="section">
+  <div class="container">
+    @Body
+  </div>
+</main>
+
+<footer class="footer is-light has-text-centered py-5">
+  <div class="container">
+    <p class="is-size-7">
+      Built by <a href="https://www.vocalcat.com">VocalCat</a> •
+      <a href="https://github.com/tryvocalcat/activitypub-badges">Source code</a>
+    </p>
+  </div>
+</footer>

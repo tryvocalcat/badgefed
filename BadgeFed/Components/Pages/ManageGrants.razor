@@ -1,0 +1,71 @@
+@page "/admin/grants"
+
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize]
+<h1>Manage Badge Grant Records</h1>
+
+@if (records == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Badge Title</th>
+                <th>Issued To</th>
+                <th>Issued By</th>
+                <th>Issued On</th>
+                <th>Accepted On</th>
+                <th>Accept Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var record in records)
+            {
+                <tr>
+                    <td>@record.Id</td>
+                    <td>@record.Title</td>
+                    <td><a href="@record.IssuedToSubjectUri">@record.IssuedToName</a></td>
+                    <td>@record.IssuedBy</td>
+                    <td>@record.IssuedOn</td>
+                    <td>@record.AcceptedOn</td>
+                    <td>
+                        @if (string.IsNullOrEmpty(record.AcceptKey)) {
+                            if (string.IsNullOrEmpty(record.FingerPrint)) {
+                                <a href="/admin/grant/@record.Id/process" class="button is-primary is-small">Process</a>
+                            } else {
+                                <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Broadcast</a>
+
+                                <a href="/view/record/@record.Id" class="button is-info is-small">View</a>
+                            }
+                        } else {
+                            <a href="/accept/grant/@record.Id/@record.AcceptKey">Accept link</a>
+                            
+                            <a href="/admin/grant/@record.Id/notify" class="button is-light is-small">Notify</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<BadgeRecord?> records;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        records = LocalDbService.GetBadgeRecords();
+    }
+}
