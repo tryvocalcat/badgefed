@@ -1,0 +1,223 @@
+@page "/view/record/{id}"
+@using ActivityPubDotNet.Core
+@using System.Text.Json
+
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavManager
+@inject LocalDbService DbService
+
+<HeadContent>
+  <meta name="author" content="@badgeRecord!.IssuedBy" />
+  <meta name="description" content="@badgeRecord.Title was issued by @actor.FullName to @badgeRecord.IssuedToName" />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="@badgeRecord.Title was issued by @actor.FullName to @badgeRecord.IssuedToName" />
+  <meta property="og:description" content="@badgeRecord.Description" />
+  <meta property="og:url" content="@NavManager.Uri" />
+  <meta property="og:image" content="@ogImage" />
+  <meta name="fediverse:creator" content="@badgeRecord.IssuerFediverseHandle" />
+</HeadContent>
+
+@inject NavigationManager NavManager
+
+<style>
+      body {
+            margin: 2rem;
+            background-color: #f9f9f9;
+            font-family: Arial, sans-serif;
+        }
+        .badge-container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .badge-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background-color: #f0f0f0;
+            padding: 5px;
+        }
+        .badge-header p {
+            margin: 12px;
+        }
+        .badge-header img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+        }
+        .badge-image {
+            max-width: 200px;
+            display: block;
+            margin: auto;
+        }
+        .badge-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .badge-meta {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .badge-meta p {
+            margin: 0.5rem 0;
+        }
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .tag {
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+</style>
+
+ <div >
+        <div class="badge-header">
+                <p>This verified @badge.BadgeType was issued to
+                     <strong><a href="@badgeRecord?.IssuedToSubjectUri">@(badgeRecord.IssuedToName)</a></strong> 
+                     on <strong>@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</strong></p>
+                 <p>Status: <span class="tag is-success">Verified</span></p>
+        </div>
+        <section class="card">
+            <div class="card-content">
+                <div class="columns">
+                    <div class="column is-4">
+                        <figure class="image">
+                            <img src="@badgeRecord.Image" alt="Badge Image" class="badge-image img-fluid" style="max-width: 100%;">
+                        </figure>
+                    </div>
+                    <div class="column is-8">
+                        <h2 class="title is-3">@badgeRecord.Title</h2>
+                        <p>Issued by: <strong><a href="@actor?.Uri">@actor.FullName</a></strong></p>
+                        <p>@badgeRecord.Description</p>
+                        <p>
+                            <strong>Earning Criteria</strong><br />
+                            @badgeRecord.EarningCriteria
+                        </p>
+                       
+                        <p class="card-text"><strong>Accepted On:</strong> @(badgeRecord.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
+                        <p class="card-text"><strong>Fingerprint:</strong> @(badgeRecord.FingerPrint.ToUpper() ?? "-")</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="card-footer">
+                <a href="https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=@badgeRecord.Title&organizationId=1337&issueYear=2025&
+issueMonth=2&expirationYear=2020&expirationMonth=5&certUrl=https%3A%2F%2Fdocs.microsoft.com
+%2Fen-us%2Flearn%2Fcertifications%2Fd365-functional-consultant-sales&certId=1234" 
+                class="card-footer-item" style="display: none;">Share on LinkedIn</a>
+                <a href="@actor.Uri" class="card-footer-item">View Issuer</a>
+            </footer>
+        </section>
+    </div>
+<br />
+<div>
+@if (badgeRecord == null)
+{
+    <div class="text-center">
+        <p>Loading...</p>
+    </div>
+}
+else
+{
+    <div >
+        <h5 class="text-center">Comments</h5>
+        
+        <div>
+        @if (comments == null || !comments.Any())
+        {
+            <p class="text-center">No comments yet.</p>
+        }
+        else
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var comment in comments)
+                {
+                    <li class="list-group-item">
+                        <strong>@comment.Author:</strong> @comment.Text
+                        <br />
+                        <small class="text-muted">@comment.DatePosted.ToShortDateString()</small>
+                    </li>
+                }
+            </ul>
+        }
+        </div>
+    </div>
+}
+</div>
+
+
+@code {
+    
+    private List<Comment> comments = new List<Comment>
+    {
+        
+    };
+
+    public class Comment
+    {
+        public string Author { get; set; }
+        public string Text { get; set; }
+        public DateTime DatePosted { get; set; }
+    }
+
+    [Parameter] public string? Id { get; set; }
+
+    private BadgeRecord? badgeRecord;
+
+    private Badge? badge;
+
+    private Actor? actor;
+
+    private ActivityPubNote? note;
+
+    private string ogImage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var recordId = long.Parse(Id);
+
+        var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
+
+        if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
+        {
+            NavManager.NavigateTo($"/record/{Id}");
+        }
+        
+        // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
+        var records = DbService.GetBadgeRecords(recordId);
+        
+        if (records.Count() == 0)
+        {
+            return;
+        }
+
+        badgeRecord = records.FirstOrDefault();
+        badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
+
+        badgeRecord.Badge = badge;
+        actor = DbService.GetActorById(badge.IssuedBy);
+
+        badgeRecord.Actor = actor;
+
+        var originalImage = badgeRecord.Image;
+        
+        var extension = Path.GetExtension(originalImage);
+        var directory = Path.GetDirectoryName(originalImage);
+        var filename = Path.GetFileNameWithoutExtension(originalImage);
+
+        var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
+        ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
+    }
+}

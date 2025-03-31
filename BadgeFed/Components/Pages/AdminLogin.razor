@@ -1,0 +1,273 @@
+@page "/admin/login"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Authentication.Cookies;
+@using Microsoft.AspNetCore.Authorization;
+@using System.Security.Claims;
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+@inject IHttpContextAccessor HttpContextAccessor
+@inject HttpClient Http
+@inject ProtectedSessionStorage ProtectedSessionStore
+@rendermode InteractiveServer
+
+<section class="section">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-4">
+                <div class="box">
+                    <h2 class="title is-4 has-text-centered">Welcome to BadgeFed Admin</h2>
+                    
+                    @if (User.Identity.Name != null)
+                    {
+                        <p class="has-text-centered">Loading...</p>
+                    }
+                    else
+                    {
+                        <p class="has-text-centered mb-4">Login with your Mastodon account</p>
+                        
+                        <div class="field">
+                            <div class="control">
+                                <button class="button is-fullwidth is-primary has-background-purple"
+                                        @onclick="SignInWithMastodon">
+                                    <span class="icon">
+                                        <i class="fab fa-mastodon"></i>
+                                    </span>
+                                    <span>Sign In with Mastodon</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .has-background-purple {
+        background-color: #6d00b6 !important;
+        color: white !important;
+    }
+    .has-background-purple:hover {
+        background-color: #5b009a !important;
+    }
+</style>
+
+<style>
+    .btn-facebook {
+        background-color: #4267B2;
+        color: white;
+    }
+
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        background-color: #f5f5f5;
+    }
+
+    .login-box {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .oauth-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: opacity 0.2s;
+    }
+
+    .btn:hover {
+        opacity: 0.9;
+    }
+
+    .btn-mastodon {
+        background-color: #6d00b6;
+        color: white;
+    }
+
+    .logged-in-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
+    .avatar-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+
+    .user-avatar, .avatar-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        margin: 0 auto;
+    }
+
+    .avatar-placeholder {
+        background-color: #4a90e2;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        text-align: center;
+    }
+
+    .logout-form {
+        margin-top: 0.5rem;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .btn-logout {
+        background-color: #ff4d4d;
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 120px;
+    }
+
+    .btn-logout:hover {
+        background-color: #e60000;
+    }
+</style>
+
+@code {
+    private ClaimsPrincipal User;
+
+    private string GivenName;
+    private string Surname;
+    private string Avatar;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        try
+        {
+            // Set the user to determine if they are logged in
+            User = HttpContextAccessor.HttpContext.User;
+
+            if (User != null)
+            {
+                await OpenApp();
+                return;
+            }
+
+            // Try to get the GivenName
+            var givenName =
+                HttpContextAccessor.HttpContext.User
+                .FindFirst(ClaimTypes.GivenName);
+
+            if (givenName != null)
+            {
+                GivenName = givenName.Value;
+            }
+            else
+            {
+                GivenName = User.Identity.Name;
+            }
+            // Try to get the Surname
+            var surname =
+                HttpContextAccessor.HttpContext.User
+                .FindFirst(ClaimTypes.Surname);
+            if (surname != null)
+            {
+                Surname = surname.Value;
+            }
+            else
+            {
+                Surname = "";
+            }
+            // Try to get Avatar
+            var avatar =
+            HttpContextAccessor.HttpContext.User
+            .FindFirst("urn:google:image");
+            if (avatar != null)
+            {
+                Avatar = avatar.Value;
+            }
+            else
+            {
+                Avatar = "";
+            }
+        }
+        catch {
+
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("invitationCode", out var invitationCode))
+        {
+            // Store the invitation code in session storage
+            await ProtectedSessionStore.SetAsync("invitationCode", invitationCode.ToString());
+        }
+    }
+
+    private async Task SignInWithMastodon()
+    {
+        NavigationManager.NavigateTo("authentication/login/mastodon?returnUrl=/admin/");
+    }
+
+    private async Task OpenApp()
+    {
+       /* var user = await DBService.GetUserByIdAsync(CurrentUser!.UserId);
+        if (user == null) {
+            NavigationManager.NavigateTo("/setup");
+        } else {
+            NavigationManager.NavigateTo("/manage-content");
+        }*/
+        
+    }
+    private string GetInitials(string firstName, string lastName)
+    {
+        string initials = "";
+        
+        if (!string.IsNullOrEmpty(firstName))
+            initials += firstName[0];
+            
+        if (!string.IsNullOrEmpty(lastName))
+            initials += lastName[0];
+            
+        return initials;
+    }
+}

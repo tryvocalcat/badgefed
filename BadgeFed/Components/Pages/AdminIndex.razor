@@ -1,0 +1,45 @@
+@page "/admin/"
+
+@using BadgeFed.Models
+
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize]
+
+<div class="container">
+    <h1 class="title has-text-centered">Badge Administration</h1>
+    
+    <div class="columns is-centered">
+        <div class="column is-one-third">
+            <div class="box">
+                <h2 class="subtitle has-text-centered">Administrative Tools</h2>
+                
+                <div class="buttons are-medium is-flex is-flex-direction-column">
+                    <button class="button is-primary is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/actors"))">
+                        <span class="icon">
+                            <i class="fas fa-user-shield"></i>
+                        </span>
+                        <span>Manage Actors</span>
+                    </button>
+                    
+                    <button class="button is-info is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/badges"))">
+                        <span class="icon">
+                            <i class="fas fa-certificate"></i>
+                        </span>
+                        <span>Manage Badges</span>
+                    </button>
+                    
+                    <button class="button is-success is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/grants"))">
+                        <span class="icon">
+                            <i class="fas fa-award"></i>
+                        </span>
+                        <span>Manage Grants</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
