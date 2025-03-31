@@ -19,12 +19,17 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using BadgeFed.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 
 builder.Services.AddRazorPages();
+
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
 builder.Services.AddScoped<FollowService>();
@@ -34,25 +39,29 @@ builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Serve
 builder.Services.AddSingleton<LocalDbService>(new LocalDbService("test.db"));
 builder.Services.AddSingleton<BadgeProcessor>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(option =>
-    {
-        option.LoginPath = "/admin";
-        option.LogoutPath = "/admin/authentication/logout";
-        option.AccessDeniedPath = "/";
-    }).AddMastodon("hachyderm.io", o => {
+.AddCookie(option =>
+{
+    option.LoginPath = "/admin/login";
+    option.LogoutPath = "/admin/logout";
+    option.AccessDeniedPath = "/admin/denied";
+}).AddMastodon("hachyderm.io", o => {
     o.Scope.Add("read:statuses");
     o.Scope.Add("read:accounts");
-    o.ClientId = "badgefed";
-    o.ClientSecret = "onelittlesecret";
+    o.ClientId = "4AXCy0AcLFHncqGyuAG3XeVDGc-EGsUIa2ILg5Tj4cM";
+    o.ClientSecret = "kUflIFubG5wBnJdNqL5jnyQmhrnKEnnuqgjsREHvjFU";
     o.SaveTokens = true;
 });
 
 builder.Services.AddHostedService<JobExecutor>();
 builder.Services.AddScoped<JobProcessor>();
+
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -64,18 +73,21 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
-app.UseCookiePolicy();
-
 app.UseRouting();
 
-app.MapBlazorHub();
-app.MapFallbackToPage("/_Host");
-
+app.UseStaticFiles();
+app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
 app.MapControllers();
+
+app.MapGroup("/authentication").MapLoginAndLogout();
 
 app.Run();
 
@@ -126,7 +138,7 @@ public static class MastodonOAuthExtensions {
                     },
                     OnRemoteFailure = context => {
                         context.HandleResponse();
-                        context.Response.Redirect("/Home/Error");
+                        context.Response.Redirect("/admin/error");
                         return Task.FromResult(0);
                     }
                 };

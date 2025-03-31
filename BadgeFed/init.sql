@@ -60,8 +60,12 @@ CREATE TABLE BadgeRecord (
     FingerPrint TEXT NULL,
     AcceptKey TEXT NULL,
     BadgeId INTEGER NOT NULL,
+    NotifiedOfGrant BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (BadgeId) REFERENCES BadgeId(Id)
 );
+
+-- Adding NotifiedOfGrant column if it doesn't exist in the table definition
+ALTER TABLE BadgeRecord ADD COLUMN NotifiedOfGrant BOOLEAN DEFAULT FALSE;
 
 CREATE TRIGGER UpdateBadgeRecordTimestamp
 AFTER UPDATE ON BadgeRecord
@@ -69,6 +73,19 @@ FOR EACH ROW
 BEGIN
     UPDATE BadgeRecord SET LastUpdated = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
+
+CREATE TABLE BadgeComments (
+    Id INTEGER PRIMARY KEY,
+    BadgeUri TEXT NOT NULL,
+    NoteId TEXT NOT NULL,
+    UNIQUE(BadgeUri, NoteId)
+);
+
+ CREATE TABLE IF NOT EXISTS DbVersion (Version INTEGER);
+            
+            INSERT INTO DbVersion (Version) 
+            SELECT 1
+            WHERE NOT EXISTS (SELECT 1 FROM DbVersion);
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
