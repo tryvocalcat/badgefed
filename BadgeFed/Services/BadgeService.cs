@@ -90,6 +90,7 @@ public class BadgeService
             IssuedBy = actor.Uri!.ToString(),
             IssuedOn = DateTime.UtcNow,
             Image = badge.Image,
+            ImageAltText = badge.ImageAltText,
             IssuedToName = recipient?.Name ?? string.Empty,
             IssuedToSubjectUri = recipient?.ProfileUri ?? string.Empty,
             IssuedToEmail = recipient?.Email ?? string.Empty,
