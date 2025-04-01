@@ -290,8 +290,8 @@ public class LocalDbService
         if (badge.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Badge (Title, Description, IssuedBy, Image, EarningCriteria, CreatedAt, UpdatedAt, BadgeType)
-                VALUES (@Title, @Description, @IssuedBy, @Image, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType);
+                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType);
                 SELECT last_insert_rowid();
             ";
         }
@@ -303,6 +303,7 @@ public class LocalDbService
                     Description = @Description, 
                     IssuedBy = @IssuedBy, 
                     Image = @Image,
+                    ImageAltText = @ImageAltText,
                     EarningCriteria = @EarningCriteria, 
                     UpdatedAt = datetime('now'),
                     BadgeType = @BadgeType
@@ -317,6 +318,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@Description", badge.Description ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@IssuedBy", badge.IssuedBy);
         command.Parameters.AddWithValue("@Image", badge.Image ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ImageAltText", badge.ImageAltText ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@EarningCriteria", badge.EarningCriteria ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@BadgeType", badge.BadgeType);
 
@@ -352,6 +354,7 @@ public class LocalDbService
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString()!,
                 IssuedBy = reader.GetInt32(3),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString()!,
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString()!,
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString()!,
                 BadgeType = reader["BadgeType"].ToString()
             });
@@ -460,6 +463,7 @@ public class LocalDbService
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 IssuedBy = reader.GetInt32(3),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString()
             };
@@ -598,12 +602,12 @@ public class LocalDbService
         var command = connection.CreateCommand();
         command.CommandText = @"
             INSERT INTO BadgeRecord (
-                Title, IssuedBy, Description, Image, EarningCriteria, 
+                Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
                  IssuedOn, IssuedToSubjectUri, IssuedToName, IssuedToEmail,
                 AcceptKey, BadgeId
             )
             VALUES (
-                @Title, @IssuedBy, @Description, @Image, @EarningCriteria,
+                @Title, @IssuedBy, @Description, @Image, @ImageAltText, @EarningCriteria,
                  @IssuedOn, @IssuedToSubjectUri, @IssuedToName, @IssuedToEmail,
                 @AcceptKey, @BadgeId
             );
@@ -614,6 +618,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@IssuedBy", record.IssuedBy);
         command.Parameters.AddWithValue("@Description", record.Description ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@Image", record.Image ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ImageAltText", record.ImageAltText ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@EarningCriteria", record.EarningCriteria ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@IssuedOn", record.IssuedOn);
         command.Parameters.AddWithValue("@IssuedToSubjectUri", record.IssuedToSubjectUri);
@@ -647,6 +652,7 @@ public class LocalDbService
                 IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
@@ -698,6 +704,7 @@ public class LocalDbService
                 IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
                 IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
@@ -744,6 +751,7 @@ public class LocalDbService
                 IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
                 IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
