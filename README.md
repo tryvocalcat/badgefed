@@ -2,6 +2,8 @@
 
 BadgeFed aka ActivityPub Badges is a minimalistic implementation of a badge system similar to Credly, built using .NET and leveraging the ActivityPub protocol.
 
+Follow [the blog](https://badgefed.vocalcat.com/) for regular updates.
+
 ## Features
 
 - Issue and manage digital badges
