@@ -1,0 +1,72 @@
+@page "/admin/denied"
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using System.Security.Claims
+
+<PageTitle>Access Denied - BadgeFed Admin</PageTitle>
+
+<section class="section">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-6-tablet is-5-desktop">
+                <div class="card has-shadow">
+                    <div class="card-header has-background-danger">
+                        <div class="card-header-icon is-size-1 has-text-white has-text-centered">
+                            <span class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                        </div>
+                        <h2 class="card-header-title is-centered has-text-white">Access Denied</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="notification is-warning">
+                            <span class="icon">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </span>
+                            <strong>You don't have permission to access the admin area.</strong>
+                        </div>
+                        <p class="has-text-grey mb-5">
+                            This area is restricted to authorized administrators only. If you believe this is an error, please contact your system administrator with your account details.
+                        </p>
+                        <div class="buttons is-centered">
+                            <a href="/" class="button is-primary">
+                                <span class="icon">
+                                    <i class="fas fa-home"></i>
+                                </span>
+                                <span>Return to Home</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .card {
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        padding: 2rem 1.5rem;
+    }
+    
+    .card-header-icon {
+        margin-bottom: 1rem;
+    }
+    
+    .notification {
+        border-radius: 6px;
+    }
+    
+    .card-content {
+        padding: 2rem 1.5rem;
+    }
+    
+    .buttons {
+        margin-top: 1.5rem;
+    }
+</style>

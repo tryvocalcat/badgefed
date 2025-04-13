@@ -1,0 +1,20 @@
+@page "/home/"
+
+@using BadgeFed.Models
+@inject HttpClient Http
+@inject LocalDbService LocalDbService
+@inject IHttpContextAccessor HttpContextAccessor
+@layout BadgeFed.Components.Layouts.LandingLayout
+
+@RequestHost
+
+@code
+{
+    public string RequestHost { get; set; } = string.Empty;
+    protected override async Task OnInitializedAsync()
+    {
+        // Redirect to /home if request is not for the root domain
+        RequestHost = HttpContextAccessor.HttpContext?.Request.Host.Host;
+    }
+}
+        
