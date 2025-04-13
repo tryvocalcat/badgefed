@@ -7,8 +7,9 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 @layout BadgeFed.Components.Layouts.AdminLayout
+@rendermode InteractiveServer
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Superuser")]
 
     <h1 class="title">Manage Badges</h1>
 
@@ -36,10 +37,11 @@
                 <tbody>
                     @foreach (var badge in badges)
                     {
+                        var actor = actors != null && actors.ContainsKey(badge.IssuedBy) ? actors[badge.IssuedBy].FullName : badge.IssuedBy.ToString();
                         <tr>
                             <td>@badge.Id</td>
                             <td>@badge.Title</td>
-                            <td>@badge.IssuedBy</td>
+                            <td><a href="#">@actor</a></td>
                             <td>
                                 <figure class="image is-64x64">
                                     <img src="@badge.Image" alt="@badge.ImageAltText">
@@ -49,6 +51,7 @@
                                 <div class="buttons">
                                     <button class="button is-primary" @onclick="() => GrantBadge(badge)">Grant</button>
                                     <button class="button is-link" @onclick="() => ViewBadge(badge)">View</button>
+                                    <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
                                     <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
                                 </div>
                             </td>
@@ -61,11 +64,18 @@
 
 @code {
     private List<Badge?> badges;
+
+    private Dictionary<long, Actor> actors;
+
     private string errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         badges = LocalDbService.GetAllBadgeDefinitions();
+        
+        var actorList = LocalDbService.GetActors();
+
+        actors = actorList.ToDictionary(a => a.Id, a => a);
     }
 
     private void GrantBadge(Badge badge)
@@ -75,12 +85,19 @@
 
     private void ViewBadge(Badge badge)
     {
-        NavigationManager.NavigateTo($"/view/record/{badge.Id}");
+        NavigationManager.NavigateTo($"/view/badge/{badge.Id}");
+    }
+
+    private void EditBadge(Badge badge)
+    {
+        NavigationManager.NavigateTo($"/admin/badges/edit/{badge.Id}");
     }
 
     private void DeleteBadge(Badge badge)
     {
         LocalDbService.DeleteBadgeDefinition(badge.Id);
+       
         badges = LocalDbService.GetAllBadgeDefinitions();
     }
+    
 }

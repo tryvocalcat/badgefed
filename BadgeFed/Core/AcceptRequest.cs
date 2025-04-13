@@ -10,5 +10,7 @@ namespace ActivityPubDotNet.Core
         public string? Id { get; set; }
         public string? Actor { get; set; }
         public dynamic? Object { get; set; }
+
+        public string Type { get; } = "Accept";
     }
 }

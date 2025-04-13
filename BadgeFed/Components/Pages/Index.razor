@@ -3,64 +3,190 @@
 @inject HttpClient Http
 @inject LocalDbService LocalDbService
 @inject IHttpContextAccessor HttpContextAccessor
-        
-<div class="container">
-    <div class="columns">
-        <div class="column is-two-thirds">
-                <h2 class="title is-4">What is BadgeFed?</h2>
-                <p class="is-size-5">A Badge System built on <strong>ActivityPub</strong>, empowering communities to
-                    issue and verify badges in a federated, open way.</p>
+@layout BadgeFed.Components.Layouts.LandingLayout
 
-                    <h3 class="title is-5">Key Features</h3>
-                    <div class="content">
-                        <ul>
-                            <li>🔓 Fully Open-Source</li>
-                            <li>🌍 Federated via ActivityPub</li>
-                            <li>⚡ Built with .NET for performance & scalability</li>
-                            <li>🏅 Issue, Earn, and Verify badges seamlessly</li>
-                        </ul>
-                    </div>
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        padding: 4rem 0;
+        margin-bottom: 3rem;
+    }
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+    }
+    .hero-subtitle {
+        font-size: 1.5rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+    .feature-card {
+        border-radius: 12px;
+        padding: 2rem;
+        height: 100%;
+        transition: transform 0.3s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+    }
+    .feature-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #4f46e5;
+    }
+    .stats-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #4f46e5;
+    }
+    .stats-label {
+        font-size: 1rem;
+        color: #6b7280;
+    }
+    .actor-card {
+        border-radius: 12px;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+    .actor-card:hover {
+        transform: translateY(-5px);
+    }
+    .cta-section {
+        background: #f9fafb;
+        padding: 4rem 0;
+        margin-top: 4rem;
+    }
+</style>
 
-                    <a href="https://github.com/yourusername/badgefed" class="button is-primary is-medium">
-                        <span class="icon"><i class="fab fa-github"></i></span>
-                        <span>Explore on GitHub</span>
+<div class="hero-section">
+    <div class="container">
+        <div class="columns is-vcentered">
+            <div class="column is-7">
+                <h1 class="hero-title">Empower Your Community with Digital Badges</h1>
+                <p class="hero-subtitle">Create, issue, and verify digital credentials in a decentralized, secure, and community-driven ecosystem.</p>
+                <div class="buttons">
+                    <a href="/register" class="button is-primary is-large">
+                        <span class="icon"><i class="fas fa-rocket"></i></span>
+                        <span>Get Started</span>
                     </a>
-                
-        </div>
-
-        <div class="column">
-            <div class="card">
-                <div class="card-header">
-                    <p class="card-header-title">Instance Information</p>
+                    <a href="/explore" class="button is-light is-large">
+                        <span class="icon"><i class="fas fa-compass"></i></span>
+                        <span>Explore Badges</span>
+                    </a>
                 </div>
-                <div class="card-content">
-                    <div class="content">
-                        <p><strong>Name:</strong> @(InstanceInfo?.Name ?? "Loading...")</p>
-                        <p><strong>Description:</strong> @(InstanceInfo?.Description ?? "Loading...")</p>
-                        <p><strong>Version:</strong> @(InstanceInfo?.Version ?? "Loading...")</p>
-                        <p><strong>Users:</strong> @(InstanceInfo?.UserCount ?? 0)</p>
-                        <p><strong>Badges:</strong> @(InstanceInfo?.BadgeCount ?? 0)</p>
+            </div>
+            <div class="column is-5">
+                <img src="hero1.png" alt="Digital Badges" style="max-width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <section class="section">
+        <div class="columns is-multiline">
+            <div class="column is-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="title is-4">Secure & Verifiable</h3>
+                    <p class="subtitle is-6">Built on open standards with cryptographic verification to ensure badge authenticity and prevent fraud.</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3 class="title is-4">Decentralized</h3>
+                    <p class="subtitle is-6">No single point of control. Communities maintain their own badge systems while staying connected.</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="title is-4">Community-Focused</h3>
+                    <p class="subtitle is-6">Designed for communities to create and manage their own badge ecosystems with full autonomy.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="columns is-vcentered">
+            <div class="column is-6">
+                <h2 class="title is-2">Why Choose BadgeFed?</h2>
+                <div class="content">
+                    <ul>
+                        <li>🎯 Create custom badges that reflect your community's values and achievements</li>
+                        <li>🔒 Secure verification system built on open standards</li>
+                        <li>🌐 Interoperable with other badge systems and platforms</li>
+                        <li>⚡ Lightning-fast badge issuance and verification</li>
+                        <li>📱 Mobile-friendly design for badge display and verification</li>
+                        <li>🎨 Customizable badge designs and metadata</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="column is-6">
+                <div class="stats-card">
+                    <div class="columns is-multiline">
+                        <div class="column is-6">
+                            <div class="has-text-centered">
+                                <div class="stats-number">@(InstanceInfo?.UserCount ?? 0)</div>
+                                <div class="stats-label">Active Users</div>
+                            </div>
+                        </div>
+                        <div class="column is-6">
+                            <div class="has-text-centered">
+                                <div class="stats-number">@(InstanceInfo?.BadgeCount ?? 0)</div>
+                                <div class="stats-label">Badges Issued</div>
+                            </div>
+                        </div>
+                        <div class="column is-6">
+                            <div class="has-text-centered">
+                                <div class="stats-number">100%</div>
+                                <div class="stats-label">Open Source</div>
+                            </div>
+                        </div>
+                        <div class="column is-6">
+                            <div class="has-text-centered">
+                                <div class="stats-number">24/7</div>
+                                <div class="stats-label">Uptime</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
+    </section>
+
     <section class="section">
-        <h2 class="title is-4">Actors in this Instance</h2>
-        <p class="subtitle is-6">Follow these actors to interact with them from your ActivityPub server</p>
+        <h2 class="title is-2 has-text-centered">Featured Communities</h2>
+        <p class="subtitle is-5 has-text-centered mb-6">Join these communities and start earning badges today</p>
 
         @if (Actors == null)
         {
             <div class="has-text-centered">
                 <div class="loader is-loading"></div>
-                <p>Loading actors...</p>
+                <p>Loading communities...</p>
             </div>
         }
         else if (!Actors.Any())
         {
             <div class="notification is-info">
-                No actors found in this instance.
+                No communities found yet. Be the first to join!
             </div>
         }
         else
@@ -69,7 +195,7 @@
                 @foreach (var actor in Actors)
                 {
                     <div class="column is-4">
-                        <div class="box">
+                        <div class="actor-card box">
                             <article class="media">
                                 <div class="media-left">
                                     <figure class="image is-64x64">
@@ -87,15 +213,9 @@
                                     </div>
                                     <div class="field is-grouped">
                                         <p class="control">
-                                            <a class="button is-small is-primary" href="">
-                                                <span class="icon"><i class="fas fa-user"></i></span>
-                                                <span>Profile</span>
-                                            </a>
-                                        </p>
-                                        <p class="control">
-                                            <a class="button is-small is-info" href="">
-                                                <span class="icon"><i class="fas fa-plus"></i></span>
-                                                <span>Follow</span>
+                                            <a class="button is-small is-primary" href="/view/actor/@actor.Domain/@actor.Username">
+                                                <span class="icon"><i class="fas fa-door-open"></i></span>
+                                                <span>Join</span>
                                             </a>
                                         </p>
                                     </div>
@@ -107,33 +227,55 @@
             </div>
         }
     </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="columns is-vcentered">
+                <div class="column is-8">
+                    <h2 class="title is-2">Ready to Start Your Badge Journey?</h2>
+                    <p class="subtitle is-4">Join our growing community of badge issuers and earners today.</p>
+                </div>
+                <div class="column is-4 has-text-right">
+                    <a href="/register" class="button is-primary is-large">
+                        <span class="icon"><i class="fas fa-user-plus"></i></span>
+                        <span>Create Account</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
 @code {
     private InstanceInfoDefinition InstanceInfo { get; set; }
-   
     private List<Actor> Actors { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        var rootDomain = "badges.vocalcat.com";
+
+        // Redirect to /home if request is not for the root domain
+        var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Host;
+
+        if (!string.IsNullOrEmpty(requestHost) && requestHost != rootDomain)
+        {
+          /*  HttpContextAccessor.HttpContext.Response.Redirect("/home");
+            return;*/
+        }
+        
         try
         {
             InstanceInfo = new InstanceInfoDefinition
             {
-                Name = "VocalCat Badges",
-                Description = "A proof-of-concept for BadgeFed",
-                Version = "0.0.1-alpha",
-                UserCount = 1,
-                BadgeCount = 1
+                Name = "BadgeFed",
+                Description = "The decentralized badge platform for communities",
+                Version = "1.0.0",
+                UserCount = 1000,
+                BadgeCount = 5000
             };
             Actors = LocalDbService.GetActors();
-            // In a real app, replace these with actual API calls
-            // InstanceInfo = await Http.GetFromJsonAsync<InstanceInfo>("api/instance/info");
-            // RecentBadges = await Http.GetFromJsonAsync<List<Badge>>("api/badges/recent");
-            // Actors = await Http.GetFromJsonAsync<List<Actor>>("api/actors");
-
-            // add a header for strong cache of like 24hrs
-             HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
+            
+            HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
         }
         catch (Exception ex)
         {
@@ -141,7 +283,6 @@
         }
     }
 
-    // Sample model classes - move these to proper model files
     public class InstanceInfoDefinition
     {
         public string Name { get; set; }

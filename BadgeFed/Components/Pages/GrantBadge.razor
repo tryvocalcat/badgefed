@@ -7,14 +7,40 @@
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
 @inject BadgeService BadgeService
+@rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Superuser")]
+
+<div class="mb-4">
+    <a href="/admin/badges" class="button is-light">
+        <span class="icon">
+            <i class="fas fa-arrow-left"></i>
+        </span>
+        <span>Back to Manage Badges</span>
+    </a>
+</div>
 
 <section class="section">
     <div class="container">
         <h1 class="title">Grant Badge</h1>
+
+        @if(!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="notification is-danger mb-4">
+                <button class="delete" @onclick="() => errorMessage = null"></button>
+                @errorMessage
+            </div>
+        }
+
+        @if(!string.IsNullOrEmpty(notificationMessage) && string.IsNullOrEmpty(ProfileUri))
+        {
+            <div class="notification is-info mb-4">
+                <button class="delete" @onclick="() => notificationMessage = null"></button>
+                @notificationMessage
+            </div>
+        }
 
         <form @onsubmit="HandleValidSubmit">
            
@@ -78,6 +104,8 @@
    
     private string errorMessage;
 
+    private string notificationMessage;
+
     protected override async Task OnInitializedAsync()
     {
         if (long.TryParse(BadgeId, out long badgeIdValue))
@@ -107,7 +135,12 @@
         var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
 
         LocalDbService.CreateBadgeRecord(badgeRecord);
+
+        notificationMessage = $"Badge {badgeRecord.Title} granted to {recipient.Name} ({recipient.ProfileUri})";
         
-        NavigationManager.NavigateTo("/admin/grants");
+        // Clear form fields
+        Email = null;
+        ProfileUri = null;
+        Name = null;
     }
 }

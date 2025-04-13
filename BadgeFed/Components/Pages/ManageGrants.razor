@@ -7,8 +7,9 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 @layout BadgeFed.Components.Layouts.AdminLayout
+@rendermode InteractiveServer
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Superuser")]
 <h1>Manage Badge Grant Records</h1>
 
 @if (records == null)
@@ -35,7 +36,7 @@ else
                 <tr>
                     <td>@record.Id</td>
                     <td>@record.Title</td>
-                    <td><a href="@record.IssuedToSubjectUri">@record.IssuedToName</a></td>
+                    <td><a href="@record.IssuedToSubjectUri">@(string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToSubjectUri : record.IssuedToName)</a></td>
                     <td>@record.IssuedBy</td>
                     <td>@record.IssuedOn</td>
                     <td>@record.AcceptedOn</td>
@@ -46,7 +47,7 @@ else
                             } else {
                                 <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Broadcast</a>
 
-                                <a href="/view/record/@record.Id" class="button is-info is-small">View</a>
+                                <a href="/view/grant/@record.NoteId" class="button is-info is-small">View</a>
                             }
                         } else {
                             <a href="/accept/grant/@record.Id/@record.AcceptKey">Accept link</a>
@@ -62,10 +63,17 @@ else
 
 @code {
     private List<BadgeRecord?> records;
+
+    private Dictionary<long, Actor> actors;
+
     private string errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        var actorList = LocalDbService.GetActors();
+
+        actors = actorList.ToDictionary(a => a.Id);
+
         records = LocalDbService.GetBadgeRecords();
     }
 }
