@@ -1,0 +1,108 @@
+@page "/coming-soon"
+
+<style>
+    .coming-soon {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        text-align: center;
+        padding: 2rem;
+    }
+    .content {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .logo {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 2rem;
+        animation: float 6s ease-in-out infinite;
+    }
+    .title {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+    .subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+    .social-links {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+    .social-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    .social-link:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+    }
+    .social-icon {
+        font-size: 1.25rem;
+    }
+    .email-link {
+        color: white;
+        text-decoration: underline;
+        opacity: 0.9;
+        transition: opacity 0.3s ease;
+    }
+    .email-link:hover {
+        opacity: 1;
+    }
+    @@keyframes float {
+        0% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-20px);
+        }
+        100% {
+            transform: translateY(0px);
+        }
+    }
+</style>
+
+<div class="coming-soon">
+    <div class="content">
+        <img src="/img/logo.png" alt="BadgeFed Logo" class="logo">
+        <h1 class="title">Coming Soon</h1>
+        <p class="subtitle">
+            BadgeFed is under development. Follow us for updates and announcements.
+        </p>
+        
+        <div class="social-links">
+            <a href="https://badgefed.vocalcat.com/" target="_blank" class="social-link">
+                <span class="social-icon">
+                    <i class="fas fa-blog"></i>
+                </span>
+                <span>Official Blog</span>
+            </a>
+            <a href="https://vocalcat.com/@@badgefed" target="_blank" class="social-link">
+                <span class="social-icon">
+                    <i class="fas fa-globe"></i>
+                </span>
+                <span>Fediverse</span>
+            </a>
+        </div>
+
+        <p>
+            Or email us at <a href="mailto:badgefed@vocalcat.com" class="email-link">badgefed@vocalcat.com</a>
+        </p>
+    </div>
+</div> 
