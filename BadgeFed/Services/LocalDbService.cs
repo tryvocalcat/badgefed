@@ -290,8 +290,8 @@ public class LocalDbService
         if (badge.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType)
-                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType);
+                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags);
                 SELECT last_insert_rowid();
             ";
         }
@@ -306,13 +306,14 @@ public class LocalDbService
                     ImageAltText = @ImageAltText,
                     EarningCriteria = @EarningCriteria, 
                     UpdatedAt = datetime('now'),
-                    BadgeType = @BadgeType
+                    BadgeType = @BadgeType,
+                    Hashtags = @Hashtags
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", badge.Id);
         }
 
-         Console.WriteLine($"Saving badge: {badge.Image}");
+        Console.WriteLine($"Saving badge: {badge.Image}");
 
         command.Parameters.AddWithValue("@Title", badge.Title);
         command.Parameters.AddWithValue("@Description", badge.Description ?? (object)DBNull.Value);
@@ -321,6 +322,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@ImageAltText", badge.ImageAltText ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@EarningCriteria", badge.EarningCriteria ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@BadgeType", badge.BadgeType);
+        command.Parameters.AddWithValue("@Hashtags", badge.Hashtags ?? (object)DBNull.Value);
 
         if (badge.Id == 0)
         {
@@ -347,16 +349,145 @@ public class LocalDbService
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
+            try 
+            {
+                badges.Add(new Badge
+                {
+                    Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                    Title = reader.GetString(reader.GetOrdinal("Title")),
+                    Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                    IssuedBy = reader.GetInt32(reader.GetOrdinal("IssuedBy")),
+                    Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                    ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                    EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                    BadgeType = reader["BadgeType"].ToString(),
+                    Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+                });
+            } 
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading badge: {ex.Message}");
+                Console.WriteLine($"Badge data: {ex}");
+                Console.WriteLine($"Badge data: {JsonSerializer.Serialize(reader)}");
+            }
+            
+        }
+
+        return badges;
+    }
+
+    /*
+public class ActorStats
+{
+    public long ActorId { get; set; }
+
+    public int BadgeCount { get; set; } = 0;
+
+    public int FollowerCount { get; set; } = 0;
+
+    public int IssuedCount { get; set; } = 0;
+
+    public int MembersCount { get; set; } = 0;
+}*/
+
+    public void ExecuteSql(string sql)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        command.ExecuteNonQuery();
+    }
+
+    public List<dynamic> ExecuteSqlQuery(string sql)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        using var reader = command.ExecuteReader();
+        var result = new List<dynamic>();
+        while (reader.Read())
+        {
+            var row = new Dictionary<string, object>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                row[reader.GetName(i)] = reader.GetValue(i);
+            }
+
+            result.Add(row);
+        }
+        return result;
+    }
+
+    public ActorStats GetIssuerStats(Actor actor)
+    {
+        var stats = new ActorStats() {
+            ActorId = actor.Id
+        };
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(*) AS followerCount FROM Follower WHERE ActorId = @ActorId;
+            SELECT COUNT(*) AS issuedCount, COUNT(DISTINCT IssuedToSubjectUri) AS memberCount FROM BadgeRecord WHERE IssuedBy = @ActorUrl;
+            SELECT COUNT(*) AS badgeCount FROM Badge WHERE IssuedBy = @ActorId;
+        ";	
+        command.Parameters.AddWithValue("@ActorId", actor.Id);
+        command.Parameters.AddWithValue("@ActorUrl", actor.Uri);
+
+        using var reader = command.ExecuteReader();
+
+        if (reader.Read())
+        {
+            stats.FollowerCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.IssuedCount = reader.GetInt32(0);
+            stats.MembersCount = reader.GetInt32(1);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.BadgeCount = reader.GetInt32(0);
+        }
+                           
+        return stats;
+    }
+
+    public List<Badge> GetBadgesByIssuerId(long actorId)
+    {
+        var badges = new List<Badge>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Badge WHERE IssuedBy = @ActorId";
+        command.Parameters.AddWithValue("@ActorId", actorId);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
             badges.Add(new Badge
             {
-                Id = reader.GetInt64(0),
-                Title = reader.GetString(1),
-                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString()!,
-                IssuedBy = reader.GetInt32(3),
-                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString()!,
-                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString()!,
-                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString()!,
-                BadgeType = reader["BadgeType"].ToString()
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                IssuedBy = reader.GetInt32(reader.GetOrdinal("IssuedBy")),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                BadgeType = reader["BadgeType"].ToString(),
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
             });
         }
 
@@ -465,7 +596,8 @@ public class LocalDbService
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
                 ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
-                BadgeType = reader["BadgeType"].ToString()
+                BadgeType = reader["BadgeType"].ToString(),
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
             };
         }
 
@@ -573,6 +705,7 @@ public class LocalDbService
         transaction.Commit();
     }
 
+
     public void UpdateBadgeSignature(BadgeRecord badgeRecord)
     {
         using var connection = GetConnection();
@@ -582,12 +715,14 @@ public class LocalDbService
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
-                FingerPrint = @FingerPrint
+                FingerPrint = @FingerPrint,
+                NoteId = @NoteId
             WHERE Id = @Id;
         ";
 
         command.Parameters.AddWithValue("@Id", badgeRecord.Id);
         command.Parameters.AddWithValue("@FingerPrint", badgeRecord.FingerPrint);
+        command.Parameters.AddWithValue("@NoteId", badgeRecord.NoteId);
 
         command.ExecuteNonQuery();
         transaction.Commit();
@@ -603,13 +738,13 @@ public class LocalDbService
         command.CommandText = @"
             INSERT INTO BadgeRecord (
                 Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
-                 IssuedOn, IssuedToSubjectUri, IssuedToName, IssuedToEmail,
-                AcceptKey, BadgeId
+                IssuedOn, IssuedToSubjectUri, IssuedToName, IssuedToEmail,
+                AcceptKey, BadgeId, Hashtags
             )
             VALUES (
                 @Title, @IssuedBy, @Description, @Image, @ImageAltText, @EarningCriteria,
-                 @IssuedOn, @IssuedToSubjectUri, @IssuedToName, @IssuedToEmail,
-                @AcceptKey, @BadgeId
+                @IssuedOn, @IssuedToSubjectUri, @IssuedToName, @IssuedToEmail,
+                @AcceptKey, @BadgeId, @Hashtags
             );
             SELECT last_insert_rowid();
         ";
@@ -626,10 +761,41 @@ public class LocalDbService
         command.Parameters.AddWithValue("@IssuedToEmail", record.IssuedToEmail);
         command.Parameters.AddWithValue("@AcceptKey", record.AcceptKey);
         command.Parameters.AddWithValue("@BadgeId", record.Badge!.Id!);
+        command.Parameters.AddWithValue("@Hashtags", record.Hashtags ?? (object)DBNull.Value);
 
         record.Id = Convert.ToInt64(command.ExecuteScalar());
 
         transaction.Commit();
+    }
+
+    public Badge? GetBadgeById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Badge WHERE Id = @Id";
+
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            return new Badge
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                IssuedBy = reader.GetInt32(reader.GetOrdinal("IssuedBy")),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                BadgeType = reader["BadgeType"] == DBNull.Value ? null : reader["BadgeType"].ToString(),
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+            };
+        }
+
+        return null;
     }
 
     public BadgeRecord? GetBadgeToAccept(long id, string key)
@@ -661,11 +827,50 @@ public class LocalDbService
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
-                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) }
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
             };
         }
 
         return null;
+    }
+
+    public BadgeRecord? GetGrantByNoteId(string noteId)
+    {
+        BadgeRecord badgeRecord = null;
+
+        using var connection = GetConnection();
+        connection.Open();
+        var command = connection.CreateCommand();
+
+        command.CommandText = "SELECT * FROM BadgeRecord WHERE NoteId = @NoteId";
+        command.Parameters.AddWithValue("@NoteId", noteId);
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            badgeRecord = new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
+                IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+            };
+        }
+        return badgeRecord;
     }
 
     public List<BadgeRecord> GetBadgeRecordsToProcess(long? id = null)
@@ -700,6 +905,7 @@ public class LocalDbService
             records.Add(new BadgeRecord
             {
                 Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
                 Title = reader.GetString(reader.GetOrdinal("Title")),
                 IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
@@ -713,7 +919,8 @@ public class LocalDbService
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
-                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) }
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
             });
         }
 
@@ -747,6 +954,7 @@ public class LocalDbService
             records.Add(new BadgeRecord
             {
                 Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
                 Title = reader.GetString(reader.GetOrdinal("Title")),
                 IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
@@ -760,7 +968,8 @@ public class LocalDbService
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
-                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) }
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
             });
         }
 

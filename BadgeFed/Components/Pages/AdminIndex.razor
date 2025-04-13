@@ -7,39 +7,267 @@
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Superuser")]
 
-<div class="container">
-    <h1 class="title has-text-centered">Badge Administration</h1>
+<div class="container my-5">
+    <div class="has-text-centered mb-6">
+        <h1 class="title is-2">Badge Administration Portal</h1>
+        <p class="subtitle is-5">Manage your digital certification ecosystem</p>
+        <div class="tags is-centered mb-5">
+            <span class="tag is-info is-medium">Dashboard</span>
+            <span class="tag is-success is-medium">@DateTime.Now.ToString("MMMM d, yyyy")</span>
+        </div>
+    </div>
     
-    <div class="columns is-centered">
-        <div class="column is-one-third">
-            <div class="box">
-                <h2 class="subtitle has-text-centered">Administrative Tools</h2>
+    <div class="columns is-multiline">
+        <!-- Quick Actions Panel -->
+        <div class="column is-4">
+            <div class="box has-background-white-ter has-shadow">
+                <h2 class="subtitle has-text-weight-bold has-text-centered">
+                    <span class="icon-text">
+                        <span class="icon has-text-primary">
+                            <i class="fas fa-bolt"></i>
+                        </span>
+                        <span>Quick Actions</span>
+                    </span>
+                </h2>
                 
                 <div class="buttons are-medium is-flex is-flex-direction-column">
-                    <button class="button is-primary is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/actors"))">
+                    <button class="button is-primary is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/actors"))">
                         <span class="icon">
                             <i class="fas fa-user-shield"></i>
                         </span>
                         <span>Manage Actors</span>
                     </button>
                     
-                    <button class="button is-info is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/badges"))">
+                    <button class="button is-info is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/badges"))">
                         <span class="icon">
                             <i class="fas fa-certificate"></i>
                         </span>
                         <span>Manage Badges</span>
                     </button>
                     
-                    <button class="button is-success is-fullwidth" @onclick="@(() => NavigationManager.NavigateTo("/admin/grants"))">
+                    <button class="button is-success is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/grants"))">
                         <span class="icon">
                             <i class="fas fa-award"></i>
                         </span>
                         <span>Manage Grants</span>
                     </button>
+                    
+                    <button class="button is-warning is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/templates"))">
+                        <span class="icon">
+                            <i class="fas fa-drafting-compass"></i>
+                        </span>
+                        <span>Badge Templates</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analytics Panel -->
+        <div class="column is-4">
+            <div class="box has-background-white-ter has-shadow">
+                <h2 class="subtitle has-text-weight-bold has-text-centered">
+                    <span class="icon-text">
+                        <span class="icon has-text-info">
+                            <i class="fas fa-chart-bar"></i>
+                        </span>
+                        <span>Analytics Overview</span>
+                    </span>
+                </h2>
+                
+                <div class="level is-mobile">
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Active Badges</p>
+                            <p class="title">42</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Grants</p>
+                            <p class="title">128</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Verifications</p>
+                            <p class="title">87</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <progress class="progress is-success mt-4" value="75" max="100">75%</progress>
+                <p class="has-text-centered is-size-7">Monthly Grant Goal: 75%</p>
+                
+                <div class="buttons is-centered mt-4">
+                    <button class="button is-info is-outlined">
+                        <span class="icon">
+                            <i class="fas fa-download"></i>
+                        </span>
+                        <span>Export Report</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity Panel -->
+        <div class="column is-4">
+            <div class="box has-background-white-ter has-shadow">
+                <h2 class="subtitle has-text-weight-bold has-text-centered">
+                    <span class="icon-text">
+                        <span class="icon has-text-danger">
+                            <i class="fas fa-bell"></i>
+                        </span>
+                        <span>Recent Activity</span>
+                    </span>
+                </h2>
+                
+                <div class="notification is-white p-2 mb-2">
+                    <p class="is-size-7"><strong>New badge created:</strong> "Advanced Coding" <span class="tag is-small is-primary is-light">1h ago</span></p>
+                </div>
+                
+                <div class="notification is-white p-2 mb-2">
+                    <p class="is-size-7"><strong>Badge granted to:</strong> John D. <span class="tag is-small is-success is-light">3h ago</span></p>
+                </div>
+                
+                <div class="notification is-white p-2 mb-2">
+                    <p class="is-size-7"><strong>Verification request:</strong> "Cloud Expert" <span class="tag is-small is-warning is-light">5h ago</span></p>
+                </div>
+                
+                <div class="notification is-white p-2">
+                    <p class="is-size-7"><strong>Template updated:</strong> "Leadership" <span class="tag is-small is-info is-light">1d ago</span></p>
+                </div>
+                
+                <div class="has-text-centered mt-3">
+                    <button class="button is-small is-text">View All Activity</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tools Panel -->
+        <div class="column is-6">
+            <div class="box has-background-white-ter has-shadow">
+                <h2 class="subtitle has-text-weight-bold has-text-centered">
+                    <span class="icon-text">
+                        <span class="icon has-text-grey-dark">
+                            <i class="fas fa-toolbox"></i>
+                        </span>
+                        <span>Certification Tools</span>
+                    </span>
+                </h2>
+                
+                <div class="columns is-multiline">
+                    <div class="column is-6">
+                        <button class="button is-fullwidth is-outlined is-link has-shadow">
+                            <span class="icon">
+                                <i class="fas fa-magic"></i>
+                            </span>
+                            <span>Badge Designer</span>
+                        </button>
+                    </div>
+                    <div class="column is-6">
+                        <button class="button is-fullwidth is-outlined is-link has-shadow">
+                            <span class="icon">
+                                <i class="fas fa-file-import"></i>
+                            </span>
+                            <span>Bulk Import</span>
+                        </button>
+                    </div>
+                    <div class="column is-6">
+                        <button class="button is-fullwidth is-outlined is-link has-shadow">
+                            <span class="icon">
+                                <i class="fas fa-qrcode"></i>
+                            </span>
+                            <span>QR Generator</span>
+                        </button>
+                    </div>
+                    <div class="column is-6">
+                        <button class="button is-fullwidth is-outlined is-link has-shadow">
+                            <span class="icon">
+                                <i class="fas fa-cogs"></i>
+                            </span>
+                            <span>System Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Tasks -->
+        <div class="column is-6">
+            <div class="box has-background-white-ter has-shadow">
+                <h2 class="subtitle has-text-weight-bold has-text-centered">
+                    <span class="icon-text">
+                        <span class="icon has-text-warning">
+                            <i class="fas fa-tasks"></i>
+                        </span>
+                        <span>Pending Tasks</span>
+                    </span>
+                </h2>
+                
+                <nav class="panel">
+                    <label class="panel-block">
+                        <input type="checkbox">
+                        <span>Review 5 pending verification requests</span>
+                        <span class="tag is-danger is-light ml-auto">Urgent</span>
+                    </label>
+                    <label class="panel-block">
+                        <input type="checkbox">
+                        <span>Create monthly certification report</span>
+                        <span class="tag is-info is-light ml-auto">This Week</span>
+                    </label>
+                    <label class="panel-block">
+                        <input type="checkbox">
+                        <span>Update badge expiration settings</span>
+                    </label>
+                    <label class="panel-block">
+                        <input type="checkbox">
+                        <span>Schedule next certification event</span>
+                    </label>
+                </nav>
+                
+                <div class="has-text-centered mt-3">
+                    <button class="button is-small is-warning is-light">Add New Task</button>
                 </div>
             </div>
         </div>
     </div>
+    
+    <div class="notification is-info is-light mt-5">
+        <div class="columns is-vcentered">
+            <div class="column is-1">
+                <span class="icon is-large">
+                    <i class="fas fa-info-circle fa-2x"></i>
+                </span>
+            </div>
+            <div class="column">
+                <h3 class="title is-5 mb-2">Platform Updates</h3>
+                <p>New features have been added to the badge verification system. Check out the updated documentation for more information.</p>
+            </div>
+            <div class="column is-narrow">
+                <button class="button is-info">Learn More</button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    .has-shadow {
+        box-shadow: 0 2px 10px rgba(10, 10, 10, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .has-shadow:hover {
+        box-shadow: 0 4px 15px rgba(10, 10, 10, 0.2);
+        transform: translateY(-3px);
+    }
+    
+    .button {
+        transition: all 0.2s ease;
+    }
+    
+    .button:hover {
+        transform: scale(1.02);
+    }
+</style>

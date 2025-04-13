@@ -1,34 +1,223 @@
-<nav class="navbar is-dark is-spaced has-shadow">
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    .navbar {
+        /* background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); */
+        background: linear-gradient(135deg, #000 40%, #4f46e5 100%);
+        min-height: 4.5rem;
+    }
+    .navbar-item {
+        color: rgba(255, 255, 255, 0.9);
+        transition: all 0.2s ease;
+    }
+    .navbar-item:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .navbar-brand .navbar-item {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    .navbar-brand .navbar-item small {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+    .navbar-burger {
+        color: white;
+    }
+
+    .navbar-logo img {
+        max-height: 3.5rem !important;
+        margin: 0px;
+    }
+    .navbar-burger:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .navbar-dropdown {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 0.5rem;
+    }
+    .navbar-dropdown .navbar-item {
+        color: #4a4a4a;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+    }
+    .navbar-dropdown .navbar-item:hover {
+        background-color: #f8f9fa;
+        color: #4f46e5;
+    }
+    .navbar-divider {
+        background-color: rgba(255, 255, 255, 0.1);
+        margin: 0.5rem 0;
+    }
+    .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .dropdown-trigger {
+        cursor: pointer;
+    }
+    .dropdown-menu {
+        min-width: 200px;
+    }
+</style>
+
+<nav class="navbar is-dark is-spaced">
     <div class="container">
         <div class="navbar-brand">
-            <a class="navbar-item" href="/">
-                <span class="has-text-weight-bold is-size-4">BadgeFed <small class="has-text-grey-light">Admin</small></span>
+            <a class="navbar-item navbar-logo" href="/">
+                <span class="has-text-weight-bold">
+                    <img src="badgefed.logo.h.png" />
+                </span>
             </a>
-            <span class="navbar-burger" data-target="navMenu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </span>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu" @onclick="ToggleMenu">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
         </div>
         
-        <div id="navMenu" class="navbar-menu">
+        <div id="navMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">
+            <div class="navbar-start">
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        <span class="icon">
+                            <i class="fas fa-users"></i>
+                        </span>
+                        <span>Actors</span>
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="/admin/actors/">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>All Actors</span>
+                        </a>
+                        <a class="navbar-item" href="/admin/actors/create">
+                            <span class="icon">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span>Create Actor</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        <span class="icon">
+                            <i class="fas fa-award"></i>
+                        </span>
+                        <span>Badges</span>
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="/admin/badges/">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>All Badges</span>
+                        </a>
+                        <a class="navbar-item" href="/admin/badges/create">
+                            <span class="icon">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span>Create Badge</span>
+                        </a>
+                        <a class="navbar-item" href="/explore">
+                            <span class="icon">
+                                <i class="fas fa-compass"></i>
+                            </span>
+                            <span>Explore Badges</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        <span class="icon">
+                            <i class="fas fa-gift"></i>
+                        </span>
+                        <span>Grants</span>
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="/admin/grants/">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>All Grants</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">
+                    <span class="icon">
+                        <i class="fas fa-cog"></i>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <div class="navbar-dropdown">
+                    <a class="navbar-item" href="/admin/settings/general">
+                        <span class="icon">
+                            <i class="fas fa-sliders-h"></i>
+                        </span>
+                        <span>General</span>
+                    </a>
+                    <a class="navbar-item" href="/admin/settings/profile" style="display: none">
+                        <span class="icon">
+                            <i class="fas fa-user-circle"></i>
+                        </span>
+                        <span>Profile</span>
+                    </a>
+                    <a class="navbar-item" href="/admin/settings/federation"  style="display: none">
+                        <span class="icon">
+                            <i class="fas fa-network-wired"></i>
+                        </span>
+                        <span>Federation</span>
+                    </a>
+                    <a class="navbar-item" href="/admin/settings/notifications"  style="display: none">
+                        <span class="icon">
+                            <i class="fas fa-bell"></i>
+                        </span>
+                        <span>Notifications</span>
+                    </a>
+                </div>
+            </div>
+            </div>
+
+            
+
             <div class="navbar-end">
-                <a class="navbar-item" href="/admin/actors/">Actors</a>
-                <a class="navbar-item" href="/admin/badges/">Badges</a>
-                <a class="navbar-item" href="/admin/grants/">Grants</a>
-                <a class="navbar-item" href="https://www.vocalcat.com/badgefed">About</a>
-                <Logout />
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <a class="button is-light" href="https://badgefed.vocalcat.com/" target="_blank">
+                            <span class="icon">
+                                <i class="fas fa-book"></i>
+                            </span>
+                            <span>Documentation</span>
+                        </a>
+                        <Logout />
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </nav>
 
-
 @code {
-    
-    
-    protected override async Task OnInitializedAsync()
+    private bool isMenuActive = false;
+
+    private void ToggleMenu()
     {
-        
+        isMenuActive = !isMenuActive;
     }
 }

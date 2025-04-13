@@ -78,6 +78,21 @@ public class NotesService
         return $"<a href=\"{link}\" class=\"u-url mention\">@<span>{name}</span></a>";
     }
 
+    public static string GetHashTag(string name, string link, List<ActivityPubNote.Tag> tags)
+    {
+        if (name.StartsWith("#"))
+            name = name.Substring(1);
+
+        var tag = new ActivityPubNote.Tag { Type = "Hashtag", Href = link, Name = $"#{name}" };
+
+        if (!tags.Any(t => t.Href == link))
+        {
+            tags.Add(tag);
+        }
+
+        return $"<a href =\"{link}\" class=\"mention hashtag\" rel=\"tag\">#<span>{name}</span></a>";
+    }
+
     public static ActivityPubNote GetPrivateBadgeNotificationNote(BadgeRecord record)
     {
         var id = $"badge/notification/{record.Id}";
@@ -128,18 +143,33 @@ public class NotesService
 
         <p><strong>{BadgeDescription}</strong></p>
 
-        <p>Earning Criteria: {EarningCriteria}. <br /><br />
+        <p>Earning Criteria: {EarningCriteria}. <br />
         
-        <small>
-        Issued on: {IssuedOn}<br />Accepted On: {AcceptedOn}<br />
+        <i>Issued on: {IssuedOn}</i><br />
+        <i>Accepted On: {AcceptedOn}</i>
         </p>
         
         <p>Verify the {BadgeType} <a href='{BadgeUrl}'>here</a>.</p>
+
+        <p>{Hashtags}</p>
         ";
 
-        var url = $"https://{record.Actor.Domain}/record/{record.Id}";
+        var url = $"https://{record.Actor.Domain}/grant/{record.NoteId}";
 
         var tags = new List<ActivityPubNote.Tag>();
+
+        var hashtagsContent = string.Empty;
+
+        // Add hashtags as tags
+        if (!string.IsNullOrEmpty(record.Hashtags))
+        {
+            var hashtags = record.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var hashtag in hashtags)
+            {
+                var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag.Replace("#", "")}";
+                hashtagsContent += GetHashTag(hashtag, tagUrl, tags);
+            }
+        }
 
         var content = template
             .Replace("{BadgeType}", record.Badge.BadgeType)
@@ -152,7 +182,8 @@ public class NotesService
             .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags))
             .Replace("{BadgeUrl}", url)
             .Replace("{BadgeId}", record.Id.ToString())
-            .Replace("{Fingerprint}", record.FingerPrint);
+            .Replace("{Fingerprint}", record.FingerPrint)
+            .Replace("{Hashtags}", hashtagsContent);
 
         var actor = record.Actor;
         

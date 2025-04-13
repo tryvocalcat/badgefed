@@ -1,4 +1,5 @@
 @page "/admin/badges/create"
+@page "/admin/badges/edit/{badgeId}"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
@@ -6,12 +7,19 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
+@rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Superuser")]
 
-<h1>Create New Badge</h1>
+@if (string.IsNullOrEmpty(BadgeId))
+{
+    <h1>Create New Badge</h1>
+} else {
+    <h1>Edit Badge @BadgeId - @Model.Title </h1>
+}
+
 <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="badgeForm">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -75,6 +83,14 @@
         </div>
         <ValidationMessage For="@(() => Model.EarningCriteria)" class="help is-danger" />
     </div>
+
+    <div class="field">
+        <label class="label" for="hashtags">Hashtags</label>
+        <div class="control">
+            <InputText id="hashtags" @bind-Value="Model.Hashtags" class="input" placeholder="Enter hashtags separated by spaces (e.g. #achievement #certification)" />
+        </div>
+        <p class="help">Enter hashtags with # prefix, separated by spaces</p>
+    </div>
     
     <div class="field">
         <label class="label" for="issuedBy">Issued By</label>
@@ -117,7 +133,13 @@
                 }
                 else
                 {
-                    <span>Create Badge</span>
+                    
+                    @if (string.IsNullOrEmpty(BadgeId))
+                    {
+                        <span>Create Badge</span>
+                    } else {
+                        <span>Update Badge</span>
+                    }
                 }
             </button>
         </div>
@@ -128,6 +150,10 @@
 </EditForm>
 
 @code {
+
+    [Parameter]
+    public string BadgeId { get; set; }
+
     private Badge? Model = new();
 
     private IBrowserFile? selectedFile;
@@ -141,7 +167,10 @@
     {
         actors = LocalDbService.GetActors();
 
-        Model ??= new();
+        if (!string.IsNullOrEmpty(BadgeId)) {
+            var id = long.Parse(BadgeId);
+            Model = LocalDbService.GetBadgeById(id);
+        }
     }
 
     private void ClearForm() => Model = new();
