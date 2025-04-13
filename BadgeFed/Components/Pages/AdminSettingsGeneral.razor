@@ -1,0 +1,98 @@
+@page "/admin/settings/general"
+
+@using BadgeFed.Models
+
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Environment
+@inject LocalDbService LocalDbService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "Admin, Superuser")]
+
+<h3>General Settings</h3>
+<div class="mt-4">
+    <h4>Database Management</h4>
+    <p>Click the button below to download your entire database.</p>
+    <button class="btn btn-primary" @onclick="DownloadDatabase">Download DB</button>
+</div>
+
+<div class="mt-4">
+    <h4>Custom SQL</h4>
+    <p>Execute custom SQL queries below. Use with caution.</p>
+    <textarea @bind="SqlQuery" class="form-control" rows="6" placeholder="Enter your SQL query here..."></textarea>
+    <div class="mt-2">
+        <button class="btn btn-warning" @onclick="ExecuteSql">Execute Command</button>
+        <button class="btn btn-warning" @onclick="ExecuteSqlQuery">Execute Query</button>
+    </div>
+    @if (!string.IsNullOrEmpty(SqlResult))
+    {
+        <div class="mt-3 p-3 bg-light">
+            <pre>@SqlResult</pre>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="mt-3 p-3 bg-danger text-white">
+            <strong>Error:</strong> @ErrorMessage
+        </div>
+    }
+    <p class="mt-2">Note: Executing SQL directly can modify or delete data. Ensure you have backups.</p>
+</div>
+
+@code {
+
+    private string SqlQuery { get; set; }
+    private string SqlResult { get; set; }
+    private string ErrorMessage { get; set; }
+
+    private void ExecuteSql()
+    {
+        try
+        {
+            // Assuming LocalDbService has a method to execute SQL and return results as string
+            LocalDbService.ExecuteSql(SqlQuery);
+
+            SqlResult = "SQL executed successfully.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error executing SQL: {ex.Message}";
+        }
+    }
+
+    private void ExecuteSqlQuery()
+    {
+        try
+        {
+            // Assuming LocalDbService has a method to execute SQL and return results as string
+            var listItems = LocalDbService.ExecuteSqlQuery(SqlQuery);
+
+            SqlResult = System.Text.Json.JsonSerializer.Serialize(listItems, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error executing SQL: {ex.Message}";
+        }
+    }
+
+    private void DownloadDatabase()
+    {
+        // Example endpoint or a direct link to the DB file
+        // Get current datetime for filename suffix
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var sourceFile = "test.db";
+        var destinationFolder = "wwwroot/db/";
+        var destinationFile = $"{destinationFolder}backup_{timestamp}.db";
+
+        // Ensure directory exists
+        Directory.CreateDirectory(destinationFolder);
+
+        // Copy the database file
+        File.Copy(sourceFile, destinationFile, true);
+
+        // Navigate to the file for download
+        NavigationManager.NavigateTo($"/db/backup_{timestamp}.db", true);
+    }
+}
