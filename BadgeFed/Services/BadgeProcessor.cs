@@ -46,8 +46,7 @@ public class BadgeProcessor
 
             Console.WriteLine(serializedPayload);
 
-           
-            await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
+                       await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
 
             Console.WriteLine($"Sent note to {record.IssuedToSubjectUri}");
 
@@ -55,6 +54,8 @@ public class BadgeProcessor
         } catch (Exception e) {
             Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
             Console.WriteLine(e.Message);
+
+            _localDbService.NotifyGrant(record.Id);
 
             return null;
         }
@@ -80,20 +81,21 @@ public class BadgeProcessor
 
         record.Badge = badge;
         record.Actor = actor;
+        record.NoteId = BadgeService.GetNoteIdForBadgeRecord(record);
 
         // - generate activitypub note
         var note = BadgeService.GetNoteFromBadgeRecord(record);
 
         var badgeService = new BadgeService(_localDbService);
 
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{recordId}.json");
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{record.NoteId}.json");
 
         var serializedNote = System.Text.Json.JsonSerializer.Serialize(note);
 
         // save note
         await System.IO.File.WriteAllTextAsync(filePath, serializedNote);
 
-            // - generate/update fingerprint
+        // - generate/update fingerprint
         record.FingerPrint = badgeService.GetFingerprint(note, record);
 
         // - update record
@@ -120,7 +122,7 @@ public class BadgeProcessor
         record.Badge = badge;
         record.Actor = actor;
         
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{recordId}.json");
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{record.NoteId}.json");
         
         if (!System.IO.File.Exists(filePath))
         {

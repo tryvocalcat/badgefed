@@ -63,6 +63,28 @@ public class BadgeService
         return $"<a href=\"{link}\" class=\"u-url mention\">@<span>{name}</span></a>";
     }
 
+    public static string GetNoteIdForBadgeRecord(BadgeRecord record)
+    {
+        if (string.IsNullOrEmpty(record.IssuedToSubjectUri))
+            throw new Exception("IssuedToSubjectUri is null or empty");
+
+        if (string.IsNullOrEmpty(record.Actor?.Domain))
+            throw new Exception("Actor domain is null or empty");
+
+        if (record.Badge?.Id == 0)
+            throw new Exception("Badge Id is null or empty");
+
+        string issuedTo = "XX";
+        using (MD5 md5 = MD5.Create())
+        {
+            byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(record.IssuedToSubjectUri));
+            issuedTo = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        var noteId = $"{record.Actor.Domain}_{record.Id}_{record.Badge.Id}_{issuedTo}".Replace(".", string.Empty);
+        return noteId;
+    }
+
     public static ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
     {
         var note = NotesService.GetBadgeNote(record);
@@ -97,7 +119,8 @@ public class BadgeService
             EarningCriteria = badge.EarningCriteria,
             AcceptedOn = null,
             Badge = badge,
-            AcceptKey = acceptKey
+            AcceptKey = acceptKey,
+            Hashtags = badge.Hashtags
         };
 
         return badgeRecord;

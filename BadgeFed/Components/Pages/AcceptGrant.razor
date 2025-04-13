@@ -5,6 +5,7 @@
 @inject LocalDbService DbService
 @using BadgeFed.Models
 @inject HttpClient HttpClient
+@rendermode InteractiveServer
 
 @if (BadgeRecord == null)
 {
@@ -12,8 +13,21 @@
         <p>Badge record not found or was already accepted.</p>
     </div>
 }
-else
+else if (accepted)
 {
+    <div class="notification is-success has-text-centered mb-5">
+        <h4 class="title is-3 has-text-weight-bold">
+            <span class="icon has-text-white">
+            <i class="oi oi-check"></i>
+            </span> 
+            Badge Accepted! Processing...
+        </h4>
+        <p class="subtitle is-5 has-text-white">
+            Your badge has been successfully accepted and added to your collection.
+            It will be published to the decentralized network shortly, and you'll receive a confirmation when completed.
+        </p>
+    </div>
+} else {
 <div class="notification is-link has-text-centered mb-5">
     <h4 class="title is-3 has-text-weight-bold">
         <span class="icon has-text-white">
@@ -137,6 +151,8 @@ else
 
     public Actor Actor;
 
+    public bool accepted = false;
+
     private string acceptEmail;
 
     public string ValidationProfileMessage { get; set; }
@@ -226,7 +242,7 @@ else
 
         DbService.AcceptBadgeRecord(BadgeRecord);
 
-        NavManager.NavigateTo("/view/record/" + BadgeRecord.Id);
+        accepted = true;
     }
 
     protected override async Task OnInitializedAsync()

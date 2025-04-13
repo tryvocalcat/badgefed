@@ -22,8 +22,12 @@ namespace BadgeFed.Models
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
 
+        public string Hashtags { get; set; } = "";
+
         [System.Text.Json.Serialization.JsonIgnore]
         public string FingerPrint { get; set; } = "";
+
+        public string NoteId { get; set; }
 
         [System.Text.Json.Serialization.JsonIgnore]
         public string AcceptKey { get; set; } = "";

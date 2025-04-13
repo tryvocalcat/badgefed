@@ -1,11 +1,11 @@
-@page "/view/record/{id}"
+@page "/view/grant/{noteId}"
 @using ActivityPubDotNet.Core
 @using System.Text.Json
-
 
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
 @inject LocalDbService DbService
+@layout BadgeFed.Components.Layouts.MinimalLayout
 
 <HeadContent>
   <meta name="author" content="@badgeRecord!.IssuedBy" />
@@ -18,206 +18,343 @@
   <meta name="fediverse:creator" content="@badgeRecord.IssuerFediverseHandle" />
 </HeadContent>
 
-@inject NavigationManager NavManager
-
 <style>
-      body {
-            margin: 2rem;
-            background-color: #f9f9f9;
-            font-family: Arial, sans-serif;
-        }
-        .badge-container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .badge-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background-color: #f0f0f0;
-            padding: 5px;
-        }
-        .badge-header p {
-            margin: 12px;
-        }
-        .badge-header img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-        }
-        .badge-image {
-            max-width: 200px;
-            display: block;
-            margin: auto;
-        }
-        .badge-title {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .badge-meta {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        .badge-meta p {
-            margin: 0.5rem 0;
-        }
-        .tag-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        .tag {
-            background-color: #4CAF50;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 15px;
-            font-size: 0.9rem;
-        }
+    a {
+        position: relative;
+        z-index: 10;
+    }
+    .badge-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .verification-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .verification-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+        opacity: 0.1;
+    }
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        padding: 0.75rem 1.5rem;
+        border-radius: 30px;
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .badge-content {
+        padding: 3rem;
+    }
+    .badge-image-container {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .badge-image {
+        max-width: 300px;
+        height: auto;
+        margin: 0 auto;
+    }
+    .badge-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+    }
+    .badge-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .meta-item {
+        background: #f3f4f6;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .meta-item i {
+        color: #6b7280;
+    }
+    .badge-description {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: #4b5563;
+        margin-bottom: 2rem;
+    }
+    .badge-criteria {
+        background: #f3f4f6;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+    .criteria-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+    }
+    .security-info {
+        background: #f3f4f6;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-top: 2rem;
+    }
+    .security-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .fingerprint {
+        font-family: monospace;
+        background: #1a1a2e;
+        color: #10b981;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        word-break: break-all;
+    }
+    .share-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    .share-button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .share-button:hover {
+        transform: translateY(-2px);
+    }
+    .linkedin-button {
+        background: #0a66c2;
+        color: white;
+    }
+    .mastodon-button {
+        background: #6364ff;
+        color: white;
+    }
+    .comments-section {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    .comment-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .comment-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .comment-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .comment-author {
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+    .comment-date {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
 </style>
 
- <div >
-        <div class="badge-header">
-                <p>This verified @badge.BadgeType was issued to
-                     <strong><a href="@badgeRecord?.IssuedToSubjectUri">@(badgeRecord.IssuedToName)</a></strong> 
-                     on <strong>@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</strong></p>
-                 <p>Status: <span class="tag is-success">Verified</span></p>
+<div class="badge-container">
+    <div class="verification-header">
+        <div class="verification-badge">
+            <span class="icon"><i class="fas fa-shield-alt"></i></span>
+            <span>Verified Badge</span>
         </div>
-        <section class="card">
-            <div class="card-content">
-                <div class="columns">
-                    <div class="column is-4">
-                        <figure class="image">
-                            <img src="@badgeRecord.Image" alt="@badgeRecord.ImageAltText" class="badge-image img-fluid" style="max-width: 100%;">
-                        </figure>
-                    </div>
-                    <div class="column is-8">
-                        <h2 class="title is-3">@badgeRecord.Title</h2>
-                        <p>Issued by: <strong><a href="@actor?.Uri">@actor.FullName</a></strong></p>
-                        <p>@badgeRecord.Description</p>
-                        <p>
-                            <strong>Earning Criteria</strong><br />
-                            @badgeRecord.EarningCriteria
-                        </p>
-                       
-                        <p class="card-text"><strong>Accepted On:</strong> @(badgeRecord.AcceptedOn?.ToShortDateString() ?? "N/A")</p>
-                        <p class="card-text"><strong>Fingerprint:</strong> @(badgeRecord.FingerPrint.ToUpper() ?? "-")</p>
-                    </div>
-                </div>
+        <h1 class="title is-3 has-text-white">@badgeRecord.Title</h1>
+        <p class="subtitle is-5 has-text-white-bis">Issued to <a href="@badgeRecord.IssuedToSubjectUri">@badgeRecord.IssuedToName</a> on @badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</p>
+    </div>
+
+    <div class="badge-content">
+        <div class="badge-image-container">
+            <img src="@badgeRecord.Image" alt="@badgeRecord.ImageAltText" class="badge-image">
+        </div>
+
+        <div class="badge-meta">
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-user"></i></span>
+                <span>Issued by <a href="@actor?.Uri" class="has-text-primary">@actor.FullName</a></span>
             </div>
-            <footer class="card-footer">
-                <a href="https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=@badgeRecord.Title&organizationId=1337&issueYear=2025&
-issueMonth=2&expirationYear=2020&expirationMonth=5&certUrl=https%3A%2F%2Fdocs.microsoft.com
-%2Fen-us%2Flearn%2Fcertifications%2Fd365-functional-consultant-sales&certId=1234" 
-                class="card-footer-item" style="display: none;">Share on LinkedIn</a>
-                <a href="@actor.Uri" class="card-footer-item">View Issuer</a>
-            </footer>
-        </section>
-    </div>
-<br />
-<div>
-@if (badgeRecord == null)
-{
-    <div class="text-center">
-        <p>Loading...</p>
-    </div>
-}
-else
-{
-    <div >
-        <h5 class="text-center">Comments</h5>
-        
-        <div>
-        @if (comments == null || !comments.Any())
-        {
-            <p class="text-center">No comments yet.</p>
-        }
-        else
-        {
-            <ul class="list-group list-group-flush">
-                @foreach (var comment in comments)
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-calendar"></i></span>
+                <span>Accepted on @(badgeRecord.AcceptedOn?.ToString("MMMM d, yyyy") ?? "N/A")</span>
+            </div>
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-tag"></i></span>
+                <span>@badge.BadgeType</span>
+            </div>
+            @if (!string.IsNullOrEmpty(badgeRecord.Hashtags))
+            {
+                var hashtagsList = badgeRecord.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
+            
+                foreach(var tag in hashtagsList)
                 {
-                    <li class="list-group-item">
-                        <strong>@comment.Author:</strong> @comment.Text
-                        <br />
-                        <small class="text-muted">@comment.DatePosted.ToShortDateString()</small>
-                    </li>
+                    <div class="meta-item">
+                        <span class="icon"><i class="fas fa-hashtag"></i></span>
+                        <span>@tag.Trim().Trim('#')</span>
+                    </div>
                 }
-            </ul>
-        }
+            }
+        </div>
+
+        <div class="badge-description">
+            @badgeRecord.Description
+        </div>
+
+        <div class="badge-criteria">
+            <h3 class="criteria-title">Earning Criteria</h3>
+            <p>@((MarkupString)badgeRecord.EarningCriteria.Replace("\n", "<br />"))</p>
+        </div>
+
+        <div class="security-info">
+            <h3 class="security-title">
+                <span class="icon"><i class="fas fa-lock"></i></span>
+                <span>Security Verification</span>
+            </h3>
+            <p>This badge has been cryptographically verified and is securely decentralized on the fediverse through ActivityPub.</p>
+            <div class="fingerprint">
+                @badgeRecord.FingerPrint.ToUpper()
+            </div>
+        </div>
+
+        <div class="share-actions">
+            <a href="https://mastodon.social/share?text=I%20earned%20the%20@badgeRecord.Title%20badge%20from%20@actor.FullName%21%20Check%20it%20out%3A%20@NavManager.Uri" 
+               class="share-button mastodon-button">
+                <span class="icon"><i class="fab fa-mastodon"></i></span>
+                <span>Share on Mastodon</span>
+            </a>
+            <a href="https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=@badgeRecord.Title&organizationId=1337&issueYear=2025&issueMonth=2&expirationYear=2020&expirationMonth=5&certUrl=https%3A%2F%2Fdocs.microsoft.com%2Fen-us%2Flearn%2Fcertifications%2Fd365-functional-consultant-sales&certId=1234" 
+               class="share-button linkedin-button">
+                <span class="icon"><i class="fab fa-linkedin"></i></span>
+                <span>Share on LinkedIn</span>
+            </a>
         </div>
     </div>
-}
 </div>
 
+<div class="badge-container comments-section">
+    <h3 class="title is-4" style="margin-left: 1.5em">Comments</h3>
+    
+    @if (comments == null || !comments.Any())
+    {
+        <div class="has-text-centered py-4">
+            <p class="has-text-grey">No comments yet. Be the first to comment!</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var comment in comments)
+        {
+            <div class="comment-card">
+                <div class="comment-header">
+                    <div class="comment-avatar">
+                        <span class="icon"><i class="fas fa-user"></i></span>
+                    </div>
+                    <div>
+                        <div class="comment-author">@comment.Author</div>
+                        <div class="comment-date">@comment.DatePosted.ToString("MMMM d, yyyy")</div>
+                    </div>
+                </div>
+                <div class="comment-content">
+                    @comment.Text
+                </div>
+            </div>
+        }
+    }
+</div>
 
 @code {
-    
-    private List<Comment> comments = new List<Comment>
+    private List<Comment> comments = new List<Comment>();
+    [Parameter] public string? NoteId { get; set; }
+    private BadgeRecord? badgeRecord;
+    private Badge? badge;
+    private Actor? actor;
+    private ActivityPubNote? note;
+    private string ogImage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
     {
+        var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
+
+        if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
+        {
+            NavManager.NavigateTo($"/grant/{NoteId}");
+        }
         
-    };
+        badgeRecord = DbService.GetGrantByNoteId(NoteId);
+        
+        if (badgeRecord == null)
+        {
+            return;
+        }
+
+        badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
+        badgeRecord.Badge = badge;
+        actor = DbService.GetActorById(badge.IssuedBy);
+        badgeRecord.Actor = actor;
+
+        var originalImage = badgeRecord.Image;
+        var extension = Path.GetExtension(originalImage);
+        var directory = Path.GetDirectoryName(originalImage);
+        var filename = Path.GetFileNameWithoutExtension(originalImage);
+        var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
+        ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
+    }
 
     public class Comment
     {
         public string Author { get; set; }
         public string Text { get; set; }
         public DateTime DatePosted { get; set; }
-    }
-
-    [Parameter] public string? Id { get; set; }
-
-    private BadgeRecord? badgeRecord;
-
-    private Badge? badge;
-
-    private Actor? actor;
-
-    private ActivityPubNote? note;
-
-    private string ogImage = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        var recordId = long.Parse(Id);
-
-        var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
-
-        if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
-        {
-            NavManager.NavigateTo($"/record/{Id}");
-        }
-        
-        // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
-        var records = DbService.GetBadgeRecords(recordId);
-        
-        if (records.Count() == 0)
-        {
-            return;
-        }
-
-        badgeRecord = records.FirstOrDefault();
-        badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
-
-        badgeRecord.Badge = badge;
-        actor = DbService.GetActorById(badge.IssuedBy);
-
-        badgeRecord.Actor = actor;
-
-        var originalImage = badgeRecord.Image;
-        
-        var extension = Path.GetExtension(originalImage);
-        var directory = Path.GetDirectoryName(originalImage);
-        var filename = Path.GetFileNameWithoutExtension(originalImage);
-
-        var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
-        ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
     }
 }

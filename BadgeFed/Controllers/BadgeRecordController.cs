@@ -3,20 +3,20 @@ using Microsoft.AspNetCore.Mvc;
 namespace BadgeFed.Controllers
 {
     [ApiController]
-    [Route("record")]
+    [Route("grant")]
     public class BadgeController : ControllerBase
     {
-        [HttpGet("{id}")]
-        public IActionResult GetBadge(string id)
+        [HttpGet("{noteId}")]
+        public IActionResult GetBadge(string noteId)
         {
             var accept = Request.Headers["Accept"].ToString();
 
             if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
-                return Redirect($"/view/record/{id}");
+                return Redirect($"/view/grant/{noteId}");
             }
             
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{id}.json");
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{noteId}.json");
             
             if (!System.IO.File.Exists(filePath))
             {
