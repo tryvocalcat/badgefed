@@ -191,10 +191,11 @@ else
             <div class="columns is-multiline">
                 @foreach (var follower in followers)
                 {
+                    var username = follower.FollowerUri.Split('/').LastOrDefault();
                     <div class="column is-4">
                         <div class="follower-card">
                             <div class="content">
-                                <p class="has-text-weight-medium">@follower.FollowerUri</p>
+                                <p class="has-text-weight-medium"><a href="@follower.FollowerUri">@username</a></p>
                                 <span class="tag is-light is-small">@follower.Domain</span>
                             </div>
                         </div>
