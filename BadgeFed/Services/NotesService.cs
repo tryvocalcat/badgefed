@@ -93,9 +93,49 @@ public class NotesService
         return $"<a href =\"{link}\" class=\"mention hashtag\" rel=\"tag\">#<span>{name}</span></a>";
     }
 
+    public static ActivityPubNote? GetPrivateBadgeProcessedNote(BadgeRecord record)
+    {
+        var id = $"badge/notification/issued/{record.Id}";
+
+        var actor = record.Actor;
+
+        var tags = new List<ActivityPubNote.Tag>();
+
+        var to = new List<string> 
+        {
+            record.IssuedToSubjectUri
+        };
+        var cc = new List<string> 
+        {
+            record.Actor.Uri?.ToString()!
+        };
+
+
+        if (record.NoteId == null)
+        {
+            return null;
+        }
+
+        var url = $"https://{record.Actor.Domain}/view/grant/{record.NoteId}";
+
+        var note = GetNote(
+            domain: actor.Domain,
+            content: @$"<p>{GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags)}</p>
+            <p>You have been awarded the {record.Badge.Title} badge!</p>
+            <p>Your badge is ready to share. Go to <a href='{url}'>{url}</a> to view it.</p>
+            <p>Remember that you can also follow me for receiving updates.</p>",
+            url: url,
+            attributedTo: actor.Uri?.ToString()!,
+            to: to,
+            cc: cc,
+            tags: tags);
+        
+        return note;
+    }
+
     public static ActivityPubNote GetPrivateBadgeNotificationNote(BadgeRecord record)
     {
-        var id = $"badge/notification/{record.Id}";
+        var id = $"badge/notification/granted/{record.Id}";
         var actor = record.Actor;
         
         var tags = new List<ActivityPubNote.Tag>();

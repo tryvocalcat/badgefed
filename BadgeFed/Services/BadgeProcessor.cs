@@ -12,7 +12,7 @@ public class BadgeProcessor
         _localDbService = localDbService;
     }
 
-    public async Task<BadgeRecord?> NotifyGrant(long recordId)
+    private BadgeRecord? GetBadgeRecord(long recordId)
     {
         // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
         var records = _localDbService.GetBadgeRecords(recordId);
@@ -31,36 +31,70 @@ public class BadgeProcessor
         record.Badge = badge;
         record.Actor = actor;
 
-        try {
-            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+        return record;
+    }
 
-            var fediverseInfo = await actorHelper.FetchActorInformationAsync(record.IssuedToSubjectUri);
-        
-            record.IssuedToName = !string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToName : fediverseInfo.Name;
+    public async Task<BadgeRecord?> NotifyGrantAcceptLink(long recordId)
+    {
+        var record = GetBadgeRecord(recordId);
 
-            var note = NotesService.GetPrivateBadgeNotificationNote(record);
-
-            var createAction = NotesService.GetCreateNote(note, actor);
-
-            var serializedPayload = System.Text.Json.JsonSerializer.Serialize(createAction);
-
-            Console.WriteLine(serializedPayload);
-
-                       await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
-
-            Console.WriteLine($"Sent note to {record.IssuedToSubjectUri}");
-
-            _localDbService.NotifyGrant(record.Id);
-        } catch (Exception e) {
-            Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
-            Console.WriteLine(e.Message);
-
-            _localDbService.NotifyGrant(record.Id);
-
+        if (record == null)
+        {
             return null;
         }
 
+        var note = NotesService.GetPrivateBadgeNotificationNote(record);
+
+        try {
+            await NotifyNote(note, record);
+        } catch (Exception e) {
+            Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
+            Console.WriteLine(e.Message);
+        }
+        
+         _localDbService.NotifyGrant(record.Id);
+
         return record;
+    }
+
+    public async Task<BadgeRecord?> NotifyProcessedGrant(long recordId)
+    {
+        var record = GetBadgeRecord(recordId);
+
+        if (record == null)
+        {
+            return null;
+        }
+
+         var note = NotesService.GetPrivateBadgeProcessedNote(record);
+
+        try {
+            await NotifyNote(note, record);
+        } catch (Exception e) {
+            Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
+            Console.WriteLine(e.Message);
+        }
+
+        return record;
+    }
+
+    public async Task NotifyNote(ActivityPubNote note, BadgeRecord record)
+    {
+        var actor = record.Actor;
+
+        var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+
+        var fediverseInfo = await actorHelper.FetchActorInformationAsync(record.IssuedToSubjectUri);
+    
+        record.IssuedToName = !string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToName : fediverseInfo.Name;
+
+        var createAction = NotesService.GetCreateNote(note, actor);
+
+        var serializedPayload = System.Text.Json.JsonSerializer.Serialize(createAction);
+
+        await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
+
+        Console.WriteLine($"Sent note to {record.IssuedToSubjectUri}");
     }
 
     public async Task<BadgeRecord?> SignAndGenerateBadge(long recordId)

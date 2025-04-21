@@ -72,8 +72,7 @@
         margin-bottom: 2rem;
     }
     .badge-image {
-        max-width: 300px;
-        height: auto;
+        max-height: 300px;
         margin: 0 auto;
     }
     .badge-title {
@@ -268,16 +267,23 @@
         </div>
 
         <div class="share-actions">
-            <a href="https://mastodon.social/share?text=I%20earned%20the%20@badgeRecord.Title%20badge%20from%20@actor.FullName%21%20Check%20it%20out%3A%20@NavManager.Uri" 
+            <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
                class="share-button mastodon-button">
                 <span class="icon"><i class="fab fa-mastodon"></i></span>
                 <span>Share on Mastodon</span>
             </a>
-            <a href="https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=@badgeRecord.Title&organizationId=1337&issueYear=2025&issueMonth=2&expirationYear=2020&expirationMonth=5&certUrl=https%3A%2F%2Fdocs.microsoft.com%2Fen-us%2Flearn%2Fcertifications%2Fd365-functional-consultant-sales&certId=1234" 
-               class="share-button linkedin-button">
-                <span class="icon"><i class="fab fa-linkedin"></i></span>
-                <span>Share on LinkedIn</span>
-            </a>
+
+            @{
+                var linkedinShareLink = ShareHelper.GetLinkedInShareLink(badgeRecord);
+            }
+            @if(!string.IsNullOrEmpty(linkedinShareLink))
+            {
+                <a href="@ShareHelper.GetLinkedInShareLink(badgeRecord)" 
+                class="share-button linkedin-button">
+                    <span class="icon"><i class="fab fa-linkedin"></i></span>
+                    <span>Share on LinkedIn</span>
+                </a>
+            }
         </div>
     </div>
 </div>
@@ -348,6 +354,7 @@
         var directory = Path.GetDirectoryName(originalImage);
         var filename = Path.GetFileNameWithoutExtension(originalImage);
         var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
+
         ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
     }
 

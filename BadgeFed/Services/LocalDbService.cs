@@ -99,23 +99,54 @@ public class LocalDbService
         using var transaction = connection.BeginTransaction();
 
         var command = connection.CreateCommand();
-        command.CommandText = @"
-            INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username)
-            VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username);
-        ";
+        
+        if (actor.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId)
+                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId);
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE Actor SET 
+                    Name = @Name, 
+                    Summary = @Summary, 
+                    AvatarPath = @AvatarPath, 
+                    InformationUri = @InformationUri, 
+                    Uri = @Uri,
+                    Domain = @Domain, 
+                    PublicKeyPem = @PublicKeyPem, 
+                    PrivateKeyPem = @PrivateKeyPem, 
+                    Username = @Username,
+                    LinkedInOrganizationId = @LinkedInOrganizationId
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", actor.Id);
+        }
 
-        command.Parameters.AddWithValue("@Id", actor.Id);
         command.Parameters.AddWithValue("@Name", actor.FullName);
-        command.Parameters.AddWithValue("@Summary", actor.Summary);
-        command.Parameters.AddWithValue("@AvatarPath", actor.AvatarPath);
-        command.Parameters.AddWithValue("@InformationUri", actor.InformationUri);
-        command.Parameters.AddWithValue("@Domain", actor.Domain);
-        command.Parameters.AddWithValue("@PublicKeyPem", actor.PublicKeyPem);
-        command.Parameters.AddWithValue("@PrivateKeyPem", actor.PrivateKeyPem);
-        command.Parameters.AddWithValue("@Uri", actor.Uri);
-        command.Parameters.AddWithValue("@Username", actor.Username);
+        command.Parameters.AddWithValue("@Summary", actor.Summary ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@AvatarPath", actor.AvatarPath ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@InformationUri", actor.InformationUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Uri", actor.Uri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Domain", actor.Domain ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@PublicKeyPem", actor.PublicKeyPem ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@PrivateKeyPem", actor.PrivateKeyPem ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Username", actor.Username ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@LinkedInOrganizationId", actor.LinkedInOrganizationId ?? (object)DBNull.Value);
 
-        command.ExecuteNonQuery();
+        if (actor.Id == 0)
+        {
+            actor.Id = Convert.ToInt32(command.ExecuteScalar());
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
         transaction.Commit();
     }
 
@@ -154,7 +185,8 @@ public class LocalDbService
                 Domain = reader["Domain"] == DBNull.Value ? null : reader["Domain"].ToString(),
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
-                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString()
+                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
             });
         }
 
@@ -183,7 +215,8 @@ public class LocalDbService
                 Domain = reader["Domain"] == DBNull.Value ? null : reader["Domain"].ToString(),
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
-                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString()
+                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
             };
         }
 
@@ -196,7 +229,7 @@ public class LocalDbService
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = $"SELECT Id, Name, Summary, AvatarPath, InformationUri, Domain, PublicKeyPem, Username, PrivateKeyPem FROM Actor WHERE {filter}";
+        command.CommandText = $"SELECT * FROM Actor WHERE {filter}";
         
         using var reader = command.ExecuteReader();
         if (reader.Read())
@@ -211,7 +244,8 @@ public class LocalDbService
                 Domain = reader["Domain"] == DBNull.Value ? null : reader["Domain"].ToString(),
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
-                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString()
+                Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
             };
         }
 
@@ -798,16 +832,24 @@ public class ActorStats
         return null;
     }
 
-    public BadgeRecord? GetBadgeToAccept(long id, string key)
+    public BadgeRecord? GetBadgeToAccept(long id, string key = null)
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM BadgeRecord WHERE Id = @Id AND AcceptKey = @AcceptKey";
-        command.Parameters.AddWithValue("@Id", id);
-        command.Parameters.AddWithValue("@AcceptKey", key);
 
+        var sql = "SELECT * FROM BadgeRecord WHERE Id = @Id";
+        
+        command.Parameters.AddWithValue("@Id", id);
+
+        if (!string.IsNullOrEmpty(key))
+        {
+            sql += " AND AcceptKey = @AcceptKey";
+            command.Parameters.AddWithValue("@AcceptKey", key);
+        }
+        command.CommandText = sql;
+       
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -828,7 +870,8 @@ public class ActorStats
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
-                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString()
             };
         }
 
@@ -946,6 +989,46 @@ public class ActorStats
             (whereClause.Count > 0 ? " WHERE " + string.Join(" AND ", whereClause) : "");
 
         Console.WriteLine($"{command.CommandText} - Id = {id}");
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            records.Add(new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+            });
+        }
+
+        return records;
+    }
+
+     public List<BadgeRecord> GetBadgeRecords(string filter)
+    {
+        var records = new List<BadgeRecord>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        var whereClause = new List<string>();
+
+        command.CommandText = "SELECT * FROM BadgeRecord WHERE " + filter;
 
         using var reader = command.ExecuteReader();
 

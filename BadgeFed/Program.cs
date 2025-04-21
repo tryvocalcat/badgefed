@@ -22,6 +22,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using BadgeFed.Components;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,7 +57,7 @@ builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<Local
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(option =>
 {
-    option.LoginPath = "/admin/login/mastodon";
+    option.LoginPath = "/admin/login/oauth";
     option.LogoutPath = "/admin/logout";
     option.AccessDeniedPath = "/admin/denied";
 }).AddMastodon(adminConfig, o => {
@@ -70,7 +71,21 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddHostedService<JobExecutor>();
 builder.Services.AddScoped<JobProcessor>();
 
+// Configure EmailSettings from appsettings.json
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
+builder.Services.AddScoped<MailService>();
+
 builder.Services.AddControllers();
+
+var provider = new FileExtensionContentTypeProvider();
+
+provider.Mappings[".db"] = "application/x-msdownload";
+
+builder.Services.Configure<StaticFileOptions>(options =>
+{
+    options.ContentTypeProvider = provider;
+});
 
 var app = builder.Build();
 

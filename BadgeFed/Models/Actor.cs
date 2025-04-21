@@ -16,6 +16,8 @@ public class Actor
     
     public string? AvatarPath { get; set; }
 
+    public string? LinkedInOrganizationId { get; set; }
+
     public string Username { get; set; } = "";
 
     public string? InformationUri { get; set; }
