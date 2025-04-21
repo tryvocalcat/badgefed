@@ -33,7 +33,7 @@ public class JobProcessor
             return;
         }
 
-        await _badgeProcessor.NotifyGrant(grantId);
+        await _badgeProcessor.NotifyGrantAcceptLink(grantId);
     }
 
     private async Task ProcessNextProcessGrantAsync()
@@ -49,6 +49,8 @@ public class JobProcessor
 
         if (record != null) {
             await _badgeProcessor.BroadcastGrant(grantId);
+
+            await _badgeProcessor.NotifyProcessedGrant(grantId);
         }
     }   
 }

@@ -1,4 +1,5 @@
 @page "/admin/actors/create"
+@page "/admin/actors/edit/{actorId}"
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
@@ -102,170 +103,198 @@
     }
 </style>
 
-        <div class="form-section">
-            <div class="form-header">
-                <h1 class="form-title">Create New Actor</h1>
-                <p class="form-subtitle">Set up a new actor to issue and manage badges</p>
+<div class="form-section">
+    <div class="form-header">
+                
+        @if (string.IsNullOrEmpty(ActorId))
+        {
+            <h1 class="form-title">Create New Issuer</h1>
+        } else {
+            <h1 class="form-title">Edit Issuer @ActorId - @Model.FullName </h1>
+        }
+        <p class="form-subtitle">Set up a new actor to issue and manage badges</p>
+    </div>
+
+    <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="actorForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="columns is-multiline">
+            <div class="column is-6">
+            <div class="field">
+                <label class="field-label" for="name">Full Name</label>
+                <div class="control">
+                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
+                </div>
             </div>
 
-            <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="actorForm">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
-
-                <div class="columns is-multiline">
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="name">Full Name</label>
-                            <div class="control">
-                                <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the actor's full name" />
-                            </div>
-                            <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
-                        </div>
+            <div class="column is-6">
+                <div class="field">
+                    <label class="field-label" for="username">Username</label>
+                    <div class="control">
+                        @if (!string.IsNullOrEmpty(ActorId))
+                        {
+                            <div class="input disabled is-static">@Model.Username@@@Model.Domain</div>
+                            <p class="help-text">Username cannot be changed after creation</p>
+                        }
+                        else
+                        {
+                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" />
+                        }
                     </div>
+                    <ValidationMessage For="@(() => Model.Username)" class="help is-danger" />
+                </div>
+            </div>
 
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="username">Username</label>
-                            <div class="control">
-                                <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" />
-                            </div>
-                            <ValidationMessage For="@(() => Model.Username)" class="help is-danger" />
-                        </div>
+            <div class="column is-12">
+                <div class="field">
+                    <label class="field-label" for="summary">Summary</label>
+                    <div class="control">
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" />
                     </div>
+                    <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
+                </div>
+            </div>
 
-                    <div class="column is-12">
-                        <div class="field">
-                            <label class="field-label" for="summary">Summary</label>
-                            <div class="control">
-                                <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" />
-                            </div>
-                            <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
-                        </div>
-                    </div>
-
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="domain">Domain</label>
-                            <div class="control">
-                                <div class="select is-fullwidth">
-                                    <InputSelect id="domain" @bind-Value="Model!.Domain">
-                                        <option value="">-- Select a domain --</option>
-                                        @foreach (var domain in availableDomains)
-                                        {
-                                            <option value="@domain">@domain</option>
-                                        }
-                                    </InputSelect>
-                                </div>
-                            </div>
-                            <ValidationMessage For="@(() => Model.Domain)" class="help is-danger" />
-                        </div>
-                    </div>
-
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="informationUri">Information URI</label>
-                            <div class="control">
-                                <InputText id="informationUri" @bind-Value="Model!.InformationUri" class="input" placeholder="https://example.com/about" />
-                            </div>
-                            <ValidationMessage For="@(() => Model.InformationUri)" class="help is-danger" />
-                        </div>
-                    </div>
-
-                    <div class="column is-12">
-                        <div class="field">
-                            <label class="field-label">Avatar</label>
-                            <div class="file-upload">
-                                <div class="file-upload-icon">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                </div>
-                                <p class="has-text-grey">Click to upload or drag and drop</p>
-                                <p class="help-text">PNG, JPG up to 2MB</p>
-                                <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
-                            </div>
-                            @if (!string.IsNullOrEmpty(errorMessage))
-                            {
-                                <p class="help is-danger">@errorMessage</p>
-                            }
-                            @if (imagePreview != null)
-                            {
-                                <img src="@imagePreview" alt="Avatar Preview" class="preview-image" />
-                            }
-                        </div>
-                    </div>
-
-                    <div class="column is-12">
-                        <div class="field">
-                            <div class="control">
-                                <button type="button" @onclick="GenerateKeyPair" class="button is-info">
-                                    <span class="icon">
-                                        <i class="fas fa-key"></i>
-                                    </span>
-                                    <span>Generate Key Pair</span>
-                                </button>
-                                <p class="help-text mt-2">Click to automatically generate a public/private key pair for this actor</p>
+            @if (string.IsNullOrEmpty(ActorId))
+            {
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="field-label" for="domain">Domain</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <InputSelect id="domain" @bind-Value="Model!.Domain">
+                                    <option value="">-- Select a domain --</option>
+                                    @foreach (var domain in availableDomains)
+                                    {
+                                        <option value="@domain">@domain</option>
+                                    }
+                                </InputSelect>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="public-key">Public Key</label>
-                            <div class="control">
-                                <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" class="textarea" rows="6" placeholder="Paste the public key in PEM format" />
-                            </div>
-                            <div class="key-label">
-                                <i class="fas fa-key"></i>
-                                <span>Used for verifying actor signatures</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="field-label" for="private-key">Private Key</label>
-                            <div class="control">
-                                <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="Paste the private key in PEM format" />
-                            </div>
-                            <div class="key-label">
-                                <i class="fas fa-lock"></i>
-                                <span>Used for signing actor activities</span>
-                            </div>
-                        </div>
+                        <ValidationMessage For="@(() => Model.Domain)" class="help is-danger" />
                     </div>
                 </div>
+            }
 
-                <div class="form-actions">
+            <div class="column is-6">
+                <div class="field">
+                    <label class="field-label" for="informationUri">Information URI</label>
                     <div class="control">
-                        <button type="submit" class="button is-primary submit-button" disabled="@isSubmitting">
-                            @if (isSubmitting)
-                            {
-                                <span class="icon is-small">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                                <span>Creating...</span>
-                            }
-                            else
-                            {
+                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" class="input" placeholder="https://example.com/about" />
+                    </div>
+                    <ValidationMessage For="@(() => Model.InformationUri)" class="help is-danger" />
+                </div>
+            </div>
+
+            <div class="column is-12">
+                <div class="field">
+                    <label class="field-label">Avatar</label>
+                    <div class="file-upload">
+                        <div class="file-upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <p class="has-text-grey">Click to upload or drag and drop</p>
+                        <p class="help-text">PNG, JPG up to 2MB</p>
+                        <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <p class="help is-danger">@errorMessage</p>
+                    }
+                    @if (imagePreview != null)
+                    {
+                        <img src="@imagePreview" alt="Avatar Preview" class="preview-image" />
+                    }
+                </div>
+            </div>
+
+            @if (string.IsNullOrEmpty(ActorId))
+            {
+                <div class="column is-12">
+                    <div class="field">
+                        <div class="control">
+                            <button type="button" @onclick="GenerateKeyPair" class="button is-info">
                                 <span class="icon">
-                                    <i class="fas fa-plus"></i>
+                                    <i class="fas fa-key"></i>
                                 </span>
-                                <span>Create Actor</span>
-                            }
-                        </button>
-                    </div>
-                    <div class="control">
-                        <button type="button" @onclick="ClearForm" class="button is-light">
-                            <span class="icon">
-                                <i class="fas fa-undo"></i>
-                            </span>
-                            <span>Clear Form</span>
-                        </button>
+                                <span>Generate Key Pair</span>
+                            </button>
+                            <p class="help-text mt-2">Click to automatically generate a public/private key pair for this actor</p>
+                        </div>
                     </div>
                 </div>
-            </EditForm>
+
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="field-label" for="public-key">Public Key</label>
+                        <div class="control">
+                            <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" class="textarea" rows="6" placeholder="Paste the public key in PEM format" />
+                        </div>
+                        <div class="key-label">
+                            <i class="fas fa-key"></i>
+                            <span>Used for verifying actor signatures</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="field-label" for="private-key">Private Key</label>
+                        <div class="control">
+                            <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="Paste the private key in PEM format" />
+                        </div>
+                        <div class="key-label">
+                            <i class="fas fa-lock"></i>
+                            <span>Used for signing actor activities</span>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
+
+        <div class="form-actions">
+            <div class="control">
+                <button type="submit" class="button is-primary submit-button" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="icon is-small">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                        <span>Creating...</span>
+                    }
+                    else
+                    {
+                        <span class="icon">
+                            <i class="fas fa-plus"></i>
+                        </span>
+                         @if (string.IsNullOrEmpty(ActorId))
+                        {
+                            <span>Create Actor</span>
+                        } else {
+                            <span>Update Actor</span>
+                        }
+                    }
+                </button>
+            </div>
+            <div class="control">
+                <button type="button" @onclick="ClearForm" class="button is-light">
+                    <span class="icon">
+                        <i class="fas fa-undo"></i>
+                    </span>
+                    <span>Clear Form</span>
+                </button>
+            </div>
+        </div>
+    </EditForm>
+</div>
   
 @code {
+    [Parameter]
+    public string ActorId { get; set; }
+
     private Actor? Model = new();
     private IBrowserFile? selectedFile;
     private string? imagePreview;
@@ -277,7 +306,11 @@
     protected override void OnInitialized()
     {
         availableDomains = Configuration.GetSection("BadgesDomains").Get<string[]>().ToList();
-        Model ??= new();
+
+        if (!string.IsNullOrEmpty(ActorId)) {
+            var id = long.Parse(ActorId);
+            Model = LocalDbService.GetActorById(id);
+        }
     }
 
     private void ClearForm() => Model = new();

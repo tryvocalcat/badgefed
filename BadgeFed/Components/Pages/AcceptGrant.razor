@@ -7,10 +7,10 @@
 @inject HttpClient HttpClient
 @rendermode InteractiveServer
 
-@if (BadgeRecord == null)
+@if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="has-text-centered">
-        <p>Badge record not found or was already accepted.</p>
+        <p>@errorMessage</p>
     </div>
 }
 else if (accepted)
@@ -69,7 +69,7 @@ else if (accepted)
                     required placeholder="@BadgeRecord.IssuedToEmail"/>
                 </div>
                 <p class="help is-info">
-                    Please enter the email address this badge was originally sent to (@BadgeRecord.IssuedToEmail) for verification.
+                    Please enter the email address this badge was originally sent to for verification.
                 </p>
             </div>
             <div class="control mt-2">
@@ -161,6 +161,8 @@ else if (accepted)
 
     private bool invalidEmail = false;
 
+    private string errorMessage = string.Empty;
+
     public async Task ValidateEmail()
     {
         emailValidated = acceptEmail == BadgeRecord.IssuedToEmail;
@@ -248,19 +250,35 @@ else if (accepted)
     protected override async Task OnInitializedAsync()
     {
         var id = long.Parse(Id);
-        var record = DbService.GetBadgeToAccept(id, Key);
+        var record = DbService.GetBadgeToAccept(id);
 
         if (record == null)
         {
-            // Badge record not found, redirect to error page or show message
+            errorMessage = "Badge record not found or was already accepted.";
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(record?.AcceptKey) && record?.AcceptKey != Key)
+        {
+            errorMessage = "Badge record not found or invalid verification key. Please check that you've used the complete link from your email. If you continue to have trouble, contact the badge issuer.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(record?.AcceptKey) && string.IsNullOrEmpty(record?.NoteId))
+        {
+            errorMessage = "Your badge is on an adventure! It's currently being signed, federated, and prepared for your collection. Please check back in a few moments while our digital elves do their magic!";
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(record?.NoteId))
+        {
+            NavManager.NavigateTo($"/view/grant/{record.NoteId}");
+
             return;
         }
 
         Model = DbService.GetRecipientByIssuedTo(record);
         
-        Console.WriteLine(JsonSerializer.Serialize(record));
-        Console.WriteLine(JsonSerializer.Serialize(Model));
-
         Badge = DbService.GetBadgeDefinitionById(record.Badge.Id);
 
         Actor = DbService.GetActorById(Badge.IssuedBy);

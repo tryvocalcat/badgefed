@@ -128,9 +128,21 @@
 
     private void HandleValidSubmit()
     {
+        errorMessage = string.Empty;
+        notificationMessage = string.Empty;
+
         var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
 
         var recipient = new Recipient() { ProfileUri = ProfileUri, Name = Name, Email = Email };
+
+        //FIXME: sec issue
+        var existing = LocalDbService.GetBadgeRecords($"BadgeId = {Model.BadgeId} AND IssuedToSubjectUri = '{ProfileUri}'");
+
+        if (existing != null && existing.Count > 0)
+        {
+            errorMessage = $"Badge {badge.Title} has already been granted to {recipient.ProfileUri}";
+            return;
+        }
 
         var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
 
@@ -139,8 +151,8 @@
         notificationMessage = $"Badge {badgeRecord.Title} granted to {recipient.Name} ({recipient.ProfileUri})";
         
         // Clear form fields
-        Email = null;
-        ProfileUri = null;
-        Name = null;
+        Email = string.Empty;
+        ProfileUri = string.Empty;
+        Name = string.Empty;
     }
 }

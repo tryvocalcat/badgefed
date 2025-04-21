@@ -12,7 +12,6 @@ CREATE TABLE Actor (
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-
 ALTER TABLE Actor ADD COLUMN Username TEXT;
 ALTER TABLE Actor ADD COLUMN PublicKeyPem TEXT;
 ALTER TABLE Actor ADD COLUMN PrivateKeyPem TEXT;
@@ -40,6 +39,10 @@ CREATE TABLE Badge (
 );
 
 ALTER TABLE Badge ADD COLUMN ImageAltText TEXT CHECK(length(ImageAltText) <= 1500);
+
+ALTER TABLE Actor ADD COLUMN LinkedInOrganizationId TEXT NULL;
+
+
 
 CREATE TRIGGER UpdateBadgeTimestamp
 AFTER UPDATE ON Badge

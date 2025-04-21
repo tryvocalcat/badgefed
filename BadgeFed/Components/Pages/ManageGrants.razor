@@ -33,11 +33,15 @@ else
         <tbody>
             @foreach (var record in records)
             {
-                <tr>
+                var actorName = actors.ContainsKey(record.IssuedBy) 
+                    ? actors[record.IssuedBy].FullName 
+                    : record.IssuedBy.Substring(record.IssuedBy.LastIndexOf('/') + 1);
+                
+                <tr class="@(!string.IsNullOrEmpty(record.NoteId) ? "has-background-success-light" : "")">
                     <td>@record.Id</td>
                     <td>@record.Title</td>
                     <td><a href="@record.IssuedToSubjectUri">@(string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToSubjectUri : record.IssuedToName)</a></td>
-                    <td>@record.IssuedBy</td>
+                    <td><a href="@record.IssuedBy">@actorName</a></td>
                     <td>@record.IssuedOn</td>
                     <td>@record.AcceptedOn</td>
                     <td>
@@ -48,11 +52,39 @@ else
                                 <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Broadcast</a>
 
                                 <a href="/view/grant/@record.NoteId" class="button is-info is-small">View</a>
+
+                                <div class="buttons">
+                                    <a href="/admin/grant/@record.Id/notify-processed/activitypub" class="button is-light is-small" title="Notify via ActivityPub">
+                                        <span class="icon">
+                                            <i class="fas fa-broadcast-tower"></i>
+                                        </span>
+                                        <span>ActivityPub</span>
+                                    </a>
+                                    <a href="/admin/grant/@record.Id/notify-processed/email" class="button is-light is-small" title="Notify via Email">
+                                        <span class="icon">
+                                            <i class="fas fa-envelope"></i>
+                                        </span>
+                                        <span>Email</span>
+                                    </a>
+                                </div>
                             }
                         } else {
                             <a href="/accept/grant/@record.Id/@record.AcceptKey">Accept link</a>
                             
-                            <a href="/admin/grant/@record.Id/notify" class="button is-light is-small">Notify</a>
+                            <div class="buttons">
+                                <a href="/admin/grant/@record.Id/notify/activitypub" class="button is-light is-small" title="Notify via ActivityPub">
+                                    <span class="icon">
+                                        <i class="fas fa-broadcast-tower"></i>
+                                    </span>
+                                    <span>ActivityPub</span>
+                                </a>
+                                <a href="/admin/grant/@record.Id/notify/email" class="button is-light is-small" title="Notify via Email">
+                                    <span class="icon">
+                                        <i class="fas fa-envelope"></i>
+                                    </span>
+                                    <span>Email</span>
+                                </a>
+                            </div>
                         }
                     </td>
                 </tr>
@@ -64,7 +96,7 @@ else
 @code {
     private List<BadgeRecord?> records;
 
-    private Dictionary<long, Actor> actors;
+    private Dictionary<string, Actor> actors;
 
     private string errorMessage;
 
@@ -72,8 +104,8 @@ else
     {
         var actorList = LocalDbService.GetActors();
 
-        actors = actorList.ToDictionary(a => a.Id);
+        actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
-        records = LocalDbService.GetBadgeRecords();
+        records = LocalDbService.GetBadgeRecords()!;
     }
 }
