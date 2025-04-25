@@ -357,7 +357,7 @@
                 
                 var fullPath = Path.Combine(path, fileName);
                 
-                using var stream = selectedFile.OpenReadStream();
+                using var stream = selectedFile.OpenReadStream(2 * 1024 * 1024);
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
                 
