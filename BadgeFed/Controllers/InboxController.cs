@@ -11,16 +11,16 @@ namespace BadgeFed.Controllers
     {
         private readonly ILogger<InboxController> _logger;
         private readonly FollowService _followService;
-        private readonly RepliesService _repliesService;
+        private readonly CreateNoteService _createNoteService;
        
         public InboxController(
             ILogger<InboxController> logger,
             FollowService followService,
-            RepliesService repliesService)
+            CreateNoteService createNoteService)
         {
             _logger = logger;
             _followService = followService;
-            _repliesService = repliesService;
+            _createNoteService = createNoteService;
         }
 
         [HttpPost]
@@ -51,7 +51,7 @@ namespace BadgeFed.Controllers
                 
                 if (message.IsFollow())
                 {
-                    await _followService.Follow(message);
+                    await _followService.AcceptFollowRequest(message);
                 }
                 else if (message.IsUndoFollow())
                 {
@@ -59,7 +59,7 @@ namespace BadgeFed.Controllers
                 }
                 else if (message.IsCreateActivity())
                 {
-                    await _repliesService.AddReply(message);
+                    await _createNoteService.ProcessMessage(message);
                 }
                 else
                 {

@@ -29,7 +29,7 @@ namespace ActivityPubDotNet.Core
         public string PreferredUsername { get; set; } = default!;
         public string Name { get; set; } = default!;
         public string Summary { get; set; } = default!;
-        public string Url { get; set; } = default!;
+        public object Url { get; set; } = default!;
         public PublicKeyDefinition PublicKey { get; set; } = default!;
 
         public EndpointsDefinition Endpoints { get; set; } = default!;
@@ -38,7 +38,7 @@ namespace ActivityPubDotNet.Core
 
         public ActivityPubImage Icon { get; set; }
 
-        public ActivityPubImage Image { get; set; }
+        public object Image { get; set; }
 
         public List<Attachment> Attachment { get; set; } = new List<Attachment>();
     }
@@ -52,8 +52,9 @@ namespace ActivityPubDotNet.Core
 
     public class ActivityPubImage
     {
-        public string Type { get; set; } = default!;
-        public string MediaType { get; set; } = default!;
-        public string Url { get; set; } = default!;
+        public string? Type { get; set; } = default!;
+        public string? MediaType { get; set; } = default!;
+        public string? Url { get; set; } = default!;
+        public string? Name { get; set; } = default!;
     }
 }

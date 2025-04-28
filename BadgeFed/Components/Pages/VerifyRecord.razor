@@ -1,4 +1,4 @@
-@page "/view/grant/{noteId}"
+@page "/view/grant/{noteIdParam}"
 @using ActivityPubDotNet.Core
 @using System.Text.Json
 
@@ -310,29 +310,90 @@
     }
     else
     {
-        @foreach (var comment in comments)
-        {
+        <script>
+            var comments = @((MarkupString)@JsonSerializer.Serialize(comments));
+           
+            function getStatusUrl(originalUrl) {
+                // Parse the original URL
+                let url = new URL(originalUrl);
+                
+                // Extract the host and id
+                let host = url.host;
+                let id = url.pathname.split('/').pop(); // Extract the id from the last part of the pathname
+                
+                // Construct the modified URL
+                let modifiedUrl = "https://" + host + "/api/v1/statuses/" + id;
+                
+                return modifiedUrl;
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var commentsWrapper = document.querySelector(".comments-wrapper");
+
+                if (comments && comments.length > 0) {
+                    Promise.all(
+                        comments.map(replyId => 
+                            fetch(getStatusUrl(replyId), {
+                                headers: { 
+                                    'Content-Type': 'application/activity+json', 
+                                    'Accept': 'application/activity+json' 
+                                }
+                            })
+                            .then(response => response.ok ? response.json() : null)
+                            .catch(() => null)
+                        )
+                    ).then(responses => {
+                        const validResponses = responses.filter(r => r);
+                        validResponses.sort((a, b) => new Date(a.published) - new Date(b.published));
+                        
+                        if (validResponses.length > 0) {
+                            commentsWrapper.innerHTML = validResponses.map(status => {
+                                return `
+                                    <div class="comment-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar">
+                                                <span class="icon"><img src="${status.account.avatar}" /></span>
+                                            </div>
+                                            <div>
+                                                <div class="comment-author">${status.account ? status.account.display_name || status.account.acct : 'Anonymous'}</div>
+                                                <div class="comment-date">${status.created_at}</div>
+                                            </div>
+                                        </div>
+                                        <div class="comment-content">
+                                            ${status.content || ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join("");
+                        }
+                    });
+                }
+            });
+           
+        </script>
+        <div class="comments-wrapper">
             <div class="comment-card">
                 <div class="comment-header">
                     <div class="comment-avatar">
                         <span class="icon"><i class="fas fa-user"></i></span>
                     </div>
                     <div>
-                        <div class="comment-author">@comment.Author</div>
-                        <div class="comment-date">@comment.DatePosted.ToString("MMMM d, yyyy")</div>
+                        <div class="comment-author"></div>
+                        <div class="comment-date"></div>
                     </div>
                 </div>
                 <div class="comment-content">
-                    @comment.Text
+                   
                 </div>
             </div>
-        }
+        </div>
+        
     }
 </div>
 
 @code {
-    private List<Comment> comments = new List<Comment>();
-    [Parameter] public string? NoteId { get; set; }
+    private List<string> comments = new List<string>();
+    [Parameter] public string? NoteIdParam { get; set; }
     private BadgeRecord? badgeRecord;
     private Badge? badge;
     private Actor? actor;
@@ -343,12 +404,15 @@
     {
         var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
 
+        NoteIdParam = NoteIdParam?.Trim();
+
         if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
         {
-            NavManager.NavigateTo($"/grant/{NoteId}");
+
+            NavManager.NavigateTo($"/grant/{NoteIdParam}");
         }
         
-        badgeRecord = DbService.GetGrantByNoteId(NoteId);
+        badgeRecord = DbService.GetGrantByNoteId(NoteIdParam);
         
         if (badgeRecord == null)
         {
@@ -367,12 +431,7 @@
         var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
 
         ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";
-    }
 
-    public class Comment
-    {
-        public string Author { get; set; }
-        public string Text { get; set; }
-        public DateTime DatePosted { get; set; }
+        comments = DbService.GetBadgeComments(badgeRecord.Id);
     }
 }

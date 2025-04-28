@@ -15,7 +15,7 @@ public class ShareHelper
 
         var text = $"I earned a badge! {record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}";
 
-        var url = $"https://{record.Actor.Domain}/view/grant/{record.NoteId}";
+        var url = $"{record.NoteId}";
 
         text += $". Check it out: {url}";
          
@@ -29,11 +29,11 @@ public class ShareHelper
             return string.Empty;
         }
 
-        var certId = record.NoteId;
+        var certId = record.NoteId.Split('/').LastOrDefault() ?? string.Empty;
         var issueYear = record.IssuedOn.Year.ToString();
         var issueMonth = record.IssuedOn.Month.ToString();
 
-        var url = $"https://{record.Actor.Domain}/view/grant/{record.NoteId}";
+        var url = $"{record.NoteId}";
        
         var linkedinId = record.Actor.LinkedInOrganizationId ?? string.Empty;
 

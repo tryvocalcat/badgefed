@@ -1,3 +1,5 @@
+using System.Text.Json;
+using BadgeFed.Services;
 using Microsoft.Extensions.Logging;
 
 namespace ActivityPubDotNet.Core
@@ -6,12 +8,35 @@ namespace ActivityPubDotNet.Core
     {
         public ILogger? Logger { get; set; }
 
-        public Task AddReply(InboxMessage message)
-        {
-            Logger?.LogInformation("Adding a reply.");
-            // TODO: Implement reply handling
+        private readonly LocalDbService _localDbService;
 
-            Console.WriteLine($"Adding a reply. {System.Text.Json.JsonSerializer.Serialize(message)}");
+        public RepliesService(LocalDbService localDbService)
+        {
+            _localDbService = localDbService;
+        }
+
+        public Task ProcessReply(ActivityPubNote objectNote)
+        {
+            if (objectNote!.InReplyTo == null)
+            {
+                // We don't do anything
+                return Task.CompletedTask;
+            }
+            
+            // try to get the id is the last part of inReplyTo
+            var noteId = objectNote!.InReplyTo?.Split('/').LastOrDefault();
+
+            var grant = _localDbService.GetGrantByNoteId(noteId);
+
+            if (grant == null)
+            {
+                // We don't do anything
+                return Task.CompletedTask;
+            }
+
+            // Maybe is a reply (aka a comment)
+            _localDbService.UpsertBadgeComment(grant.Id, objectNote.Id, objectNote.AttributedTo);
+
             return Task.CompletedTask;
         }
     }

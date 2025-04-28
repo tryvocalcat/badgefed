@@ -26,6 +26,17 @@ using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddLogging(logging =>
+{
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.AddEventSourceLogger();
+
+    // Optional: Configure log levels
+    logging.SetMinimumLevel(LogLevel.Information);
+});
+
 builder.Services.AddHttpClient();
 
 builder.Services.AddRazorPages();
@@ -35,15 +46,18 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
+
 builder.Services.AddScoped<FollowService>();
+builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
+builder.Services.AddScoped<CreateNoteService>();
 builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server"));
 
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
 builder.Services.AddSingleton<LocalDbService>(sp => {
-    var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "test.db";
+    var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
     return new LocalDbService(dbFileName);
 });
 
@@ -57,7 +71,7 @@ builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<Local
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(option =>
 {
-    option.LoginPath = "/admin/login/oauth";
+    option.LoginPath = "/admin/login/mastodon";
     option.LogoutPath = "/admin/logout";
     option.AccessDeniedPath = "/admin/denied";
 }).AddMastodon(adminConfig, o => {

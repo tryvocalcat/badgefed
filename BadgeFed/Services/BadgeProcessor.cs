@@ -115,19 +115,15 @@ public class BadgeProcessor
 
         record.Badge = badge;
         record.Actor = actor;
-        record.NoteId = BadgeService.GetNoteIdForBadgeRecord(record);
+        // https://{record.Actor.Domain}/view/grant/
+        var noteId = BadgeService.GetNoteIdForBadgeRecord(record);
+
+        record.NoteId = $"https://{record.Actor.Domain}/grant/{noteId}";
 
         // - generate activitypub note
         var note = BadgeService.GetNoteFromBadgeRecord(record);
 
         var badgeService = new BadgeService(_localDbService);
-
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{record.NoteId}.json");
-
-        var serializedNote = System.Text.Json.JsonSerializer.Serialize(note);
-
-        // save note
-        await System.IO.File.WriteAllTextAsync(filePath, serializedNote);
 
         // - generate/update fingerprint
         record.FingerPrint = badgeService.GetFingerprint(note, record);
@@ -156,18 +152,9 @@ public class BadgeProcessor
         record.Badge = badge;
         record.Actor = actor;
         
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{record.NoteId}.json");
-        
-        if (!System.IO.File.Exists(filePath))
-        {
-            return null;
-        }
-        
         Console.WriteLine("Badge found");
 
-        var json = System.IO.File.ReadAllText(filePath);
-
-        var note = System.Text.Json.JsonSerializer.Deserialize<ActivityPubDotNet.Core.ActivityPubNote>(json);
+        var note = BadgeService.GetNoteFromBadgeRecord(record);
 
         var createNote = NotesService.GetCreateNote(note!, actor);
 
@@ -181,14 +168,33 @@ public class BadgeProcessor
         Console.WriteLine($"Serialized note: {serializedNote}");	
         Console.WriteLine($"Followers: {followers.Count}");
 
-        foreach(var follower in followers) {
-            try {
+        var endpointsAlreadySent = new List<string>();
+
+        foreach (var follower in followers)
+        {
+            try
+            {
                 var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
 
+                Console.WriteLine($"Follower: {follower.FollowerUri}");
+                Console.WriteLine($"Inbox: {System.Text.Json.JsonSerializer.Serialize(fediverseInfo)}");
+
+                var endpointUri = fediverseInfo.Endpoints?.SharedInbox ?? fediverseInfo.Inbox;
+
+                if (endpointsAlreadySent.Contains(endpointUri))
+                {
+                    Console.WriteLine($"Skipping {endpointUri}");
+                    continue;
+                }
+
+                endpointsAlreadySent.Add(endpointUri);
+                
                 await actorHelper.SendPostSignedRequest(serializedNote, new Uri(fediverseInfo.Inbox));
 
                 Console.WriteLine($"Sent note to {follower.FollowerUri}");
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine($"Failed to send note to {follower.FollowerUri}");
                 Console.WriteLine(e.Message);
             }

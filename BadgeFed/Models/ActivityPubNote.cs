@@ -23,8 +23,14 @@ public class ActivityPubNote
     [JsonPropertyName("attributedTo")]
     public string AttributedTo { get; set; }
 
-    [JsonPropertyName("vocalcat:badges")]
+    [JsonPropertyName("attachment")]
+    public List<object> Attachment { get; set; } = new List<object>();
+
+    [JsonPropertyName("vocalcat:badgeAssertion")]
     public BadgeRecord BadgeMetadata { get; set; }
+
+    [JsonPropertyName("openbadges:assertion")]
+    public object OpenBadge { get; set; }
 
     [JsonPropertyName("to")]
     public List<string> To { get; set; } = new List<string> { "https://www.w3.org/ns/activitystreams#Public" };
@@ -40,6 +46,9 @@ public class ActivityPubNote
 
     [JsonPropertyName("replies")]
     public Collection Replies { get; set; } = new Collection();
+
+    [JsonPropertyName("inReplyTo")]
+    public string InReplyTo { get; set; } = default!;
 
     public class Tag
     {

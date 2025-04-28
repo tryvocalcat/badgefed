@@ -1,3 +1,5 @@
+using BadgeFed.Models;
+using BadgeFed.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BadgeFed.Controllers
@@ -6,6 +8,13 @@ namespace BadgeFed.Controllers
     [Route("grant")]
     public class BadgeController : ControllerBase
     {
+        private LocalDbService _localDbService;
+
+        public BadgeController(LocalDbService localDbService)
+        {
+            _localDbService = localDbService;
+        }
+
         [HttpGet("{noteId}")]
         public IActionResult GetBadge(string noteId)
         {
@@ -15,15 +24,27 @@ namespace BadgeFed.Controllers
             {
                 return Redirect($"/view/grant/{noteId}");
             }
-            
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "badges", $"{noteId}.json");
-            
-            if (!System.IO.File.Exists(filePath))
+
+            var record = _localDbService.GetGrantByNoteId(noteId);
+
+            if (record.IsExternal)
             {
-                return NotFound("Badge record not found");
+                // TODO: avoid loop defensive if it is the same as current url
+                return Redirect(record.NoteId);
             }
+
+            var actor = _localDbService.GetActorByUri(record.IssuedBy);
+
+            record.Actor = actor;
             
-            var json = System.IO.File.ReadAllText(filePath);
+            var note = BadgeService.GetNoteFromBadgeRecord(record);
+
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(note, options);
             
             return Content(json, "application/activity+json");
         }

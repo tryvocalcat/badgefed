@@ -116,7 +116,7 @@ public class NotesService
             return null;
         }
 
-        var url = $"https://{record.Actor.Domain}/view/grant/{record.NoteId}";
+        var url = $"{record.NoteId}";
 
         var note = GetNote(
             domain: actor.Domain,
@@ -194,7 +194,7 @@ public class NotesService
         <p>{Hashtags}</p>
         ";
 
-        var url = $"https://{record.Actor.Domain}/grant/{record.NoteId}";
+        var url = $"{record.NoteId}";
 
         var tags = new List<ActivityPubNote.Tag>();
 
@@ -217,7 +217,7 @@ public class NotesService
             .Replace("{BadgeDescription}", record.Description)
             .Replace("{EarningCriteria}", record.EarningCriteria)
             .Replace("{IssuedOn}", record.IssuedOn.ToString())
-            .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor.Uri.ToString(), tags))
+            .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor?.Uri?.ToString(), tags))
             .Replace("{AcceptedOn}", record.AcceptedOn?.ToString() ?? "Not accepted")
             .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags))
             .Replace("{BadgeUrl}", url)
@@ -246,6 +246,9 @@ public class NotesService
             to: to,
             cc: cc,
             tags: tags);
+
+        // Document type does not show in mastodon
+        note.Type = "Note";
 
         note.BadgeMetadata = new BadgeRecord();
         

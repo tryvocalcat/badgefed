@@ -78,6 +78,19 @@
                         <InputText id="email" @bind-Value="Email" class="input" placeholder="recipient@example.com" />
                     </div>
                 </div>
+
+                <div class="mt-3">
+                    <label class="label">Evidence</label>
+                    <p class="help">
+                        Optional details about why this badge is being granted. 
+                        This can include links to related work, specific achievements, or any other information that supports this award.
+                        This information is publicy visible and cannot be changed after the badge is granted.
+                    </p>
+                        
+                    <div class="control">
+                        <InputTextArea id="evidence" @bind-Value="Model.Evidence" class="textarea" placeholder="Evidence of the badge" rows="3" />
+                    </div>
+                </div>
             </div>
 
             <div class="field">
@@ -111,6 +124,18 @@
         if (long.TryParse(BadgeId, out long badgeIdValue))
         {
             Model.BadgeId = badgeIdValue;
+
+            var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
+
+            if (badge == null)
+            {
+                errorMessage = $"Badge with ID {Model.BadgeId} not found.";
+                return;
+            }
+            else
+            {
+                Model.Evidence = badge.EarningCriteria;
+            }
         }
         else
         {
@@ -124,6 +149,8 @@
         public long BadgeId { get; set; }
 
         public string IssuedTo { get; set; } = "";
+
+        public string Evidence { get; set; } = "";
     }
 
     private void HandleValidSubmit()
@@ -145,6 +172,8 @@
         }
 
         var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
+
+        badgeRecord.EarningCriteria = Model.Evidence;
 
         LocalDbService.CreateBadgeRecord(badgeRecord);
 

@@ -272,7 +272,7 @@ else if (accepted)
 
         if (!string.IsNullOrEmpty(record?.NoteId))
         {
-            NavManager.NavigateTo($"/view/grant/{record.NoteId}");
+            NavManager.NavigateTo(record.NoteId);
 
             return;
         }

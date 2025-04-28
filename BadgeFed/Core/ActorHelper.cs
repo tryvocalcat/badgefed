@@ -27,6 +27,7 @@ namespace ActivityPubDotNet.Core
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
+            Console.WriteLine($"Actor information: {jsonContent}");
             return JsonSerializer.Deserialize<ActivityPubActor>(jsonContent, options)!;
         }
 
@@ -70,10 +71,12 @@ namespace ActivityPubDotNet.Core
                     client.DefaultRequestHeaders.Add("Host", url.Host);
                     client.DefaultRequestHeaders.Add("Date", date);
                     client.DefaultRequestHeaders.Add("Signature", header);
-                    client.DefaultRequestHeaders.Add("Accept", "application/activity+json");
+                    client.DefaultRequestHeaders.Add("Accept", "application/activity+json, application/ld+json, application/json");
 
                     // Make the GET request
                     var response = await client.GetAsync(url);
+
+                    Logger?.LogInformation($"GET {url} - {response.StatusCode}");
 
                     response.EnsureSuccessStatusCode();
 

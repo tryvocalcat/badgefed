@@ -90,6 +90,7 @@ public class BadgeService
         var note = NotesService.GetBadgeNote(record);
 
         note.BadgeMetadata = record;
+        note.Attachment.Add(record);
 
         return note;
     }

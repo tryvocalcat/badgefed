@@ -7,6 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
+@inject FollowService FollowService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -290,6 +291,43 @@
         </div>
     </EditForm>
 </div>
+
+@if (!string.IsNullOrEmpty(ActorId))
+{
+    <div class="form-section">
+        <div class="form-header">
+            <h2 class="form-title">Followed Issuers</h2>
+        </div>
+        @if (FollowedIssuers != null && FollowedIssuers.Any())
+        {
+            <ul>
+                @foreach (var issuer in FollowedIssuers)
+                {
+                    <li>@issuer.Name - @issuer.Url</li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p>No issuers followed yet.</p>
+        }
+
+        <div class="field">
+            <label class="label">Issuer URL</label>
+            <div class="control">
+                <input class="input" @bind="newIssuerUrl" placeholder="https://badgefed-instance-domain.com/@@issuer" />
+            </div>
+        </div>
+
+        <button type="button" class="button is-primary" @onclick="FollowIssuer">
+            Follow
+        </button>
+        @if (!string.IsNullOrEmpty(issuerValidationMessage))
+        {
+            <p>@issuerValidationMessage</p>
+        }
+    </div>
+}
   
 @code {
     [Parameter]
@@ -302,6 +340,10 @@
     private bool isSubmitting = false;
     private List<string> availableDomains = [];
     private ElementReference fileInput;
+    private List<FollowedIssuer> FollowedIssuers = new();
+    private string newIssuerUrl = string.Empty;
+    private bool isIssuerValid;
+    private string issuerValidationMessage;
 
     protected override void OnInitialized()
     {
@@ -310,6 +352,18 @@
         if (!string.IsNullOrEmpty(ActorId)) {
             var id = long.Parse(ActorId);
             Model = LocalDbService.GetActorById(id);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ActorId))
+        {
+            var actor = LocalDbService.GetActorById(long.Parse(ActorId));
+            if (actor != null)
+            {
+                FollowedIssuers = LocalDbService.GetFollowedIssuers(actor.Id);
+            }
         }
     }
 
@@ -378,6 +432,48 @@
         finally
         {
             isSubmitting = false;
+        }
+    }
+
+    private async Task FollowIssuer()
+    {
+        try
+        {
+            var fediverseInfo = await FollowService.FollowIssuer(Model, newIssuerUrl);
+
+            if (fediverseInfo != null)
+            {
+                isIssuerValid = true;
+                issuerValidationMessage = $"Issuer found: {fediverseInfo.Name}";
+
+                if (!string.IsNullOrEmpty(ActorId) && isIssuerValid)
+                {
+                    var actorId = long.Parse(ActorId);
+                    var issuer = new FollowedIssuer
+                    {
+                        Name = fediverseInfo.Name, 
+                        Url = newIssuerUrl,
+                        Inbox = fediverseInfo.Inbox,
+                        Outbox = fediverseInfo.Outbox,
+                        ActorId = actorId,
+                    };
+
+                    LocalDbService.UpsertFollowedIssuer(issuer);
+                    FollowedIssuers = LocalDbService.GetFollowedIssuers(actorId);
+
+                    newIssuerUrl = string.Empty;
+                    issuerValidationMessage = $"Issuer {fediverseInfo.Name} followed!";
+                    isIssuerValid = false;
+                }
+            } else {
+                issuerValidationMessage = "⚠️ Could not retrieve the actor information. Check the URL is a valid fediverse actor.";
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            issuerValidationMessage = $"⚠️ Could not validate url. {ex.Message}";
+            return;
         }
     }
 }

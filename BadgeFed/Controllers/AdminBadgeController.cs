@@ -25,7 +25,7 @@ namespace BadgeFed.Controllers
         public async Task<IActionResult> BroadcastBadge(string id)
         {
             var recordId = long.Parse(id);
-            
+
             var record = _badgeProcessor.BroadcastGrant(recordId);
 
             if (record == null)
@@ -33,7 +33,8 @@ namespace BadgeFed.Controllers
                 return NotFound("No badges to broadcast");
             }
 
-            return Redirect("/admin/grants");
+            return Ok("Broadcasted badge successfully");
+           // return Redirect("/admin/grants");
         }
 
         [HttpGet("{id}/notify/activitypub")]
@@ -114,7 +115,7 @@ namespace BadgeFed.Controllers
                 { "badgeDescription", record.Description },
                 { "issuerName", record.Actor.FullName },
                 { "issuedDate", record.IssuedOn.ToString("MMMM dd, yyyy") },
-                { "badgeLink", $"https://{record.Actor.Domain}/view/grant/{record.NoteId}" }
+                { "badgeLink", $"{record.NoteId}" }
             };
 
             try

@@ -8,13 +8,13 @@ CREATE TABLE Actor (
     InformationUri TEXT,
     Uri TEXT,
     Domain TEXT,
+    Username TEXT,
+    PublicKeyPem TEXT,
+    PrivateKeyPem TEXT,
+    LinkedInOrganizationId TEXT NULL,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE Actor ADD COLUMN Username TEXT;
-ALTER TABLE Actor ADD COLUMN PublicKeyPem TEXT;
-ALTER TABLE Actor ADD COLUMN PrivateKeyPem TEXT;
 
 CREATE TRIGGER UpdateActorTimestamp
 AFTER UPDATE ON Actor
@@ -38,12 +38,6 @@ CREATE TABLE Badge (
     FOREIGN KEY (IssuedBy) REFERENCES Actor(Id)
 );
 
-ALTER TABLE Badge ADD COLUMN ImageAltText TEXT CHECK(length(ImageAltText) <= 1500);
-
-ALTER TABLE Actor ADD COLUMN LinkedInOrganizationId TEXT NULL;
-
-
-
 CREATE TRIGGER UpdateBadgeTimestamp
 AFTER UPDATE ON Badge
 FOR EACH ROW
@@ -57,7 +51,7 @@ CREATE TABLE BadgeRecord (
     IssuedBy TEXT NOT NULL,
     Description TEXT CHECK(length(Description) <= 500),
     Image TEXT,
-    ImageAltText TEXT CHECK(length(Description) <= 1500),
+    ImageAltText TEXT CHECK(length(ImageAltText) <= 1500),
     EarningCriteria TEXT CHECK(length(EarningCriteria) <= 500),
     Hashtags TEXT,
     IssuedOn DATETIME NOT NULL,
@@ -68,21 +62,59 @@ CREATE TABLE BadgeRecord (
     LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP,
     FingerPrint TEXT NULL,
     AcceptKey TEXT NULL,
-    BadgeId INTEGER NOT NULL,
+    BadgeId INTEGER NULL DEFAULT 0,
+    IsExternal BOOLEAN DEFAULT FALSE,
     NotifiedOfGrant BOOLEAN DEFAULT FALSE,
+    NoteId TEXT NULL,
     FOREIGN KEY (BadgeId) REFERENCES BadgeId(Id)
 );
-
-ALTER TABLE BadgeRecord ADD Hashtags TEXT;
-
-ALTER TABLE BadgeRecord ADD COLUMN ImageAltText TEXT CHECK(length(ImageAltText) <= 1500);
-ALTER TABLE BadgeRecord ADD COLUMN NoteId TEXT NULL;
 
 CREATE TRIGGER UpdateBadgeRecordTimestamp
 AFTER UPDATE ON BadgeRecord
 FOR EACH ROW
 BEGIN
     UPDATE BadgeRecord SET LastUpdated = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
+END;
+
+CREATE TABLE BadgeRecordComment (
+    Id INTEGER PRIMARY KEY,
+    BadgeRecordId INTEGER NOT NULL,
+    NoteId TEXT NOT NULL,
+    AuthorId TEXT NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (BadgeRecordId) REFERENCES BadgeRecord(Id)
+);
+
+CREATE UNIQUE INDEX IX_BadgeRecordComment_BadgeRecordId_NoteId ON BadgeRecordComment(BadgeRecordId, NoteId);
+
+CREATE INDEX IX_BadgeRecordComment_BadgeRecordId ON BadgeRecordComment(BadgeRecordId);
+
+CREATE TRIGGER UpdateBadgeRecordCommentTimestamp
+AFTER UPDATE ON BadgeRecordComment
+FOR EACH ROW
+BEGIN
+    UPDATE BadgeRecordComment SET CreatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
+END;
+
+CREATE TABLE FollowedIssuer (
+    Id INTEGER PRIMARY KEY,
+    Name TEXT NOT NULL CHECK(length(Name) >= 2 AND length(Name) <= 100),
+    Url TEXT NOT NULL,
+    Inbox TEXT NOT NULL,
+    Outbox TEXT NOT NULL,
+    ActorId INTEGER NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ActorId) REFERENCES Actor(Id)
+);
+
+CREATE UNIQUE INDEX IX_FollowedIssuer_Url_ActorId ON FollowedIssuer(Url, ActorId);
+
+CREATE TRIGGER UpdateFollowedIssuerTimestamp
+AFTER UPDATE ON FollowedIssuer
+FOR EACH ROW
+BEGIN
+    UPDATE FollowedIssuer SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
 
 CREATE TABLE BadgeComments (
@@ -92,11 +124,11 @@ CREATE TABLE BadgeComments (
     UNIQUE(BadgeUri, NoteId)
 );
 
- CREATE TABLE IF NOT EXISTS DbVersion (Version INTEGER);
-            
-            INSERT INTO DbVersion (Version) 
-            SELECT 1
-            WHERE NOT EXISTS (SELECT 1 FROM DbVersion);
+CREATE TABLE IF NOT EXISTS DbVersion (Version INTEGER);
+
+INSERT INTO DbVersion (Version) 
+SELECT 1
+WHERE NOT EXISTS (SELECT 1 FROM DbVersion);
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
@@ -122,14 +154,3 @@ CREATE TABLE Follower (
     ActorId INTEGER NOT NULL,
     FOREIGN KEY (ActorId) REFERENCES Actor(Id)
 );
-
--- Insert test data
-
-INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, Username, PublicKeyPem, PrivateKeyPem)
-VALUES ('VocalCat', 'Badges for VocalCat users and contributors', '/avatars/vocalcat.png', 'https://vocalcat.com/', 
-'https://badgefedtest.azurewebsites.net/actors/badgefedtest.azurewebsites.net/poc', 
-'badgefedtest.azurewebsites.net', 'poc', '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuex1DXcBjEUx7bKV4Kq\nb9175RypfzcJNFUG5y58LbQIcYDAD8uaCL3h/oNbDBMh6XLxR7BfBW16GtHPQr6D\nIm28OhpfDMwo/AYSfhBHVKdhm0cF2I9emyScPVlS+6SXO0mnjGktalpndeb681Yh\n5hb0VYLmMmQ/Od92NgS5x8Bi2W1FvyH6ZhWBimspvXz6iF2AahTVFEPpBMAU7yEG\ngMhOIEc1nQ3Yj8+H/md9b9zKM7m9TkPqQKFnHhtaMOTdJvmD6bABLNK7eeOJ5E7g\n3ZZexb5uLaKjVGCKorrpCWWjC0ycvkXo5h+NO1WdxZwBq3QfazBeU98etUxgUmfV\nVQIDAQAB\n-----END PUBLIC KEY-----\n', '-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDC57HUNdwGMRTH\ntspXgqpv3XvlHKl/Nwk0VQbnLnwttAhxgMAPy5oIveH+g1sMEyHpcvFHsF8FbXoa\n0c9CvoMibbw6Gl8MzCj8BhJ+EEdUp2GbRwXYj16bJJw9WVL7pJc7SaeMaS1qWmd1\n5vrzViHmFvRVguYyZD8533Y2BLnHwGLZbUW/IfpmFYGKaym9fPqIXYBqFNUUQ+kE\nwBTvIQaAyE4gRzWdDdiPz4f+Z31v3Mozub1OQ+pAoWceG1ow5N0m+YPpsAEs0rt5\n44nkTuDdll7Fvm4toqNUYIqiuukJZaMLTJy+RejmH407VZ3FnAGrdB9rMF5T3x61\nTGBSZ9VVAgMBAAECggEAITiyckBC8mg7yUXiK/Po/rvTIiyWRImaP0oN7OpavsSM\n2uHt+tNCvGI3SvVTV9XMBjlyIHzS2X89XKRuDkugWQY42vODR5BmHP0g+k1mhyqn\no7rBp5Xac5nUKs3Wq+90WqX1keScmd/yeiGGnWMNUKWRfKDdAXJeZ4wsH02DaCVZ\nzflNdeE+lmplbaPABasUK+YYCea008lcGigGX3mUW/FpXDEM8XUJeRyAL+ERLGam\nsMZ+jB1PQwVlNUxM7AXHxdd0nytrtsyIbRgUHGxzw8PvujJywfXiiKuHD0xR7+xT\nW81GDfKWkhB9ZPVpC+147ngZ3IWKavCLM2SaJX1fSQKBgQDolNR6v9nPfARxayHH\nHPxKJko+0W+zfyE6kAKi3aW8RYIpSN8t0/+Fx3+Z8WW2eK+AkQVcOhuZSvkimuO8\nzNfxkelws8yQPlHsJTimbWo5GoeUVlm5HbmIxFk+3sWE7DZLtM+rj3QuYQ5MTnMz\n8wUzZ3mkhMbOpAEEveyKF6ezCQKBgQDWh7ICRkefxSdKUbBBhP6Hpg7haexSxLCO\nsVRjPyl3+SzZGqiIbgNOwFxSNlfnXvL2OCo9WUFoT2cBmKOCOg5hUj45l/XzA9Jf\nPaW116W0KSjqkro0tMcimu+CMoNMlYn4rphaqLSrX7eQLGi5WSm35OgTbVDCwJG4\nux/XGSXm7QKBgGCudYEtPTK13/bxzNHDZ9C/CAAC+ccI4txAPwhK0Plpf4j/5N5d\nEQwgeReaNGjc1D/CiRLkiNJ5SwUqk97I3D9sIzkZVMDlVxKuClWMiCqCr7dnCdcc\n1yJWVK8A1eTCeHOSDv3HHUmmSNZJijQfIptSuUs9cpM1s8Kv3KMu4CRZAoGAA+sU\nkEASXNOwBQZ67qdsMrQQv4M8wsI+60xH20wzCLLvY8O94kgIHW8cAJBniJ1OWLrr\n4pT3wdz5Z6kPC3jd/F8RLeIdpuOh+wVYOnsG1sSNr8MgTYgjvvkPeNRNW5+7lmQx\n+i3sptintKVrAD+lqGsw5fHwMK5tuu8IBNi7vX0CgYBaMKBXAVcd8nIGnrS9wNFe\nURJrAGs2Sy868reEdSIsugjZy0VJ1ONAkXqIcVg58CDOuOhwDjXVOkv6PmcgG98n\nVXzvI7cJyG4sj6aqDazYuVvoAKPMFMX4AAgbowYUQP9XSlTY7z5m9b5tNvrFS4Ew\nBCRockGuo0/SUZD11j1Kfw==\n-----END PRIVATE KEY-----\n');
-
-INSERT INTO Recipient (FullName, Email, FediverseHandle)
-VALUES ('Charlie', 'charlie@example.com', '@charlie@fediverse.example'),
-    ('Dana', 'dana@example.com', '@dana@fediverse.example');
