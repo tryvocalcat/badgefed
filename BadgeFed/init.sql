@@ -64,6 +64,7 @@ CREATE TABLE BadgeRecord (
     AcceptKey TEXT NULL,
     BadgeId INTEGER NULL DEFAULT 0,
     IsExternal BOOLEAN DEFAULT FALSE,
+    Visibility TEXT NOT NULL CHECK(Visibility IN ('Public', 'Private', 'Unlisted')) DEFAULT 'Public',
     NotifiedOfGrant BOOLEAN DEFAULT FALSE,
     NoteId TEXT NULL,
     FOREIGN KEY (BadgeId) REFERENCES BadgeId(Id)

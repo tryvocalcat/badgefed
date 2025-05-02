@@ -207,7 +207,7 @@ public class NotesService
             foreach (var hashtag in hashtags)
             {
                 var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag.Replace("#", "")}";
-                hashtagsContent += GetHashTag(hashtag, tagUrl, tags);
+                hashtagsContent += " " + GetHashTag(hashtag, tagUrl, tags);
             }
         }
 
