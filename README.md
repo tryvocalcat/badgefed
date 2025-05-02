@@ -4,6 +4,8 @@ BadgeFed aka ActivityPub Badges is a minimalistic implementation of a badge syst
 
 Follow [the blog](https://badgefed.vocalcat.com/) for regular updates.
 
+Explore the [first badgefed instance](https://badges.vocalcat.com) and earn badges!
+
 ## Features
 
 - Issue and manage digital badges
