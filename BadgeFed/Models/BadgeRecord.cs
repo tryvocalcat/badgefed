@@ -35,7 +35,6 @@ namespace BadgeFed.Models
 
         public string Hashtags { get; set; } = "";
 
-        [System.Text.Json.Serialization.JsonIgnore]
         public string FingerPrint { get; set; } = "";
 
         [JsonPropertyName("id")]
@@ -59,7 +58,10 @@ namespace BadgeFed.Models
             }
         }
 
-        [System.Text.Json.Serialization.JsonIgnore]  
-        public bool IsExternal { get; set; }       
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool IsExternal { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string Visibility { get; set; } = "Public";
     }
 }

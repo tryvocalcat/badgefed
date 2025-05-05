@@ -163,7 +163,24 @@
         var recipient = new Recipient() { ProfileUri = ProfileUri, Name = Name, Email = Email };
 
         //FIXME: sec issue
-        var existing = LocalDbService.GetBadgeRecords($"BadgeId = {Model.BadgeId} AND IssuedToSubjectUri = '{ProfileUri}'");
+        if (string.IsNullOrEmpty(ProfileUri) && string.IsNullOrEmpty(Email))
+        {
+            errorMessage = "Either Profile URI or Email must be provided.";
+            return;
+        }
+
+        var sqlExisting = $"BadgeId = {Model.BadgeId}";
+
+        if (string.IsNullOrEmpty(ProfileUri))
+        {
+            sqlExisting += $" AND IssuedToEmail = '{Email}'";
+        }
+        else
+        {
+            sqlExisting += $" AND IssuedToSubjectUri = '{ProfileUri}'";
+        }
+
+        var existing = LocalDbService.GetBadgeRecords(sqlExisting);
 
         if (existing != null && existing.Count > 0)
         {

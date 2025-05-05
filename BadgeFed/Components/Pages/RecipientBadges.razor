@@ -52,6 +52,7 @@ else
                     <th>Issued On</th>
                     <th>Issued To</th>
                     <th>Accepted On</th>
+                    <th>Is External</th>
                     <th>View</th>
                 </tr>
             </thead>
@@ -65,10 +66,19 @@ else
                         <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
                         <td><a href="@record.IssuedToSubjectUri">@(record.IssuedToName ?? record.IssuedToSubjectUri)</a></td>
                         <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
+                        <td>@(record.IsExternal ? "Yes" : "No")</td>
                         <td>
                             @if (!string.IsNullOrEmpty(record.NoteId))
                             {
-                                <a class="button is-small is-info" href="@record.NoteId">View</a>
+                                if (record.IsExternal)
+                                {
+                                    var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
+                                    <a class="button is-small is-info" href="/view/grant/@noteIdParam">View</a>
+                                }
+                                else
+                                {
+                                    <a class="button is-small is-info" href="@record.NoteId">View</a>
+                                }
                             }
                         </td>
                     </tr>
@@ -100,7 +110,7 @@ else
 
         isLoading = true;
         var filter = $@"
-            FingerPrint IS NOT NULL AND NoteId IS NOT NULL AND
+            FingerPrint IS NOT NULL AND NoteId IS NOT NULL AND AND Visibility = 'Public' AND
             (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
         ";
         badgeRecords = LocalDbService.GetBadgeRecords(filter);

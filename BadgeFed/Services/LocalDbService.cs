@@ -67,8 +67,8 @@ public class LocalDbService
         if (issuer.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO FollowedIssuer (Name, Url, Inbox, Outbox, ActorId, CreatedAt, UpdatedAt)
-                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                INSERT INTO FollowedIssuer (Name, Url, Inbox, Outbox, ActorId, AvatarUri, CreatedAt, UpdatedAt)
+                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, @AvatarUri, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
                 SELECT last_insert_rowid();
             ";
         }
@@ -81,6 +81,7 @@ public class LocalDbService
                     Inbox = @Inbox, 
                     Outbox = @Outbox, 
                     ActorId = @ActorId,
+                    AvatarUri = @AvatarUri,
                     UpdatedAt = CURRENT_TIMESTAMP
                 WHERE Id = @Id;
             ";
@@ -92,6 +93,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@Inbox", issuer.Inbox);
         command.Parameters.AddWithValue("@Outbox", issuer.Outbox);
         command.Parameters.AddWithValue("@ActorId", issuer.ActorId);
+        command.Parameters.AddWithValue("@AvatarUri", issuer.AvatarUri ?? (object)DBNull.Value);
 
         if (issuer.Id == 0)
         {
@@ -103,6 +105,78 @@ public class LocalDbService
         }
 
         transaction.Commit();
+    }
+
+    public List<FollowedIssuer> GetAllFollowedIssuers(bool onlyWithBadges = false)
+    {
+        var issuers = new List<FollowedIssuer>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        if (onlyWithBadges)
+        {
+            command.CommandText = @"SELECT fi.*, COUNT(br.id) AS TotalISsued
+                                 FROM FollowedIssuer AS fi 
+                                 INNER JOIN BadgeRecord br ON (br.IssuedBy = fi.Url) 
+                                 GROUP BY fi.Id";
+        }
+        else
+        {
+            command.CommandText = "SELECT * FROM FollowedIssuer";
+        }
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            issuers.Add(new FollowedIssuer
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Name = reader.GetString(reader.GetOrdinal("Name")),
+                Url = reader.GetString(reader.GetOrdinal("Url")),
+                Inbox = reader.GetString(reader.GetOrdinal("Inbox")),
+                Outbox = reader.GetString(reader.GetOrdinal("Outbox")),
+                ActorId = reader.GetInt64(reader.GetOrdinal("ActorId")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt")),
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
+                TotalIssued = reader["TotalIssued"] == DBNull.Value ? null : (int?)reader.GetInt32(reader.GetOrdinal("TotalIssued"))
+            });
+        }
+
+
+        return issuers;
+    }
+
+
+    public FollowedIssuer? GetFollowedIssuerByUrl(string url)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM FollowedIssuer WHERE Url = @Url";
+        command.Parameters.AddWithValue("@Url", url);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new FollowedIssuer
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Name = reader.GetString(reader.GetOrdinal("Name")),
+                Url = reader.GetString(reader.GetOrdinal("Url")),
+                Inbox = reader.GetString(reader.GetOrdinal("Inbox")),
+                Outbox = reader.GetString(reader.GetOrdinal("Outbox")),
+                ActorId = reader.GetInt64(reader.GetOrdinal("ActorId")),
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+        }
+
+        return null;
     }
 
     public List<FollowedIssuer> GetFollowedIssuers(long actorId)
@@ -127,6 +201,7 @@ public class LocalDbService
                 Inbox = reader.GetString(reader.GetOrdinal("Inbox")),
                 Outbox = reader.GetString(reader.GetOrdinal("Outbox")),
                 ActorId = reader.GetInt64(reader.GetOrdinal("ActorId")),
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                 UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
             });
@@ -155,6 +230,7 @@ public class LocalDbService
                 Inbox = reader.GetString(reader.GetOrdinal("Inbox")),
                 Outbox = reader.GetString(reader.GetOrdinal("Outbox")),
                 ActorId = reader.GetInt64(reader.GetOrdinal("ActorId")),
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                 UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
             };
@@ -299,7 +375,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
     }
 
-    public List<Actor> GetActors()
+    public List<Actor> GetActors(string? filter = null)
     {
         var actors = new List<Actor>();
 
@@ -308,6 +384,11 @@ public class LocalDbService
 
         var command = connection.CreateCommand();
         command.CommandText = "SELECT * FROM Actor";
+
+        if (!string.IsNullOrEmpty(filter))
+        {
+            command.CommandText += $" WHERE {filter}";
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -512,7 +593,7 @@ public class LocalDbService
         transaction.Commit();
     }
 
-    public List<Badge> GetAllBadgeDefinitions()
+    public List<Badge> GetAllBadgeDefinitions(bool includeActors = false, string? filter = null)
     {
         var badges = new List<Badge>();
 
@@ -520,13 +601,51 @@ public class LocalDbService
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM Badge";
+        
+
+        if (includeActors)
+        {
+            command.CommandText = @"SELECT b.*, 
+                            a.Id as ActorId,
+                            a.Name as ActorName,
+                            a.Summary as ActorSummary,
+                            a.AvatarPath as ActorAvatarPath,
+                            a.InformationUri as ActorInformationUri,
+                            a.Domain as ActorDomain,
+                            a.Username AS ActorUsername
+                             FROM Badge AS b INNER JOIN Actor AS a ON b.IssuedBy = a.Id";
+        }
+        else
+        {
+            command.CommandText = "SELECT * FROM Badge";
+        }
+
+        if (!string.IsNullOrEmpty(filter))
+        {
+            command.CommandText += $" WHERE {filter}";
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
             try 
             {
+                Actor? actor = null;
+
+                if (includeActors)
+                {
+                    actor = new Actor
+                    {
+                        Id = reader.GetInt64(reader.GetOrdinal("ActorId")),
+                        FullName = reader["ActorName"].ToString()!,
+                        Summary = reader["ActorSummary"] == DBNull.Value ? string.Empty : reader["ActorSummary"].ToString()!,
+                        AvatarPath = reader["ActorAvatarPath"] == DBNull.Value ? null : reader["ActorAvatarPath"].ToString(),
+                        InformationUri = reader["ActorInformationUri"] == DBNull.Value ? null : reader["ActorInformationUri"].ToString()!,
+                        Domain = reader["ActorDomain"] == DBNull.Value ? null : reader["ActorDomain"].ToString(),
+                        Username = reader["ActorUsername"] == DBNull.Value ? null : reader["ActorUsername"].ToString()
+                    };
+                }
+
                 badges.Add(new Badge
                 {
                     Id = reader.GetInt64(reader.GetOrdinal("Id")),
@@ -537,7 +656,8 @@ public class LocalDbService
                     ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                     EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                     BadgeType = reader["BadgeType"].ToString(),
-                    Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+                    Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                    Issuer = actor
                 });
             } 
             catch (Exception ex)
@@ -915,12 +1035,12 @@ public class ActorStats
             INSERT INTO BadgeRecord (
                 Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
                 IssuedOn, IssuedToSubjectUri, IssuedToName, IssuedToEmail,
-                AcceptKey, BadgeId, Hashtags
+                AcceptKey, BadgeId, Hashtags, IsExternal, Visibility, FingerPrint, NoteId, AcceptedOn
             )
             VALUES (
                 @Title, @IssuedBy, @Description, @Image, @ImageAltText, @EarningCriteria,
                 @IssuedOn, @IssuedToSubjectUri, @IssuedToName, @IssuedToEmail,
-                @AcceptKey, @BadgeId, @Hashtags
+                @AcceptKey, @BadgeId, @Hashtags, @IsExternal, @Visibility, @FingerPrint, @NoteId, @AcceptedOn
             );
             SELECT last_insert_rowid();
         ";
@@ -938,6 +1058,11 @@ public class ActorStats
         command.Parameters.AddWithValue("@AcceptKey", record.AcceptKey);
         command.Parameters.AddWithValue("@BadgeId", record.Badge!.Id!);
         command.Parameters.AddWithValue("@Hashtags", record.Hashtags ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IsExternal", record.IsExternal);
+        command.Parameters.AddWithValue("@Visibility", record.Visibility);
+        command.Parameters.AddWithValue("@FingerPrint", record.FingerPrint ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@NoteId", record.NoteId ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@AcceptedOn", record.AcceptedOn ?? (object)DBNull.Value);
 
         record.Id = Convert.ToInt64(command.ExecuteScalar());
 

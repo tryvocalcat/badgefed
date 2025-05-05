@@ -45,7 +45,9 @@ else
                     <td>@record.IssuedOn</td>
                     <td>@record.AcceptedOn</td>
                     <td>
-                        @if (string.IsNullOrEmpty(record.AcceptKey)) {
+                        @if (record.IsExternal) {
+                            <a href="@record.NoteId" class="button is-info is-small">View</a>
+                        } else if (string.IsNullOrEmpty(record.AcceptKey)) {
                             if (string.IsNullOrEmpty(record.FingerPrint)) {
                                 <a href="/admin/grant/@record.Id/process" class="button is-primary is-small">Process</a>
                             } else {

@@ -203,7 +203,7 @@ public class NotesService
         // Add hashtags as tags
         if (!string.IsNullOrEmpty(record.Hashtags))
         {
-            var hashtags = record.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
+            var hashtags = record.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var hashtag in hashtags)
             {
                 var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag.Replace("#", "")}";

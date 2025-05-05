@@ -124,6 +124,23 @@ else if (accepted)
                 </div>
             </div>
 
+            <!-- Visibility Select -->
+            <div class="field mb-3">
+                <label class="label" for="visibility">Visibility:</label>
+                <div class="control">
+                    <div class="select is-rounded is-fullwidth">
+                        <select id="visibility" @bind="visibility">
+                            <option value="Public">Public</option>
+                            <option value="Unlisted">Unlisted</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="help is-info">
+                    Choose the visibility of this badge on the network.
+                    Unlisted badges are not searchable, but anyone with the direct link can view them.
+                </p>
+            </div>
+
             <!-- Submit Button -->
             <div class="field">
                 <div class="control">
@@ -146,6 +163,8 @@ else if (accepted)
     public BadgeRecord BadgeRecord;
 
     private bool certificationCompleted;
+
+    private string visibility = "Public";
 
     public Badge Badge;
 
@@ -241,6 +260,7 @@ else if (accepted)
         BadgeRecord.IssuedToName = Model.Name;
         BadgeRecord.IssuedToSubjectUri = issuedTo;
         BadgeRecord.IssuedToEmail = string.Empty;
+        BadgeRecord.Visibility = visibility;
 
         DbService.AcceptBadgeRecord(BadgeRecord);
 

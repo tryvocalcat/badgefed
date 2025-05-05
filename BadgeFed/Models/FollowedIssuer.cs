@@ -11,4 +11,8 @@ public class FollowedIssuer
     public long ActorId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    public int? TotalIssued { get; set; }
+
+    public string? AvatarUri { get; set; }
 }

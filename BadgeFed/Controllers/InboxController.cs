@@ -48,17 +48,21 @@ namespace BadgeFed.Controllers
             try
             {
                 _followService.Logger = _logger;
+                _createNoteService.Logger = _logger;
                 
                 if (message.IsFollow())
                 {
+                    _logger?.LogInformation($"Follow action for actor: {message.Actor}");
                     await _followService.AcceptFollowRequest(message);
                 }
                 else if (message.IsUndoFollow())
                 {
+                    _logger?.LogInformation($"Unfollow action for actor: {message.Actor}");
                     await _followService.Unfollow(message);
                 }
                 else if (message.IsCreateActivity())
                 {
+                    _logger?.LogInformation($"Create action for actor: {message.Actor}");
                     await _createNoteService.ProcessMessage(message);
                 }
                 else

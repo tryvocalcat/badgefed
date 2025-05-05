@@ -33,17 +33,20 @@ namespace ActivityPubDotNet.Core
                 return Task.CompletedTask;
             }
 
-
             if (objectNote!.InReplyTo != null)
             {
-                // We don't do anything
+                Logger?.LogInformation($"Processing reply for note: {objectNote.Id}");
                 return _repliesService.ProcessReply(objectNote);
             }
 
-            if (objectNote.BadgeMetadata != null)
+            if (objectNote.Attachment != null && objectNote.Attachment.Count > 0)
             {
+                Logger?.LogInformation($"Processing external badge for note: {objectNote.Id}");
+                _externalBadgeService.Logger = Logger;
                 return _externalBadgeService.ProcessExternalBadge(objectNote);
             }
+
+            Logger?.LogInformation($"No action for note: {objectNote.Id}");
 
             return Task.CompletedTask;
         }

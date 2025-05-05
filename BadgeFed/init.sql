@@ -11,6 +11,7 @@ CREATE TABLE Actor (
     Username TEXT,
     PublicKeyPem TEXT,
     PrivateKeyPem TEXT,
+    Featured BOOLEAN DEFAULT TRUE,
     LinkedInOrganizationId TEXT NULL,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -106,8 +107,10 @@ CREATE TABLE FollowedIssuer (
     ActorId INTEGER NOT NULL,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    AvatarUri TEXT,
     FOREIGN KEY (ActorId) REFERENCES Actor(Id)
 );
+
 
 CREATE UNIQUE INDEX IX_FollowedIssuer_Url_ActorId ON FollowedIssuer(Url, ActorId);
 

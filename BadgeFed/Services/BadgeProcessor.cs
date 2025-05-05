@@ -1,5 +1,6 @@
 using BadgeFed.Models;
 using ActivityPubDotNet.Core;
+using System.Text.Json;
 
 namespace BadgeFed.Services;
 
@@ -162,8 +163,12 @@ public class BadgeProcessor
 
         var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
         
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
         // Actor is the account who wants to follow
-        var serializedNote = System.Text.Json.JsonSerializer.Serialize(createNote);    
+        var serializedNote = JsonSerializer.Serialize(createNote, options);    
 
         Console.WriteLine($"Serialized note: {serializedNote}");	
         Console.WriteLine($"Followers: {followers.Count}");

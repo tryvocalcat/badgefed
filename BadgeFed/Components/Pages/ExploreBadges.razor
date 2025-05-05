@@ -149,16 +149,15 @@
                                 <h3 class="title is-4 mb-2" style="padding-bottom: 1em;">@badge.Title</h3>
                                 <p class="subtitle is-6 mb-3">@badge.Description</p>
                                 
-                                @if (!string.IsNullOrEmpty(badge.EarningCriteria))
-                                {
-                                    <div class="content is-small">
-                                        <strong>Earning Criteria:</strong>
-                                        <p>@badge.EarningCriteria</p>
-                                    </div>
-                                }
+                                <span class="has-tooltip-arrow" data-tooltip="@badge.EarningCriteria">Earning Criteria</span>
 
                                 @{
-                                    var issuer = LocalDbService.GetActorById(badge.IssuedBy);
+                                    var issuer = badge.Issuer;
+
+                                    if (issuer != null && issuer.Uri != null)
+                                    {
+                                        issuer = LocalDbService.GetActorByFilter($"Uri = '{issuer.Uri}'");
+                                    }
                                 }
                                 @if (issuer != null)
                                 {
@@ -190,16 +189,65 @@
     </div>
 </div>
 
+
+<div class="section">
+    <div class="container">
+        <div class="columns is-vcentered mb-6">
+            <div class="column">
+                <h1 class="title is-2">Other Issuers</h1>
+                <p class="subtitle is-5">Discover other badge issuers in the BadgeFed network.</p>
+            </div>
+        </div>
+
+        @if (otherIssuers == null)
+        {
+            <div class="has-text-centered">
+                <div class="loader is-loading"></div>
+                <p>Loading issuers...</p>
+            </div>
+        }
+        else if (!otherIssuers.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-award"></i>
+                </div>
+                <h3 class="title is-4">No other issuers found</h3>
+                <p class="subtitle is-6">There are no other issuers in the database, or the instance is not federated.</p>
+            </div>
+        }
+        else
+        {
+            <div class="columns is-multiline">
+                @foreach (var item in otherIssuers)
+                {
+                    <div class="column is-4">
+                        <div class="badge-card box">
+                            <div class="badge-content">
+                                <h3 class="title is-4 mb-2" style="padding-bottom: 1em;"><a href="@item.Url">@item.Name</a></h3>
+                                <p class="subtitle is-6 mb-3">@(new Uri(item.Url).Host)</p>
+                                <p class="is-size-7">Total Badges Received: <span class="has-text-weight-bold">@item.TotalIssued</span></p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
 @code {
     private List<Badge>? badges;
     private List<Badge>? filteredBadges;
+    private List<FollowedIssuer>? otherIssuers = null;
     private string? searchQuery;
     private string? selectedType;
 
     protected override void OnInitialized()
     {
-        badges = LocalDbService.GetAllBadgeDefinitions();
+        badges = LocalDbService.GetAllBadgeDefinitions(true, "a.Featured = TRUE");
         filteredBadges = badges;
+        otherIssuers = LocalDbService.GetAllFollowedIssuers(true);
     }
 
     private void FilterByType(string? type)

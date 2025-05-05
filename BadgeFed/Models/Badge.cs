@@ -9,6 +9,8 @@ namespace BadgeFed.Models
         public string Description { get; set; } = "";
 
         public long IssuedBy { get; set; }
+
+        public Actor? Issuer { get; set; }
         
         public string Image { get; set; } = "";
         public string ImageAltText { get; set; } = "";

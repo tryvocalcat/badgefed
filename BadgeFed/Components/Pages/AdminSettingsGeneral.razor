@@ -16,6 +16,14 @@
     <h4>Database Management</h4>
     <p>Click the button below to download your entire database.</p>
     <button class="btn btn-primary" @onclick="DownloadDatabase">Download DB</button>
+    @if (DatabaseSize.HasValue)
+    {
+        <p>Database Size: @DatabaseSize.Value.ToString("N2") MB</p>
+    }
+    else
+    {
+        <p>Calculating database size...</p>
+    }
 </div>
 
 <div class="mt-4">
@@ -46,6 +54,29 @@
     private string SqlQuery { get; set; }
     private string SqlResult { get; set; }
     private string ErrorMessage { get; set; }
+    private double? DatabaseSize { get; set; } = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CalculateDatabaseSize();
+    }
+
+    private async Task CalculateDatabaseSize()
+    {
+        var dbPath = "prod.db"; // Assuming your database is in the root.  Adjust if not.
+        if (File.Exists(dbPath))
+        {
+            var fileInfo = new FileInfo(dbPath);
+            DatabaseSize = fileInfo.Length / (1024.0 * 1024.0); // Convert to MB
+        }
+        else
+        {
+            ErrorMessage = "Database file not found!";
+            DatabaseSize = 0;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void ExecuteSql()
     {
