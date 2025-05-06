@@ -12,6 +12,12 @@
 @attribute [Authorize(Roles = "Admin, Superuser")]
 <h1>Manage Badge Grant Records</h1>
 
+<div>
+    <label>Search:</label>
+    <input @bind="searchTerm" @bind:event="oninput" />
+    <button class="button is-small" @onclick="PerformSearch">Go</button>
+</div>
+
 @if (records == null)
 {
     <p>Loading...</p>
@@ -101,6 +107,12 @@ else
     private Dictionary<string, Actor> actors;
 
     private string errorMessage;
+
+    private string searchTerm = "";
+
+    private void PerformSearch() {
+        records = LocalDbService.SearchGrants(searchTerm);
+    }
 
     protected override async Task OnInitializedAsync()
     {

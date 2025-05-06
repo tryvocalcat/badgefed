@@ -68,7 +68,13 @@ public class LocalDbService
         {
             command.CommandText = @"
                 INSERT INTO FollowedIssuer (Name, Url, Inbox, Outbox, ActorId, AvatarUri, CreatedAt, UpdatedAt)
-                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, @AvatarUri, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, @AvatarUri, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT(Url, ActorId) DO UPDATE SET
+                    Name = @Name,
+                    Inbox = @Inbox,
+                    Outbox = @Outbox,
+                    AvatarUri = @AvatarUri,
+                    UpdatedAt = CURRENT_TIMESTAMP;
                 SELECT last_insert_rowid();
             ";
         }
@@ -485,10 +491,7 @@ public class LocalDbService
         command.CommandText = @"
             INSERT INTO Follower (FollowerUri, Domain, ActorId)
             VALUES (@FollowerUri, @Domain, @ActorId)
-            ON CONFLICT(FollowerUri) DO UPDATE SET
-                Domain = excluded.Domain,
-                ActorId = excluded.ActorId,
-                CreatedAt = excluded.CreatedAt;
+            ON CONFLICT(FollowerUri, ActorId) DO NOTHING;
         ";
 
         command.Parameters.AddWithValue("@FollowerUri", follower.FollowerUri);
@@ -1329,5 +1332,48 @@ public class ActorStats
         }
 
         return records;
+    }
+
+    public List<BadgeRecord> SearchGrants(string term) {
+        var results = new List<BadgeRecord>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT * FROM BadgeRecord
+            WHERE Title LIKE @Term
+               OR IssuedToSubjectUri LIKE @Term
+               OR IssuedBy LIKE @Term
+            ORDER BY IssuedOn DESC
+        ";
+        command.Parameters.AddWithValue("@Term", $"%{term}%");
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            results.Add(new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                IsExternal = reader["IsExternal"] == DBNull.Value ? false : reader.GetBoolean(reader.GetOrdinal("IsExternal")),
+            });
+        }
+        return results;
     }
 }

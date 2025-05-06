@@ -18,7 +18,7 @@ namespace ActivityPubDotNet.Core
 
         public async Task AcceptFollowRequest(InboxMessage message)
         {
-            Logger?.LogInformation($"Follow action for actor: {message.Actor}");
+            Logger?.LogInformation($"Follow action from actor: {message.Actor}");
             
             await CreateFollower(message);
             await SendAcceptedFollowRequest(message);
@@ -75,7 +75,7 @@ namespace ActivityPubDotNet.Core
 
         public async Task CreateFollower(InboxMessage message)
         {
-            Logger?.LogDebug($"Follow request from: {message.Actor}");
+            Logger?.LogInformation($"Follow request from: {message.Actor} to {message.Object}");
 
             var actor = _localDbService.GetActorByFilter($"Uri = \"{message.Object}\"")!;
 
