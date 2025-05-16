@@ -1,53 +1,100 @@
 # BadgeFed - ActivityPub Badges
 
-BadgeFed aka ActivityPub Badges is a minimalistic implementation of a badge system similar to Credly, built using .NET and leveraging the ActivityPub protocol.
+BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system inspired by Credly, built with .NET and leveraging the ActivityPub protocol. It enables issuing, managing, and verifying digital badges across federated servers.
 
-Follow [the blog](https://badgefed.vocalcat.com/) for regular updates.
+- **Primary Instance:** [badges.vocalcat.com](https://badges.vocalcat.com)
+- **Blog:** [badgefed.vocalcat.com](https://badgefed.vocalcat.com/)
 
-Explore the [first badgefed instance](https://badges.vocalcat.com) and earn badges!
+---
 
 ## Features
 
 - Issue and manage digital badges
-- Interoperable with ActivityPub
-- Minimalistic design
-- Built with .NET for robust performance
+- ActivityPub protocol support for federation
+- Minimalistic, modern design
+- Built with .NET 9 for robust performance
+- OAuth login (Mastodon, LinkedIn)
+- Email notifications
+- Easily extensible and self-hostable
+
+---
+
+## BadgeFed Servers
+
+A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md), generated from [`servers.json`](./servers.json) using the [`gen.sh`](./gen.sh) script. To contribute a server, create a pull request in this repo by adding it to `servers.json`.
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- .NET 9.0 SDK or later
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 
 ### Installation
 
 1. Clone the repository:
     ```sh
     git clone https://github.com/tryvocalcat/activitypub-badges.git
-    ```
-2. Navigate to the project directory:
-    ```sh
     cd activitypub-badges
     ```
-3. Restore dependencies:
+2. Restore dependencies:
     ```sh
     dotnet restore
     ```
-4. Build the project:
+3. Build the project:
     ```sh
     dotnet build
     ```
 
-### Usage
+### Running the Application
 
-1. Run the application:
+- **Development:**
     ```sh
-    dotnet watch
+    dotnet watch --project src/BadgeFed/BadgeFed.csproj
     ```
+- **Production:**
+    ```sh
+    dotnet run --project src/BadgeFed/BadgeFed.csproj
+    ```
+
+---
+
+## Configuration
+Application settings are managed using a layered configuration approach in .NET, which supports multiple sources such as environment variables, `appsettings.json`, and platform-specific configurations (e.g., Azure App Configuration). Key configuration options include:
+
+The configuration system automatically merges these layers, with environment variables taking precedence over `appsettings.json`. This ensures flexibility for local development, containerized deployments, and cloud-hosted environments.
+
+- **Database:**
+    - SQLite file path can be set via the `SQLITE_DB_FILENAME` environment variable (default: `badgefed.db`).
+- **OAuth Providers:**
+    - Mastodon and LinkedIn credentials are configured in `appsettings.json` under `MastodonConfig` and `LinkedInConfig`.
+- **Admin Users:**
+    - Set in `AdminAuthentication` section.
+- **Email Settings (Optional):**
+    - Configure SMTP and sender details in `EmailSettings`.
+
+---
+
+## Docker
+
+A multi-stage Dockerfile is provided in [`src/Dockerfile`](src/Dockerfile):
+
+```sh
+docker build -t badgefed .
+docker run -p 8080:8080 -e SQLITE_DB_FILENAME=badges.db badgefed
+```
+
+- The container exposes port 8080.
+- Mount a volume or set environment variables as needed for persistent storage and configuration.
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome! To add a new server, update `servers.json` and run `gen.sh`. For code contributions, please open an issue or submit a pull request.
+
+---
 
 ## License
 
