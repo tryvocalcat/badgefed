@@ -68,7 +68,13 @@ public class LocalDbService
         {
             command.CommandText = @"
                 INSERT INTO FollowedIssuer (Name, Url, Inbox, Outbox, ActorId, AvatarUri, CreatedAt, UpdatedAt)
-                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, @AvatarUri, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                VALUES (@Name, @Url, @Inbox, @Outbox, @ActorId, @AvatarUri, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT(Url, ActorId) DO UPDATE SET
+                    Name = @Name,
+                    Inbox = @Inbox,
+                    Outbox = @Outbox,
+                    AvatarUri = @AvatarUri,
+                    UpdatedAt = CURRENT_TIMESTAMP;
                 SELECT last_insert_rowid();
             ";
         }
@@ -271,6 +277,8 @@ public class LocalDbService
 
         command.ExecuteNonQuery();
         transaction.Commit();
+        
+        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}");
     }
 
     public List<string> GetBadgeComments(long? badgeRecordId = null)
@@ -485,10 +493,7 @@ public class LocalDbService
         command.CommandText = @"
             INSERT INTO Follower (FollowerUri, Domain, ActorId)
             VALUES (@FollowerUri, @Domain, @ActorId)
-            ON CONFLICT(FollowerUri) DO UPDATE SET
-                Domain = excluded.Domain,
-                ActorId = excluded.ActorId,
-                CreatedAt = excluded.CreatedAt;
+            ON CONFLICT(FollowerUri, ActorId) DO NOTHING;
         ";
 
         command.Parameters.AddWithValue("@FollowerUri", follower.FollowerUri);
@@ -497,6 +502,8 @@ public class LocalDbService
 
         command.ExecuteNonQuery();
         transaction.Commit();
+
+        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}");
     }
 
     public List<Follower> GetFollowersByActorId(long actorId)
@@ -720,9 +727,98 @@ public class ActorStats
         return result;
     }
 
+    public void InsertRecentActivityLog(string title, string? description = null)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO RecentActivityLog (Title, Description)
+            VALUES (@Title, @Description);
+        ";
+
+        command.Parameters.AddWithValue("@Title", title);
+        command.Parameters.AddWithValue("@Description", description ?? (object)DBNull.Value);
+
+        command.ExecuteNonQuery();
+    }
+
+    public List<RecentActivityLog> GetRecentActivityLogs(int limit = 10)
+    {
+        var logs = new List<RecentActivityLog>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT Id, Title, Description, CreatedAt
+            FROM RecentActivityLog
+            ORDER BY CreatedAt DESC
+            LIMIT @Limit;
+        ";
+
+        command.Parameters.AddWithValue("@Limit", limit);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            logs.Add(new RecentActivityLog
+            {
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+            });
+        }
+
+        return logs;
+    }
+
+    public void ClearRecentActivityLogs()
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM RecentActivityLog;";
+
+        command.ExecuteNonQuery();
+    }
+
+    public InstanceStats GetInstanceStats()
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(br.AcceptedOn) AS acceptedCount,
+                    COUNT(*) AS issuedCount
+            FROM BadgeRecord AS br;
+            SELECT COUNT(*) AS followerCount FROM Follower;
+            ";
+
+        using var reader = command.ExecuteReader();
+        var stats = new InstanceStats();
+        if (reader.Read())
+        {
+            stats.AcceptedCount = reader.GetInt32(0);
+            stats.IssuedCount = reader.GetInt32(1);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.FollowerCount = reader.GetInt32(0);
+        }
+
+        return stats;
+    }
+    
     public ActorStats GetIssuerStats(Actor actor)
     {
-        var stats = new ActorStats() {
+        var stats = new ActorStats()
+        {
             ActorId = actor.Id
         };
 
@@ -734,7 +830,7 @@ public class ActorStats
             SELECT COUNT(*) AS followerCount FROM Follower WHERE ActorId = @ActorId;
             SELECT COUNT(*) AS issuedCount, COUNT(DISTINCT IssuedToSubjectUri) AS memberCount FROM BadgeRecord WHERE IssuedBy = @ActorUrl;
             SELECT COUNT(*) AS badgeCount FROM Badge WHERE IssuedBy = @ActorId;
-        ";	
+        ";
         command.Parameters.AddWithValue("@ActorId", actor.Id);
         command.Parameters.AddWithValue("@ActorUrl", actor.Uri);
 
@@ -755,7 +851,7 @@ public class ActorStats
         {
             stats.BadgeCount = reader.GetInt32(0);
         }
-                           
+
         return stats;
     }
 
@@ -939,6 +1035,8 @@ public class ActorStats
 
         command.ExecuteNonQuery();
         transaction.Commit();
+
+        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}");
     }
 
     public long PeekProcessGrantId()
@@ -999,6 +1097,8 @@ public class ActorStats
 
         command.ExecuteNonQuery();
         transaction.Commit();
+
+        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}");
     }
 
 
@@ -1067,6 +1167,15 @@ public class ActorStats
         record.Id = Convert.ToInt64(command.ExecuteScalar());
 
         transaction.Commit();
+
+        if (record.IsExternal)
+        {
+            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}");
+        }
+        else
+        {
+            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}");
+        }
     }
 
     public Badge? GetBadgeById(long id)
@@ -1329,5 +1438,48 @@ public class ActorStats
         }
 
         return records;
+    }
+
+    public List<BadgeRecord> SearchGrants(string term) {
+        var results = new List<BadgeRecord>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT * FROM BadgeRecord
+            WHERE Title LIKE @Term
+               OR IssuedToSubjectUri LIKE @Term
+               OR IssuedBy LIKE @Term
+            ORDER BY IssuedOn DESC
+        ";
+        command.Parameters.AddWithValue("@Term", $"%{term}%");
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            results.Add(new BadgeRecord
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                NoteId = reader["NoteId"] == DBNull.Value ? null : reader["NoteId"].ToString(),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                IssuedBy = reader.GetString(reader.GetOrdinal("IssuedBy")),
+                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
+                Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
+                ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
+                EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
+                IssuedOn = reader.GetDateTime(reader.GetOrdinal("IssuedOn")),
+                IssuedToEmail = reader.GetString(reader.GetOrdinal("IssuedToEmail")),
+                IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
+                IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
+                AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
+                AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
+                Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                IsExternal = reader["IsExternal"] == DBNull.Value ? false : reader.GetBoolean(reader.GetOrdinal("IsExternal")),
+            });
+        }
+        return results;
     }
 }

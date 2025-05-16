@@ -24,9 +24,9 @@
                     }
                     else
                     {
-                        <p class="has-text-centered mb-4">Login with your Mastodon account</p>
+                        <p class="has-text-centered mb-4">Login with your accounts</p>
                         
-                        <div class="field">
+                        <div class="field mb-3">
                             <div class="control">
                                 <button class="button is-fullwidth is-primary has-background-purple"
                                         @onclick="SignInWithMastodon">
@@ -34,6 +34,18 @@
                                         <i class="fab fa-mastodon"></i>
                                     </span>
                                     <span>Sign In with Mastodon</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="field">
+                            <div class="control">
+                                <button class="button is-fullwidth is-info"
+                                        @onclick="SignInWithLinkedIn">
+                                    <span class="icon">
+                                        <i class="fab fa-linkedin"></i>
+                                    </span>
+                                    <span>Sign In with LinkedIn</span>
                                 </button>
                             </div>
                         </div>
@@ -246,6 +258,11 @@
     private async Task SignInWithMastodon()
     {
         NavigationManager.NavigateTo("admin/login/mastodon?returnUrl=/admin/");
+    }
+    
+    private async Task SignInWithLinkedIn()
+    {
+        NavigationManager.NavigateTo("admin/login/linkedin?returnUrl=/admin/");
     }
 
     private async Task OpenApp()

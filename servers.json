@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Maho's Badge Server",
+        "url": "https://verifiedby.maho.dev",
+        "description": "A personal badge server for emitting badges for personal projects.",
+        "categories": ["Personal", "Creator"],
+        "admin": "Maho Pacheco"
+    },
+    {
+        "name": "BadgeFed",
+        "url": "https://badges.vocalcat.com",
+        "description": "The main server for emitting badges related to VocalCat and BadgeFed projects.",
+        "categories": ["Company", "OpenSource"],
+        "admin": "VocalCat LLC"
+    }
+]

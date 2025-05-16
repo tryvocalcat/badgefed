@@ -51,7 +51,6 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
 builder.Services.AddScoped<CreateNoteService>();
-builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server"));
 
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
@@ -68,17 +67,32 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
 
+// Add a new configuration section for LinkedIn OAuth
+var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
+var mastodonConfig = builder.Configuration.GetSection("MastodonConfig").Get<MastodonConfig>();
+
+Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(linkedInConfig));
+
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(option =>
 {
-    option.LoginPath = "/admin/login/mastodon";
+    option.LoginPath = "/admin/login";
     option.LogoutPath = "/admin/logout";
     option.AccessDeniedPath = "/admin/denied";
-}).AddMastodon(adminConfig, o => {
+}).AddMastodon(adminConfig, mastodonConfig, o => {
     o.Scope.Add("read:statuses");
     o.Scope.Add("read:accounts");
-    o.ClientId = "4AXCy0AcLFHncqGyuAG3XeVDGc-EGsUIa2ILg5Tj4cM";
-    o.ClientSecret = "kUflIFubG5wBnJdNqL5jnyQmhrnKEnnuqgjsREHvjFU";
+    o.ClientId = mastodonConfig.ClientId;
+    o.ClientSecret = mastodonConfig.ClientSecret;
+    o.SaveTokens = true;
+})
+.AddLinkedIn(adminConfig, linkedInConfig, o =>
+{
+    // Configure scopes as needed:
+    o.Scope.Add("openid");
+    o.Scope.Add("profile");
+    o.Scope.Add("email");
     o.SaveTokens = true;
 });
 
@@ -134,8 +148,13 @@ public static class MastodonOAuthExtensions {
 
     public static IEnumerable<string> Hosts => _hosts;
 
-    public static AuthenticationBuilder AddMastodon(this AuthenticationBuilder builder, AdminConfig adminConfig, Action<OAuthOptions> configureOptions) {
-        var hostname = adminConfig.Server;
+    public static AuthenticationBuilder AddMastodon(
+        this AuthenticationBuilder builder, 
+        AdminConfig adminConfig, 
+        MastodonConfig mastodonConfig, 
+        Action<OAuthOptions> configureOptions) 
+    {
+        var hostname = mastodonConfig.Server;
         _hosts.Add(hostname);
         return builder.AddOAuth(hostname, hostname, o => {
             if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown) {
@@ -175,10 +194,12 @@ public static class MastodonOAuthExtensions {
                     // Now that we have the user information, check if they're an admin
                     var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
 
-                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(username));
-                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(adminConfig));
+                    // Check if this user is in the admin list
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a => 
+                        a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) && 
+                        a.Id == username) ?? false;
                     
-                    if (username != null && adminConfig.Username == username)
+                    if (isAdmin)
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] { 
                             new Claim("urn:mastodon:hostname", hostname),
@@ -202,4 +223,106 @@ public static class MastodonOAuthExtensions {
             configureOptions(o);
         });
     }
+}
+
+public static class LinkedInOAuthExtensions
+{
+    public static AuthenticationBuilder AddLinkedIn(
+        this AuthenticationBuilder builder,
+        AdminConfig adminConfig,
+        LinkedInConfig config,
+        Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions)
+    {
+        return builder.AddOAuth("LinkedIn", "LinkedIn", o =>
+        {
+            o.AuthorizationEndpoint = "https://www.linkedin.com/oauth/v2/authorization";
+            o.TokenEndpoint = "https://www.linkedin.com/oauth/v2/accessToken";
+            o.UserInformationEndpoint = "https://api.linkedin.com/v2/userinfo";
+            o.ClientId = config.ClientId;
+            o.ClientSecret = config.ClientSecret;
+            o.CallbackPath = "/signin-linkedin";
+            o.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+            o.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
+            {
+                OnCreatingTicket = async context =>
+                {
+                    Console.WriteLine($"LinkedIn access token: {context.AccessToken}");
+                    var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                    var response = await context.Backchannel.SendAsync(request);
+                    response.EnsureSuccessStatusCode(); // Ensure we got a successful response
+
+                    using var userJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    context.RunClaimActions(userJson.RootElement);
+
+                    Console.WriteLine(JsonSerializer.Serialize(userJson.RootElement));
+
+                    // Extract email and name directly from userJson.RootElement
+                    var userEmail = userJson.RootElement.GetProperty("email").GetString();
+                    var name = userJson.RootElement.GetProperty("name").GetString();
+
+                    Console.WriteLine($"LinkedIn user: {name} {userEmail}");
+
+                    // Check if this user is in the admin list
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a => 
+                        a.Type.Equals("LinkedIn", StringComparison.OrdinalIgnoreCase) && 
+                        a.Id == userEmail) ?? false;
+
+                    Console.WriteLine($"Is admin: {isAdmin}");
+
+                    var role = "User";
+
+                    if (isAdmin)
+                    {
+                        role = "Admin";
+                    }
+
+                    var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
+
+                    Console.WriteLine($"User {name} {userName} {userEmail} is an {role}");
+
+                    context.Principal.AddIdentity(new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.Name, name ?? userName),
+                            new Claim(ClaimTypes.Role, role),
+                            new Claim(ClaimTypes.NameIdentifier, userName),
+                            new Claim(ClaimTypes.Email, userEmail ?? string.Empty),
+                        ], "LinkedIn"));
+                },
+                OnRemoteFailure = ctx =>
+                {
+                    Console.WriteLine($"Remote failure: {ctx.Failure}");
+                    ctx.HandleResponse();
+                    ctx.Response.Redirect("/admin/denied");
+                    return Task.CompletedTask;
+                }
+            };
+            configureOptions(o);
+        });
+    }
+}
+
+// Helper classes for config
+public class AdminConfig
+{
+    public List<AdminUser> AdminUsers { get; set; }
+}
+
+public class AdminUser
+{
+    public string Id { get; set; }
+    public string Type { get; set; }
+}
+
+public class LinkedInConfig
+{
+    public string ClientId { get; set; }
+    public string ClientSecret { get; set; }
+}
+
+public class MastodonConfig
+{
+    public string ClientId { get; set; }
+    public string ClientSecret { get; set; }
+    public string Server { get; set; }
 }

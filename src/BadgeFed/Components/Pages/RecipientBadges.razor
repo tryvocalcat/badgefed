@@ -110,9 +110,13 @@ else
 
         isLoading = true;
         var filter = $@"
-            FingerPrint IS NOT NULL AND NoteId IS NOT NULL AND AND Visibility = 'Public' AND
-            (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
+                FingerPrint IS NOT NULL 
+            AND NoteId IS NOT NULL 
+            AND Visibility = 'Public' 
+            AND
+                (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
         ";
+
         badgeRecords = LocalDbService.GetBadgeRecords(filter);
         isLoading = false;
         searchSubmitted = true;

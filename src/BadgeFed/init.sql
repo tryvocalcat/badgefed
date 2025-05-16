@@ -46,6 +46,13 @@ BEGIN
     UPDATE Badge SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
 
+CREATE TABLE RecentActivityLog (
+    Id INTEGER PRIMARY KEY,
+    Title TEXT NOT NULL CHECK(length(Title) >= 2 AND length(Title) <= 100),
+    Description TEXT CHECK(length(Description) <= 500),
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE BadgeRecord (
     Id INTEGER PRIMARY KEY,
     Title TEXT NOT NULL CHECK(length(Title) >= 2 AND length(Title) <= 100),
@@ -152,9 +159,22 @@ BEGIN
 END;
 
 CREATE TABLE Follower (
-    FollowerUri TEXT NOT NULL CHECK(length(FollowerUri) <= 300) PRIMARY KEY,
+    FollowerUri TEXT NOT NULL CHECK(length(FollowerUri) <= 300),
     Domain TEXT NOT NULL CHECK(length(Domain) <= 100),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     ActorId INTEGER NOT NULL,
+    PRIMARY KEY (FollowerUri, ActorId),
     FOREIGN KEY (ActorId) REFERENCES Actor(Id)
 );
+
+
+CREATE TABLE FollowerNew (
+    FollowerUri TEXT NOT NULL CHECK(length(FollowerUri) <= 300),
+    Domain TEXT NOT NULL CHECK(length(Domain) <= 100),
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ActorId INTEGER NOT NULL,
+    PRIMARY KEY (FollowerUri, ActorId),
+    FOREIGN KEY (ActorId) REFERENCES Actor(Id)
+);
+
+

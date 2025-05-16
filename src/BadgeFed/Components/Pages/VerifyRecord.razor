@@ -6,6 +6,7 @@
 @inject NavigationManager NavManager
 @inject LocalDbService DbService
 @layout BadgeFed.Components.Layouts.MinimalLayout
+@inject IJSRuntime JSRuntime
 
 <HeadContent>
   <meta name="author" content="@badgeRecord!.IssuedBy" />
@@ -224,39 +225,42 @@
         </div>
 
         <div class="badge-meta">
-            <div class="meta-item">
-                <span class="icon"><i class="fas fa-user"></i></span>
-                <span>Issued by <a href="@actorUri" class="has-text-primary">@actorName</a></span>
-            </div>
-            <div class="meta-item">
-                <span class="icon"><i class="fas fa-calendar"></i></span>
-                <span>Accepted on @(badgeRecord.AcceptedOn?.ToString("MMMM d, yyyy") ?? "N/A")</span>
-            </div>
-            <div class="meta-item" style="background-color: #f0ad4e; color: white;">
-                <span class="icon"><i class="fas fa-tag"></i></span>
+                <div class="meta-item">
+                    <span class="icon"><i class="fas fa-user"></i></span>
+                    <span>Issued by <a href="@actorUri" class="has-text-primary">@actorName</a></span>
+                </div>
+                <div class="meta-item">
+                    <span class="icon"><i class="fas fa-calendar"></i></span>
+                    <span>Accepted on @(badgeRecord.AcceptedOn?.ToString("MMMM d, yyyy") ?? "N/A")</span>
+                </div>
+            
                 @if (badgeRecord.IsExternal)
                 {
-                    <span>External</span>
+                    <div class="meta-item" style="background-color: #f0ad4e; color: white;">
+                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                        <span>External Issuer</span>
+                    </div>
                 }
                 else
                 {
-                   <span>@badge?.BadgeType</span>
-                }
-                
-            </div>
-            @if (!string.IsNullOrEmpty(badgeRecord.Hashtags))
-            {
-                var hashtagsList = badgeRecord.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            
-                foreach(var tag in hashtagsList)
-                {
                     <div class="meta-item">
-                        <span class="icon"><i class="fas fa-hashtag"></i></span>
-                        <span>@tag.Trim().Trim('#')</span>
+                        <span class="icon"><i class="fas fa-tag"></i></span>
+                        <span>@badge?.BadgeType</span>
                     </div>
                 }
-            }
         </div>
+        @if (!string.IsNullOrEmpty(badgeRecord.Hashtags))
+        {
+            <div class="tags">
+            @{
+                var hashtagsList = badgeRecord.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            @foreach (var tag in hashtagsList)
+            {
+                <span class="tag">@tag.Trim()</span>
+            }
+            </div>
+        }
 
         <div class="badge-description">
             @badgeRecord.Description
@@ -317,6 +321,9 @@
     <div class="badge-container comments-section">
         <h3 class="title is-4" style="margin-left: 1.5em">Comments</h3>
         
+        <div class="mb-3" style="margin-left: 1.5em">
+            <p>To leave a comment, reply to this badge from your Fediverse account. Just copy the badge URL and paste it into your post.</p>
+        </div>
         @if (comments == null || !comments.Any())
         {
             <div class="has-text-centered py-4">
@@ -416,6 +423,11 @@
 
     private string actorName = string.Empty;
     private string ogImage = string.Empty;
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", NavManager.Uri);
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -3,6 +3,7 @@
 @using BadgeFed.Models
 
 @inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -79,26 +80,29 @@
                 <div class="level is-mobile">
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Active Badges</p>
-                            <p class="title">42</p>
+                            <p class="heading">Followers</p>
+                            <p class="title">@stats.FollowerCount</p>
                         </div>
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Grants</p>
-                            <p class="title">128</p>
+                            <p class="heading">Issued Grants</p>
+                            <p class="title">@stats.IssuedCount</p>
                         </div>
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Verifications</p>
-                            <p class="title">87</p>
+                            <p class="heading">Accepted Grants</p>
+                            <p class="title">@stats.AcceptedCount</p>
                         </div>
                     </div>
                 </div>
                 
-                <progress class="progress is-success mt-4" value="75" max="100">75%</progress>
-                <p class="has-text-centered is-size-7">Monthly Grant Goal: 75%</p>
+                <div>
+                    @{ var percentage = (int) ((double)stats.AcceptedCount / stats.IssuedCount * 100); }
+                    <progress class="progress is-success mt-4" value="@percentage" max="100">@percentage%</progress>
+                    <p class="has-text-centered is-size-7" >Accepted Rate: @percentage%</p>
+                </div>
                 
                 <div class="buttons is-centered mt-4">
                     <button class="button is-info is-outlined">
@@ -123,23 +127,57 @@
                     </span>
                 </h2>
                 
-                <div class="notification is-white p-2 mb-2">
-                    <p class="is-size-7"><strong>New badge created:</strong> "Advanced Coding" <span class="tag is-small is-primary is-light">1h ago</span></p>
-                </div>
-                
-                <div class="notification is-white p-2 mb-2">
-                    <p class="is-size-7"><strong>Badge granted to:</strong> John D. <span class="tag is-small is-success is-light">3h ago</span></p>
-                </div>
-                
-                <div class="notification is-white p-2 mb-2">
-                    <p class="is-size-7"><strong>Verification request:</strong> "Cloud Expert" <span class="tag is-small is-warning is-light">5h ago</span></p>
-                </div>
-                
-                <div class="notification is-white p-2">
-                    <p class="is-size-7"><strong>Template updated:</strong> "Leadership" <span class="tag is-small is-info is-light">1d ago</span></p>
-                </div>
-                
-                <div class="has-text-centered mt-3">
+                @if (recentActivityLogs.Count == 0)
+                {
+                    <div class="notification is-white p-2 mb-2">
+                        <p class="is-size-7">No recent activity logs available.</p>
+                    </div>
+                } else {
+                    @foreach (var log in recentActivityLogs)
+                    {
+                        var timeSpan = DateTime.UtcNow - log.CreatedAt;
+                        string humanRelativeTime;
+                        string colorTimeClass = string.Empty;
+
+                        if (timeSpan.TotalSeconds < 60)
+                        {
+                            humanRelativeTime = "Just now";
+                            colorTimeClass = "is-primary";
+                        }
+                        else if (timeSpan.TotalMinutes < 60)
+                        {
+                            humanRelativeTime = $"{(int)timeSpan.TotalMinutes} min ago";
+                            colorTimeClass = "is-info";
+                        }
+                        else if (timeSpan.TotalHours < 24)
+                        {
+                            humanRelativeTime = $"{(int)timeSpan.TotalHours} hr ago";
+                            colorTimeClass = "is-success";
+                        }
+                        else if (timeSpan.TotalDays < 7)
+                        {
+                            humanRelativeTime = $"{(int)timeSpan.TotalDays} days ago";
+                            colorTimeClass = "is-warning";
+                        }
+                        else if (timeSpan.TotalDays < 30)
+                        {
+                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 7)} wk ago";
+                        }
+                        else if (timeSpan.TotalDays < 365)
+                        {
+                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 30)} mo ago";
+                        }
+                        else
+                        {
+                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 365)} yr ago";
+                        }
+                        <div class="notification is-white p-2 mb-2">
+                            <p class="is-size-7"><strong>@log.Title:</strong> @log.Description <span class="tag is-small @colorTimeClass is-light">@humanRelativeTime</span></p>
+                        </div>
+                    }
+                }
+
+                <div class="has-text-centered mt-3" style="display: none;">
                     <button class="button is-small is-text">View All Activity</button>
                 </div>
             </div>
@@ -195,7 +233,7 @@
         </div>
         
         <!-- Pending Tasks -->
-        <div class="column is-6">
+        <div class="column is-6" style="display: none;">
             <div class="box has-background-white-ter has-shadow">
                 <h2 class="subtitle has-text-weight-bold has-text-centered">
                     <span class="icon-text">
@@ -271,3 +309,16 @@
         transform: scale(1.02);
     }
 </style>
+
+@code {
+
+    private InstanceStats stats = new InstanceStats();
+
+    private List<RecentActivityLog> recentActivityLogs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = LocalDbService.GetInstanceStats();
+        recentActivityLogs = LocalDbService.GetRecentActivityLogs(5); // Fetch the last 5 logs
+    }
+}
