@@ -1,5 +1,5 @@
-BadgeFed/wwwroot/uploads/*
-BadgeFed/test.db
+src/BadgeFed/wwwroot/uploads/*
+src/BadgeFed/*.db
 
 deploy*.sh
 

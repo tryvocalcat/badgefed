@@ -12,10 +12,73 @@
 @attribute [Authorize(Roles = "Admin, Superuser")]
 <h1>Manage Badge Grant Records</h1>
 
-<div>
-    <label>Search:</label>
-    <input @bind="searchTerm" @bind:event="oninput" />
-    <button class="button is-small" @onclick="PerformSearch">Go</button>
+<div class="box">
+    <div class="columns">
+        <div class="column">
+            <div class="field">
+                <label class="label">Search:</label>
+                <div class="control">
+                    <input class="input" @bind="searchTerm" placeholder="Search title, recipient, issuer..." />
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="field">
+                <label class="label">Status:</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select @bind="statusFilter">
+                            <option value="">All</option>
+                            <option value="pending">Pending Acceptance</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="processed">Processed</option>
+                            <option value="external">External</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="field">
+                <label class="label">Issued By:</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select @bind="issuerFilter">
+                            <option value="">All</option>
+                            @foreach (var actor in actors.Values)
+                            {
+                                <option value="@actor.Uri">@actor.FullName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="field">
+                <label class="label">Date Range:</label>
+                <div class="control">
+                    <input type="date" class="input" @bind="dateFromFilter" />
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="field">
+                <label class="label">To:</label>
+                <div class="control">
+                    <input type="date" class="input" @bind="dateToFilter" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="columns">
+        <div class="column">
+            <div class="buttons">
+                <button class="button is-primary" @onclick="ApplyFilters">Apply Filters</button>
+                <button class="button" @onclick="ClearFilters">Clear Filters</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if (records == null)
@@ -24,6 +87,9 @@
 }
 else
 {
+    <div class="box">
+        <p>Showing @filteredRecords.Count of @records.Count records</p>
+    </div>
     <table class="table">
         <thead>
             <tr>
@@ -37,19 +103,19 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var record in records)
+            @foreach (var record in filteredRecords)
             {
                 var actorName = actors.ContainsKey(record.IssuedBy) 
                     ? actors[record.IssuedBy].FullName 
                     : record.IssuedBy.Substring(record.IssuedBy.LastIndexOf('/') + 1);
                 
-                <tr class="@(!string.IsNullOrEmpty(record.NoteId) ? "has-background-success-light" : "")">
+                <tr class="@GetRowClass(record)">
                     <td>@record.Id</td>
                     <td>@record.Title</td>
                     <td><a href="@record.IssuedToSubjectUri">@(string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToSubjectUri : record.IssuedToName)</a></td>
                     <td><a href="@record.IssuedBy">@actorName</a></td>
-                    <td>@record.IssuedOn</td>
-                    <td>@record.AcceptedOn</td>
+                    <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
+                    <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
                     <td>
                         @if (record.IsExternal) {
                             <a href="@record.NoteId" class="button is-info is-small">View</a>
@@ -103,15 +169,73 @@ else
 
 @code {
     private List<BadgeRecord?> records;
+    private List<BadgeRecord?> filteredRecords = new List<BadgeRecord?>();
 
     private Dictionary<string, Actor> actors;
 
     private string errorMessage;
 
+    // Filter properties
     private string searchTerm = "";
+    private string statusFilter = "";
+    private string issuerFilter = "";
+    private DateTime? dateFromFilter;
+    private DateTime? dateToFilter;
 
     private void PerformSearch() {
-        records = LocalDbService.SearchGrants(searchTerm);
+        if (!string.IsNullOrEmpty(searchTerm)) {
+            records = LocalDbService.SearchGrants(searchTerm);
+        } else {
+            records = LocalDbService.GetBadgeRecords()!;
+        }        
+    }
+
+    private void ApplyFilters() {
+        PerformSearch();
+
+        if (records == null) return;
+        
+        filteredRecords = records.Where(r => {
+            bool matchesStatus = string.IsNullOrEmpty(statusFilter) || GetRecordStatus(r) == statusFilter;
+            bool matchesIssuer = string.IsNullOrEmpty(issuerFilter) || r.IssuedBy == issuerFilter;
+            bool matchesDateFrom = !dateFromFilter.HasValue || r.IssuedOn >= dateFromFilter.Value;
+            bool matchesDateTo = !dateToFilter.HasValue || r.IssuedOn <= dateToFilter.Value.AddDays(1);
+            
+            return matchesStatus && matchesIssuer && matchesDateFrom && matchesDateTo;
+        }).ToList();
+    }
+
+    private void ClearFilters() {
+        searchTerm = "";
+        statusFilter = "";
+        issuerFilter = "";
+        dateFromFilter = null;
+        dateToFilter = null;
+        
+        records = LocalDbService.GetBadgeRecords()!;
+        filteredRecords = new List<BadgeRecord?>(records);
+    }
+
+    private string GetRecordStatus(BadgeRecord record) {
+        if (record.IsExternal) {
+            return "external";
+        } else if (!string.IsNullOrEmpty(record.FingerPrint)) {
+            return "processed";
+        } else if (record.AcceptedOn.HasValue) {
+            return "accepted";
+        } else {
+            return "pending";
+        }
+    }
+
+    private string GetRowClass(BadgeRecord record) {
+        string status = GetRecordStatus(record);
+        return status switch {
+            "processed" => "has-background-success-light",
+            "accepted" => "has-background-info-light",
+            "external" => "has-background-warning-light",
+            _ => ""
+        };
     }
 
     protected override async Task OnInitializedAsync()
@@ -121,5 +245,6 @@ else
         actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
         records = LocalDbService.GetBadgeRecords()!;
+        filteredRecords = new List<BadgeRecord?>(records);
     }
 }

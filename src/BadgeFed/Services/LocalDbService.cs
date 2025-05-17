@@ -1453,6 +1453,7 @@ public class ActorStats
                OR IssuedBy LIKE @Term
             ORDER BY IssuedOn DESC
         ";
+
         command.Parameters.AddWithValue("@Term", $"%{term}%");
 
         using var reader = command.ExecuteReader();
