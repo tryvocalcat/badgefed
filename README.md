@@ -82,7 +82,29 @@ A multi-stage Dockerfile is provided in [`src/Dockerfile`](src/Dockerfile):
 
 ```sh
 docker build -t badgefed .
-docker run -p 8080:8080 -e SQLITE_DB_FILENAME=badges.db badgefed
+docker run -v `pwd`/data:/app/data \
+    -p 8080:8080 \
+    -e SQLITE_DB_FILENAME=/app/data/badges.db \
+    -e AdminAuthentication__AdminUsers__0__Id=your-mastodon-username \
+    -e AdminAuthentication__AdminUsers__0__Type=Mastodon \
+    -e MastodonConfig__ClientId=your-mastodon-client-id \
+    -e MastodonConfig__ClientSecret=your-mastodon-client-secret \
+    -e MastodonConfig__Server=your-mastodon-server \
+    badgefed
+```
+
+Example:
+
+```
+docker run -v `pwd`/data:/app/data \
+    -p 8080:8080 \
+    -e SQLITE_DB_FILENAME=/app/data/badges.db \
+    -e AdminAuthentication__AdminUsers__0__Id=mapache \
+    -e AdminAuthentication__AdminUsers__0__Type=Mastodon \
+    -e MastodonConfig__ClientId=yourclientid \
+    -e MastodonConfig__ClientSecret=yourclientsecret \
+    -e MastodonConfig__Server=hachyderm.io \
+    badgefed
 ```
 
 - The container exposes port 8080.

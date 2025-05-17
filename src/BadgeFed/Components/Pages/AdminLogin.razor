@@ -26,29 +26,34 @@
                     {
                         <p class="has-text-centered mb-4">Login with your accounts</p>
                         
-                        <div class="field mb-3">
-                            <div class="control">
-                                <button class="button is-fullwidth is-primary has-background-purple"
-                                        @onclick="SignInWithMastodon">
-                                    <span class="icon">
-                                        <i class="fab fa-mastodon"></i>
-                                    </span>
-                                    <span>Sign In with Mastodon</span>
-                                </button>
+                        @if (IsMastodonConfigured)
+                        {
+                            <div class="field mb-3">
+                                <div class="control">
+                                    <button class="button is-fullwidth is-primary has-background-purple"
+                                            @onclick="SignInWithMastodon">
+                                        <span class="icon">
+                                            <i class="fab fa-mastodon"></i>
+                                        </span>
+                                        <span>Sign In with Mastodon</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="field">
-                            <div class="control">
-                                <button class="button is-fullwidth is-info"
-                                        @onclick="SignInWithLinkedIn">
-                                    <span class="icon">
-                                        <i class="fab fa-linkedin"></i>
-                                    </span>
-                                    <span>Sign In with LinkedIn</span>
-                                </button>
+                        }
+                        @if (IsLinkedInConfigured)
+                        {
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button is-fullwidth is-info"
+                                            @onclick="SignInWithLinkedIn">
+                                        <span class="icon">
+                                            <i class="fab fa-linkedin"></i>
+                                        </span>
+                                        <span>Sign In with LinkedIn</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        }
                     }
                 </div>
             </div>
@@ -186,6 +191,9 @@
     private string GivenName;
     private string Surname;
     private string Avatar;
+
+    private bool IsMastodonConfigured;
+    private bool IsLinkedInConfigured;
     
     protected override async Task OnInitializedAsync()
     {
@@ -195,6 +203,17 @@
         {
             // Set the user to determine if they are logged in
             User = HttpContextAccessor.HttpContext.User;
+
+            // Check if MastodonConfig is present
+            var mastodonSection = Configuration.GetSection("MastodonConfig");
+            IsMastodonConfigured = !string.IsNullOrEmpty(mastodonSection["ClientId"]) &&
+                                   !string.IsNullOrEmpty(mastodonSection["ClientSecret"]) &&
+                                   !string.IsNullOrEmpty(mastodonSection["Server"]);
+
+            // Check if LinkedInConfig is present
+            var linkedInSection = Configuration.GetSection("LinkedInConfig");
+            IsLinkedInConfigured = !string.IsNullOrEmpty(linkedInSection["ClientId"]) &&
+                                   !string.IsNullOrEmpty(linkedInSection["ClientSecret"]);
 
             if (User != null)
             {

@@ -71,30 +71,36 @@ builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<Local
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
 var mastodonConfig = builder.Configuration.GetSection("MastodonConfig").Get<MastodonConfig>();
 
-Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(linkedInConfig));
-
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(option =>
 {
     option.LoginPath = "/admin/login";
     option.LogoutPath = "/admin/logout";
     option.AccessDeniedPath = "/admin/denied";
-}).AddMastodon(adminConfig, mastodonConfig, o => {
-    o.Scope.Add("read:statuses");
-    o.Scope.Add("read:accounts");
-    o.ClientId = mastodonConfig.ClientId;
-    o.ClientSecret = mastodonConfig.ClientSecret;
-    o.SaveTokens = true;
-})
-.AddLinkedIn(adminConfig, linkedInConfig, o =>
-{
-    // Configure scopes as needed:
-    o.Scope.Add("openid");
-    o.Scope.Add("profile");
-    o.Scope.Add("email");
-    o.SaveTokens = true;
 });
+
+if (mastodonConfig != null)
+{
+    auth.AddMastodon(adminConfig, mastodonConfig, o => {
+        o.Scope.Add("read:statuses");
+        o.Scope.Add("read:accounts");
+        o.ClientId = mastodonConfig.ClientId;
+        o.ClientSecret = mastodonConfig.ClientSecret;
+        o.SaveTokens = true;
+    });
+}
+
+
+if (linkedInConfig != null)
+{
+    auth.AddLinkedIn(adminConfig, linkedInConfig, o =>
+        {
+            o.ClientId = linkedInConfig.ClientId;
+            o.ClientSecret = linkedInConfig.ClientSecret;
+            o.CallbackPath = "/signin-linkedin";
+            o.SaveTokens = true;
+        });
+}
 
 builder.Services.AddHostedService<JobExecutor>();
 builder.Services.AddScoped<JobProcessor>();
@@ -199,6 +205,7 @@ public static class MastodonOAuthExtensions {
                         a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) && 
                         a.Id == username) ?? false;
                     
+                    Console.WriteLine($"Is admin: {username} {isAdmin}");
                     if (isAdmin)
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] { 

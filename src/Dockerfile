@@ -1,8 +1,6 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
-COPY BadgeFed.csproj . 
-RUN dotnet restore
 
 COPY . .
 RUN dotnet publish -c Release -o /app/out
@@ -11,7 +9,7 @@ RUN dotnet publish -c Release -o /app/out
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/out .
-COPY init.sql .
+COPY BadgeFed/init.sql .
 
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "BadgeFed.dll"]
