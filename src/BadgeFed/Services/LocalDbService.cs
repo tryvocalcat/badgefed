@@ -324,13 +324,20 @@ public class LocalDbService
         if (actor.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId)
-                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId);
+                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain)
+                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain);
                 SELECT last_insert_rowid();
             ";
         }
         else
         {
+            if (actor.IsMain)
+            {
+                var singleMainCommand = connection.CreateCommand();
+                singleMainCommand.CommandText = "UPDATE Actor SET IsMain = FALSE";
+                singleMainCommand.ExecuteNonQuery();
+            }
+
             command.CommandText = @"
                 UPDATE Actor SET 
                     Name = @Name, 
@@ -342,7 +349,8 @@ public class LocalDbService
                     PublicKeyPem = @PublicKeyPem, 
                     PrivateKeyPem = @PrivateKeyPem, 
                     Username = @Username,
-                    LinkedInOrganizationId = @LinkedInOrganizationId
+                    LinkedInOrganizationId = @LinkedInOrganizationId,
+                    IsMain = @IsMain
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", actor.Id);
@@ -358,6 +366,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@PrivateKeyPem", actor.PrivateKeyPem ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@Username", actor.Username ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@LinkedInOrganizationId", actor.LinkedInOrganizationId ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IsMain", actor.IsMain);
 
         if (actor.Id == 0)
         {
@@ -377,7 +386,7 @@ public class LocalDbService
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM Actor WHERE Id = @Id";
+        command.CommandText = "DELETE FROM Actor WHERE Id = @Id AND IsMain = 0";
         command.Parameters.AddWithValue("@Id", id);
 
         command.ExecuteNonQuery();
@@ -412,7 +421,8 @@ public class LocalDbService
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
-                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
             });
         }
 
@@ -442,7 +452,8 @@ public class LocalDbService
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
-                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
             };
         }
 
@@ -476,7 +487,8 @@ public class LocalDbService
                 PublicKeyPem = reader["PublicKeyPem"] == DBNull.Value ? null : reader["PublicKeyPem"].ToString(),
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
-                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString()
+                LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
             };
         }
 

@@ -135,42 +135,69 @@ public class BadgeProcessor
         return record;
     }
 
-    public async Task<BadgeRecord?> BroadcastGrant(long recordId)
+    public async Task AnnounceGrantByMainActor(BadgeRecord record)
     {
-        var records = _localDbService.GetBadgeRecords(recordId);
-
-        if (records.Count == 0)
+        try
         {
-            return null;
+            // Find the main actor (typically the server's default actor)
+            var mainActor = _localDbService.GetActorByFilter("IsMain = 1");
+
+            if (mainActor == null)
+            {
+                Console.WriteLine("Main actor not found, cannot boost badge grant");
+            }
+
+            // The original note ID that we want to boost
+            var originalNoteId = record.NoteId;
+
+            if (string.IsNullOrEmpty(originalNoteId))
+            {
+                Console.WriteLine("Note ID is missing, cannot boost badge grant");
+            }
+
+            // Create the Announce activity
+            var announceId = $"{mainActor.Uri}/announce/{Guid.NewGuid()}";
+
+            // Create the Announce object
+            var announceActivity = new Dictionary<string, object>
+            {
+                ["@context"] = "https://www.w3.org/ns/activitystreams",
+                ["id"] = announceId,
+                ["type"] = "Announce",
+                ["actor"] = mainActor.Uri.ToString(),
+                ["published"] = DateTime.UtcNow.ToString("o"),
+                ["to"] = new List<string> { "https://www.w3.org/ns/activitystreams#Public" },
+                ["cc"] = new List<string> { $"{mainActor.Uri}/followers" },
+                ["object"] = originalNoteId
+            };
+
+            var actorHelper = new ActorHelper(mainActor.PrivateKeyPemClean!, mainActor.KeyId);
+
+            // Serialize the announcement
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var serializedAnnouncement = JsonSerializer.Serialize(announceActivity, options);
+
+            Console.WriteLine($"Boosting badge grant: {originalNoteId}");
+
+            await NotifyFollowersOfNote(serializedAnnouncement, mainActor);
         }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to boost badge grant: {e.Message}");
+        }
+    }
 
-        var record = records.FirstOrDefault();
-
-        var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
-
-        var actor = _localDbService.GetActorById(badge.IssuedBy);
-
-        record.Badge = badge;
-        record.Actor = actor;
-        
-        Console.WriteLine("Badge found");
-
-        var note = BadgeService.GetNoteFromBadgeRecord(record);
-
-        var createNote = NotesService.GetCreateNote(note!, actor);
-
+    private async Task NotifyFollowersOfNote(string serializedActivityPubObject, Actor actor)
+    {
         var followers = _localDbService.GetFollowersByActorId(actor.Id);
 
         var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
-        
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
-        // Actor is the account who wants to follow
-        var serializedNote = JsonSerializer.Serialize(createNote, options);    
 
-        Console.WriteLine($"Serialized note: {serializedNote}");	
+        Console.WriteLine($"Serialized note: {serializedActivityPubObject}");
         Console.WriteLine($"Followers: {followers.Count}");
 
         var endpointsAlreadySent = new List<string>();
@@ -193,8 +220,8 @@ public class BadgeProcessor
                 }
 
                 endpointsAlreadySent.Add(endpointUri);
-                
-                await actorHelper.SendPostSignedRequest(serializedNote, new Uri(fediverseInfo.Inbox));
+
+                await actorHelper.SendPostSignedRequest(serializedActivityPubObject, new Uri(fediverseInfo.Inbox));
 
                 Console.WriteLine($"Sent note to {follower.FollowerUri}");
             }
@@ -204,6 +231,42 @@ public class BadgeProcessor
                 Console.WriteLine(e.Message);
             }
         }
+    }
+
+    public async Task<BadgeRecord?> BroadcastGrant(long recordId)
+    {
+        var records = _localDbService.GetBadgeRecords(recordId);
+
+        if (records.Count == 0)
+        {
+            return null;
+        }
+
+        var record = records.FirstOrDefault();
+
+        var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
+
+        var actor = _localDbService.GetActorById(badge.IssuedBy);
+
+        record.Badge = badge;
+        record.Actor = actor;
+
+        Console.WriteLine("Badge found");
+
+        var note = BadgeService.GetNoteFromBadgeRecord(record);
+
+        var createNote = NotesService.GetCreateNote(note!, actor);
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
+        var serializedNote = JsonSerializer.Serialize(createNote, options);
+
+        await NotifyFollowersOfNote(serializedNote, actor);
+
+        await AnnounceGrantByMainActor(record);
 
         return record;
     }

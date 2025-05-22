@@ -90,7 +90,6 @@ if (mastodonConfig != null)
     });
 }
 
-
 if (linkedInConfig != null)
 {
     auth.AddLinkedIn(adminConfig, linkedInConfig, o =>
@@ -123,31 +122,63 @@ builder.Services.Configure<StaticFileOptions>(options =>
 
 var app = builder.Build();
 
+// Setup default actor on first run
+SetupDefaultActor(app.Services);
+
 if (!app.Environment.IsDevelopment())
 {
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
 app.UseRouting();
-
 app.UseStaticFiles();
 app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapControllers();
-
 app.MapGroup("/admin").MapLoginAndLogout();
 
 app.Run();
+
+async Task SetupDefaultActor(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var localDbService = scope.ServiceProvider.GetRequiredService<LocalDbService>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    // Check if the default actor exists
+    var defaultUsername = "admin";
+    var defaultDomain = configuration.GetSection("BadgesDomains").Get<string[]>()?.FirstOrDefault() ?? "example.com";
+
+    var existingActor = localDbService.GetActorByFilter($"Username = \"{defaultUsername}\" AND Domain = \"{defaultDomain}\"");
+    if (existingActor == null)
+    {
+        // Generate public/private key pair
+        var keyPair = await CryptoService.GenerateKeyPairAsync();
+
+        // Create the default actor
+        var defaultActor = new Actor
+        {
+            FullName = "Default Admin",
+            Username = defaultUsername,
+            Domain = defaultDomain,
+            Summary = "This is the default admin actor.",
+            PublicKeyPem = keyPair.PublicKeyPem,
+            PrivateKeyPem = keyPair.PrivateKeyPem,
+            InformationUri = $"https://{defaultDomain}/about",
+            IsMain = true
+        };
+
+        localDbService.UpsertActor(defaultActor);
+        Console.WriteLine($"Default actor created with username '{defaultUsername}' and domain '{defaultDomain}'.");
+    }
+}
 
 public static class MastodonOAuthExtensions {
     private static readonly HashSet<string> _hosts = new();

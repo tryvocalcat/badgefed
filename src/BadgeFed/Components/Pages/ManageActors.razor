@@ -38,9 +38,9 @@ else
             <tbody>
                 @foreach (var actor in actors)
                 {
-                    <tr>
+                    <tr class="@(actor.IsMain ? "has-background-primary-light" : "")">
                         <td>@actor.FullName</td>
-                        <td>@actor.Summary</td>
+                        <td>@(actor.IsMain ? "A main issuer cannot issue badges by itself, and by default share all public badges in this instance." : @actor.Summary )</td>
                         <td>
                             <figure class="image is-64x64">
                                 <img src="@actor.AvatarPath" alt="Avatar" class="is-rounded" />
@@ -49,8 +49,11 @@ else
                         <td class="has-text-right">
                             <div class="buttons is-right">
                                 <button class="button is-primary is-small" @onclick="() => EditActor(actor)">Edit</button>
-                                <button class="button is-link is-small" @onclick="() => ViewActor(actor)">View</button>
-                                <button class="button is-danger is-small" @onclick="() => DeleteActor(actor)">Delete</button>
+                                @if (!actor.IsMain)
+                                {
+                                    <button class="button is-warning is-small" @onclick="() => MarkAsMain(actor)">Mark as Main</button>
+                                    <button class="button is-danger is-small" @onclick="() => DeleteActor(actor)">Delete</button>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -85,6 +88,13 @@ else
     {
         Console.WriteLine($"Deleting actor: {actor.Id}");
         LocalDbService.DeleteActor(actor.Id);
+        actors = LocalDbService.GetActors();
+    }
+
+    private void MarkAsMain(Actor actor)
+    {
+        actor.IsMain = true;
+        LocalDbService.UpsertActor(actor);
         actors = LocalDbService.GetActors();
     }
 }

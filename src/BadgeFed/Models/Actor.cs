@@ -20,6 +20,8 @@ public class Actor
 
     public string Username { get; set; } = "";
 
+    public bool IsMain { get; set; } = false; // New property
+
     public string? InformationUri { get; set; }
 
     public Uri? Uri {
