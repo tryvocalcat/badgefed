@@ -4,13 +4,24 @@
         "url": "https://verifiedby.maho.dev",
         "description": "A personal badge server for emitting badges for personal projects.",
         "categories": ["Personal", "Creator"],
-        "admin": "Maho Pacheco"
+        "admin": "Maho Pacheco",
+        "actor": "https://verifiedby.maho.dev/view/actor/verifiedby.maho.dev/admin"
     },
     {
         "name": "BadgeFed",
         "url": "https://badges.vocalcat.com",
         "description": "The main server for emitting badges related to VocalCat and BadgeFed projects.",
         "categories": ["Company", "OpenSource"],
-        "admin": "VocalCat LLC"
+        "admin": "VocalCat LLC",
+        "actor": "https://badges.vocalcat.com/view/actor/badges.vocalcat.com/admin"
+    },
+    {
+        "name": "The Tech Baddie Studio",
+        "url": "https://verifiedby.baddie.tech",
+        "description": "A badge server for The Tech Baddie Studio, a company that creates tech-related content.",
+        "categories": ["Company", "Creator"],
+        "admin": "The Tech Baddie Studio",
+        "actor": "https://verifiedby.baddie.tech/view/actor/verifiedby.baddie.tech/admin"
     }
+
 ]
