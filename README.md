@@ -78,10 +78,8 @@ The configuration system automatically merges these layers, with environment var
 
 ## Docker
 
-A multi-stage Dockerfile is provided in [`src/Dockerfile`](src/Dockerfile):
-
 ```sh
-docker build -t badgefed .
+docker pull ghcr.io/tryvocalcat/badgefed:latest
 docker run -v `pwd`/data:/app/data \
     -p 8080:8080 \
     -e SQLITE_DB_FILENAME=/app/data/badges.db \
@@ -90,7 +88,7 @@ docker run -v `pwd`/data:/app/data \
     -e MastodonConfig__ClientId=your-mastodon-client-id \
     -e MastodonConfig__ClientSecret=your-mastodon-client-secret \
     -e MastodonConfig__Server=your-mastodon-server \
-    badgefed
+    ghcr.io/tryvocalcat/badgefed
 ```
 
 Example:
@@ -104,7 +102,7 @@ docker run -v `pwd`/data:/app/data \
     -e MastodonConfig__ClientId=yourclientid \
     -e MastodonConfig__ClientSecret=yourclientsecret \
     -e MastodonConfig__Server=hachyderm.io \
-    badgefed
+    ghcr.io/tryvocalcat/badgefed
 ```
 
 - The container exposes port 8080.

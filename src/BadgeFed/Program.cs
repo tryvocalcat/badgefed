@@ -279,6 +279,9 @@ public static class LinkedInOAuthExtensions
             o.ClientId = config.ClientId;
             o.ClientSecret = config.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
+            o.Scope.Add("openid");
+            o.Scope.Add("email");
+            o.Scope.Add("profile");
             o.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
             o.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
             {

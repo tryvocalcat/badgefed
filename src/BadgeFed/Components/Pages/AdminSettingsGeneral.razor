@@ -49,12 +49,58 @@
     <p class="mt-2">Note: Executing SQL directly can modify or delete data. Ensure you have backups.</p>
 </div>
 
+<div class="mt-4">
+    <h4>Custom Logo</h4>
+    <p>Upload a custom logo to replace the default. <strong>File must be PNG</strong> and will be saved as <code>logo.h.png</code>. The filename cannot be changed.</p>
+    <InputFile OnChange="OnLogoFileSelected" accept=".png" />
+    <button class="btn btn-success mt-2" @onclick="UploadLogo" disabled="@(SelectedLogoFile == null)">Upload Logo</button>
+    @if (!string.IsNullOrEmpty(LogoUploadMessage))
+    {
+        <div class="mt-2 p-2 bg-info text-dark">
+            @LogoUploadMessage
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(LogoUploadError))
+    {
+        <div class="mt-2 p-2 bg-danger text-white">
+            <strong>Error:</strong> @LogoUploadError
+        </div>
+    }
+</div>
+
+<div class="mt-4">
+    <h4>Custom CSS</h4>
+    <p>Upload a custom CSS file to override styles. <strong>File must be .css</strong> and will be saved as <code>custom.css</code> in <code>wwwroot/css/</code>. The filename cannot be changed.</p>
+    <InputFile OnChange="OnCssFileSelected" accept=".css" />
+    <button class="btn btn-success mt-2" @onclick="UploadCss" disabled="@(SelectedCssFile == null)">Upload CSS</button>
+    @if (!string.IsNullOrEmpty(CssUploadMessage))
+    {
+        <div class="mt-2 p-2 bg-info text-dark">
+            @CssUploadMessage
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(CssUploadError))
+    {
+        <div class="mt-2 p-2 bg-danger text-white">
+            <strong>Error:</strong> @CssUploadError
+        </div>
+    }
+</div>
+
 @code {
 
     private string SqlQuery { get; set; }
     private string SqlResult { get; set; }
     private string ErrorMessage { get; set; }
     private double? DatabaseSize { get; set; } = null;
+
+    private IBrowserFile SelectedLogoFile { get; set; }
+    private string LogoUploadMessage { get; set; }
+    private string LogoUploadError { get; set; }
+
+    private IBrowserFile SelectedCssFile { get; set; }
+    private string CssUploadMessage { get; set; }
+    private string CssUploadError { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -125,5 +171,105 @@
 
         // Navigate to the file for download
         NavigationManager.NavigateTo($"/db/backup_{timestamp}.db", true);
+    }
+
+    private void OnLogoFileSelected(InputFileChangeEventArgs e)
+    {
+        LogoUploadMessage = null;
+        LogoUploadError = null;
+        var file = e.File;
+        if (file != null)
+        {
+            if (Path.GetExtension(file.Name).ToLower() != ".png")
+            {
+                LogoUploadError = "Only PNG files are allowed.";
+                SelectedLogoFile = null;
+            }
+            else
+            {
+                SelectedLogoFile = file;
+            }
+        }
+    }
+
+    private async Task UploadLogo()
+    {
+        LogoUploadMessage = null;
+        LogoUploadError = null;
+        if (SelectedLogoFile == null)
+        {
+            LogoUploadError = "No file selected.";
+            return;
+        }
+        if (Path.GetExtension(SelectedLogoFile.Name).ToLower() != ".png")
+        {
+            LogoUploadError = "Only PNG files are allowed.";
+            return;
+        }
+        try
+        {
+            var logoPath = Path.Combine(Environment.WebRootPath, "logo.h.png");
+            using (var stream = SelectedLogoFile.OpenReadStream(5 * 1024 * 1024)) // 5MB max
+            using (var fs = File.Create(logoPath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+            LogoUploadMessage = "Logo uploaded successfully!";
+        }
+        catch (Exception ex)
+        {
+            LogoUploadError = $"Error uploading logo: {ex.Message}";
+        }
+        SelectedLogoFile = null;
+    }
+
+    private void OnCssFileSelected(InputFileChangeEventArgs e)
+    {
+        CssUploadMessage = null;
+        CssUploadError = null;
+        var file = e.File;
+        if (file != null)
+        {
+            if (Path.GetExtension(file.Name).ToLower() != ".css")
+            {
+                CssUploadError = "Only CSS files are allowed.";
+                SelectedCssFile = null;
+            }
+            else
+            {
+                SelectedCssFile = file;
+            }
+        }
+    }
+
+    private async Task UploadCss()
+    {
+        CssUploadMessage = null;
+        CssUploadError = null;
+        if (SelectedCssFile == null)
+        {
+            CssUploadError = "No file selected.";
+            return;
+        }
+        if (Path.GetExtension(SelectedCssFile.Name).ToLower() != ".css")
+        {
+            CssUploadError = "Only CSS files are allowed.";
+            return;
+        }
+        try
+        {
+            var cssPath = Path.Combine(Environment.WebRootPath, "css", "custom.css");
+            using (var stream = SelectedCssFile.OpenReadStream(100 * 1024)) // 100KB max
+            using (var fs = File.Create(cssPath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+            CssUploadMessage = "CSS uploaded successfully!";
+        }
+        catch (Exception ex)
+        {
+            CssUploadError = $"Error uploading CSS: {ex.Message}";
+        }
+        SelectedCssFile = null;
     }
 }
