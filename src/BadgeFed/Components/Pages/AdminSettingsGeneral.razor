@@ -70,19 +70,22 @@
 
 <div class="mt-4">
     <h4>Custom CSS</h4>
-    <p>Upload a custom CSS file to override styles. <strong>File must be .css</strong> and will be saved as <code>custom.css</code> in <code>wwwroot/css/</code>. The filename cannot be changed.</p>
-    <InputFile OnChange="OnCssFileSelected" accept=".css" />
-    <button class="btn btn-success mt-2" @onclick="UploadCss" disabled="@(SelectedCssFile == null)">Upload CSS</button>
-    @if (!string.IsNullOrEmpty(CssUploadMessage))
+    <p>Edit custom CSS directly to override styles. Changes will be saved as <code>custom.css</code> in <code>wwwroot/css/</code>.</p>
+    <textarea @bind="CustomCssContent" class="form-control" rows="10" placeholder="Enter your custom CSS here..."></textarea>
+    <div class="mt-2">
+        <button class="btn btn-success" @onclick="SaveCss">Save CSS</button>
+        <button class="btn btn-secondary" @onclick="ReloadCss">Reload CSS</button>
+    </div>
+    @if (!string.IsNullOrEmpty(CssMessage))
     {
         <div class="mt-2 p-2 bg-info text-dark">
-            @CssUploadMessage
+            @CssMessage
         </div>
     }
-    @if (!string.IsNullOrEmpty(CssUploadError))
+    @if (!string.IsNullOrEmpty(CssError))
     {
         <div class="mt-2 p-2 bg-danger text-white">
-            <strong>Error:</strong> @CssUploadError
+            <strong>Error:</strong> @CssError
         </div>
     }
 </div>
@@ -98,13 +101,14 @@
     private string LogoUploadMessage { get; set; }
     private string LogoUploadError { get; set; }
 
-    private IBrowserFile SelectedCssFile { get; set; }
-    private string CssUploadMessage { get; set; }
-    private string CssUploadError { get; set; }
+    private string CustomCssContent { get; set; } = string.Empty;
+    private string CssMessage { get; set; }
+    private string CssError { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await CalculateDatabaseSize();
+        await LoadCustomCss();
     }
 
     private async Task CalculateDatabaseSize()
@@ -223,53 +227,48 @@
         SelectedLogoFile = null;
     }
 
-    private void OnCssFileSelected(InputFileChangeEventArgs e)
+    private async Task LoadCustomCss()
     {
-        CssUploadMessage = null;
-        CssUploadError = null;
-        var file = e.File;
-        if (file != null)
-        {
-            if (Path.GetExtension(file.Name).ToLower() != ".css")
-            {
-                CssUploadError = "Only CSS files are allowed.";
-                SelectedCssFile = null;
-            }
-            else
-            {
-                SelectedCssFile = file;
-            }
-        }
-    }
-
-    private async Task UploadCss()
-    {
-        CssUploadMessage = null;
-        CssUploadError = null;
-        if (SelectedCssFile == null)
-        {
-            CssUploadError = "No file selected.";
-            return;
-        }
-        if (Path.GetExtension(SelectedCssFile.Name).ToLower() != ".css")
-        {
-            CssUploadError = "Only CSS files are allowed.";
-            return;
-        }
+        CssMessage = null;
+        CssError = null;
         try
         {
             var cssPath = Path.Combine(Environment.WebRootPath, "css", "custom.css");
-            using (var stream = SelectedCssFile.OpenReadStream(100 * 1024)) // 100KB max
-            using (var fs = File.Create(cssPath))
+            if (File.Exists(cssPath))
             {
-                await stream.CopyToAsync(fs);
+                CustomCssContent = await File.ReadAllTextAsync(cssPath);
             }
-            CssUploadMessage = "CSS uploaded successfully!";
+            else
+            {
+                CustomCssContent = "/* Add your custom CSS styles here */";
+            }
         }
         catch (Exception ex)
         {
-            CssUploadError = $"Error uploading CSS: {ex.Message}";
+            CssError = $"Error loading CSS: {ex.Message}";
         }
-        SelectedCssFile = null;
+    }
+
+    private async Task SaveCss()
+    {
+        CssMessage = null;
+        CssError = null;
+        try
+        {
+            var cssFolder = Path.Combine(Environment.WebRootPath, "css");
+            Directory.CreateDirectory(cssFolder); // Ensure directory exists
+            var cssPath = Path.Combine(cssFolder, "custom.css");
+            await File.WriteAllTextAsync(cssPath, CustomCssContent);
+            CssMessage = "CSS saved successfully!";
+        }
+        catch (Exception ex)
+        {
+            CssError = $"Error saving CSS: {ex.Message}";
+        }
+    }
+
+    private async Task ReloadCss()
+    {
+        await LoadCustomCss();
     }
 }
