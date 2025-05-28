@@ -4,95 +4,153 @@
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
-<h1 class="title">Find Your Badges</h1>
+<div class="container">
+    <h1 class="title has-text-centered mb-5">Find Your Badges</h1>
+    
+    <div class="columns is-centered">
+        <div class="column is-two-thirds">
+            <div class="search-container">
+                <form @onsubmit="SearchBadges" @onsubmit:preventDefault>
+                    <div class="field has-addons is-expanded">
+                        <div class="control is-expanded">
+                            <input 
+                                class="input is-medium" 
+                                type="text" 
+                                placeholder="Search by name, fediverse handle, or profile URL..." 
+                                @bind="searchText"
+                                @bind:event="oninput"
+                                aria-label="Search badges"
+                                required
+                            />
+                        </div>
+                        <div class="control">
+                            <button class="button is-info is-medium @(isLoading ? "is-loading" : "")" 
+                                    type="submit" 
+                                    disabled="@(string.IsNullOrWhiteSpace(searchText) || searchText.Length < 3 || isLoading)">
+                                <span class="icon">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <span>Search</span>
+                            </button>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(searchText) && searchText.Length < 3)
+                    {
+                        <p class="help is-danger mt-2">Please enter at least 3 characters to search</p>
+                    }
+                </form>
+            </div>
 
-<form @onsubmit="SearchBadges" @onsubmit:preventDefault style="max-width: 500px; margin-bottom: 1.5rem;">
-  <div class="field has-addons is-expanded">
-    <div class="control is-expanded">
-      <input 
-        class="input" 
-        type="text" 
-        placeholder="Search by name, fediverse handle, or profile URL..." 
-        @bind="searchText"
-        aria-label="Search badges"
-        required
-      />
-    </div>
-    <div class="control">
-      <button class="button is-info" type="submit">
-        <span class="icon">
-          <i class="fas fa-search"></i>
-        </span>
-        <span>Search</span>
-      </button>
-    </div>
-  </div>
-</form>
-
-
-@if (isLoading)
-{
-    <div class="notification is-info">Loading...</div>
-}
-else if (string.IsNullOrEmpty(searchText) && !searchSubmitted)
-{
-    <div class="notification is-warning">Please enter a name or profile URL to search for badges.</div>
-} else if (badgeRecords == null || !badgeRecords.Any())
-{
-    <div class="notification is-warning">No badges found for this recipient.</div>
-}
-else
-{
-    <div class="table-container">
-        <table class="table is-fullwidth is-striped is-hoverable">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Issued By</th>
-                    <th>Issued On</th>
-                    <th>Issued To</th>
-                    <th>Accepted On</th>
-                    <th>Is External</th>
-                    <th>View</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var record in badgeRecords)
+            <div class="mt-6 fade-enter fade-enter-active">
+                @if (isLoading)
                 {
-                    var actor = LocalDbService.GetActorByFilter($"Uri = '{record.IssuedBy}'");
-                    <tr>
-                        <td>@record.Title</td>
-                        <td><a href="@actor?.Uri">@(actor?.FullName ?? record.IssuedBy)</a></td>
-                        <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
-                        <td><a href="@record.IssuedToSubjectUri">@(record.IssuedToName ?? record.IssuedToSubjectUri)</a></td>
-                        <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
-                        <td>@(record.IsExternal ? "Yes" : "No")</td>
-                        <td>
-                            @if (!string.IsNullOrEmpty(record.NoteId))
-                            {
-                                if (record.IsExternal)
-                                {
-                                    var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
-                                    <a class="button is-small is-info" href="/view/grant/@noteIdParam">View</a>
-                                }
-                                else
-                                {
-                                    <a class="button is-small is-info" href="@record.NoteId">View</a>
-                                }
-                            }
-                        </td>
-                    </tr>
+                    <div class="has-text-centered empty-state">
+                        <span class="icon is-large loading-spinner">
+                            <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+                        </span>
+                        <p class="mt-2">Searching for badges...</p>
+                    </div>
                 }
-            </tbody>
-        </table>
+                else if (string.IsNullOrEmpty(searchText) && !searchSubmitted)
+                {
+                    <div class="empty-state has-text-centered">
+                        <span class="icon is-large mb-3 search-icon">
+                            <i class="fas fa-search fa-2x"></i>
+                        </span>
+                        <p class="subtitle">Enter a name or profile URL above to discover badges</p>
+                    </div>
+                }
+                else if (badgeRecords == null || !badgeRecords.Any())
+                {
+                    <div class="empty-state has-text-centered">
+                        <span class="icon is-large mb-3">
+                            <i class="fas fa-certificate fa-2x"></i>
+                        </span>
+                        <p class="subtitle">No badges found for "@searchText"</p>
+                        <p class="is-size-6 has-text-grey">Try searching with a different name or profile URL</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="badge-table">
+                        <table class="table is-fullwidth is-striped is-hoverable">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Issued By</th>
+                                    <th>Issued On</th>
+                                    <th>Issued To</th>
+                                    <th>Accepted On</th>
+                                    <th>Is External</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var record in badgeRecords)
+                                {
+                                    var actor = LocalDbService.GetActorByFilter($"Uri = '{record.IssuedBy}'");
+                                    <tr>
+                                        <td>@record.Title</td>
+                                        <td>
+                                            @{
+                                                var actorName = 
+                                                    actor?.FullName ?? 
+                                                    $"{record.IssuedBy.Split('/').Last()}@{new Uri(record.IssuedBy).Host}";
+                                            }
+                                            <a href="@actor?.Uri" class="has-text-info">@actorName</a>
+                                        </td>
+                                        <td>@record.IssuedOn.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            @{
+                                                var issuedToName = record.IssuedToName ?? $"{record.IssuedToSubjectUri.Split('/').Last()}@{new Uri(record.IssuedToSubjectUri).Host}";
+                                            }
+                                            <a href="/recipient/@(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(record.IssuedToSubjectUri)))" class="has-text-info">
+                                                @issuedToName
+                                            </a>
+                                        </td>
+                                        <td>@(record.AcceptedOn?.ToString("MMM dd, yyyy") ?? "-")</td>
+                                        <td>
+                                            <span class="tag @(record.IsExternal ? "is-warning" : "is-success")">
+                                                @(record.IsExternal ? "External" : "Local")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(record.NoteId))
+                                            {
+                                                @if (record.IsExternal)
+                                                {
+                                                    var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
+                                                    <a class="button is-small is-info is-light" href="/view/grant/@noteIdParam">
+                                                        <span class="icon">
+                                                            <i class="fas fa-eye"></i>
+                                                        </span>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a class="button is-small is-info is-light" href="@record.NoteId">
+                                                        <span class="icon">
+                                                            <i class="fas fa-eye"></i>
+                                                        </span>
+                                                    </a>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
-}
+</div>
 
 @code {
     private string searchText = string.Empty;
     private List<BadgeRecord> badgeRecords;
     private bool isLoading = false;
-
     private bool searchSubmitted = false;
 
     protected override void OnInitialized()
@@ -100,27 +158,41 @@ else
         badgeRecords = new List<BadgeRecord>();
     }
 
-    private void SearchBadges()
+    private async Task SearchBadges()
     {
-        if (searchText.Length < 3)
+        if (string.IsNullOrWhiteSpace(searchText) || searchText.Length < 3)
         {
             badgeRecords = new List<BadgeRecord>();
             return;
         }
 
-        isLoading = true;
-        var filter = $@"
-                FingerPrint IS NOT NULL 
-            AND NoteId IS NOT NULL 
-            AND Visibility = 'Public' 
-            AND
-                (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
-        ";
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
 
-        badgeRecords = LocalDbService.GetBadgeRecords(filter);
-        isLoading = false;
-        searchSubmitted = true;
+            var filter = $@"
+                    FingerPrint IS NOT NULL 
+                AND NoteId IS NOT NULL 
+                AND Visibility = 'Public' 
+                AND
+                    (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
+            ";
 
-        StateHasChanged();        
+            // Add a small delay to ensure the loading state is visible
+            await Task.Delay(300);
+            badgeRecords = LocalDbService.GetBadgeRecords(filter);
+        }
+        catch (Exception)
+        {
+            // Show error message
+            badgeRecords = null;
+        }
+        finally
+        {
+            isLoading = false;
+            searchSubmitted = true;
+            StateHasChanged();
+        }
     }
-} 
+}

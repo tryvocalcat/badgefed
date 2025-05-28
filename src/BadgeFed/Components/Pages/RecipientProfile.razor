@@ -1,0 +1,380 @@
+@page "/recipient/{recipientUri}"
+@using BadgeFed.Models
+@using Microsoft.AspNetCore.Components.Web
+@inject LocalDbService LocalDbService
+@layout BadgeFed.Components.Layouts.MainLayout
+@rendermode InteractiveServer
+
+<PageTitle>@recipientName's Badge Collection</PageTitle>
+
+<div class="container">
+    <!-- Header Section -->
+    <div class="hero is-light">
+        <div class="hero-body">
+            <div class="has-text-centered">
+                <div class="mb-4">
+                    <span class="icon is-large has-text-primary">
+                        <i class="fas fa-user-circle fa-3x"></i>
+                    </span>
+                </div>
+                <h1 class="title is-2">@recipientName</h1>
+                <p class="subtitle is-5">
+                    <span class="icon">
+                        <i class="fas fa-link"></i>
+                    </span>
+                    <a href="@decodedRecipientUri" target="_blank" rel="noopener">@decodedRecipientUri</a>
+                </p>
+                <div class="tags is-centered mt-4">
+                    <span class="tag is-info is-medium">
+                        <span class="icon">
+                            <i class="fas fa-medal"></i>
+                        </span>
+                        <span>@badgeRecords.Count Badge@(badgeRecords.Count != 1 ? "s" : "")</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="section">
+            <div class="has-text-centered">
+                <div class="notification is-info">
+                    <span class="icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    Loading badges...
+                </div>
+            </div>
+        </div>
+    }
+    else if (!badgeRecords.Any())
+    {
+        <div class="section">
+            <div class="has-text-centered">
+                <div class="notification is-warning">
+                    <span class="icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </span>
+                    No badges found for this recipient.
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Badges Grid -->
+        <div class="section">
+            <div class="columns is-multiline is-variable is-4">
+                @foreach (var record in badgeRecords)
+                {
+                    var actor = LocalDbService.GetActorByFilter($"Uri = '{record.IssuedBy}'");
+                    <div class="column is-12-mobile is-6-tablet is-4-desktop">
+                        <div class="card badge-card">
+                            <!-- Badge Image -->
+                            <div class="card-image">
+                                <figure class="image is-square">
+                                    @if (!string.IsNullOrEmpty(record.FullImageUrl))
+                                    {
+                                        <img src="@record.FullImageUrl" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
+                                    }
+                                    else
+                                    {
+                                        <div class="badge-placeholder">
+                                            <span class="icon is-large has-text-grey-light">
+                                                <i class="fas fa-medal fa-3x"></i>
+                                            </span>
+                                        </div>
+                                    }
+                                </figure>
+                            </div>
+
+                            <!-- Badge Content -->
+                            <div class="card-content">
+                                <div class="media">
+                                    <div class="media-content">
+                                        <p class="title is-5">@record.Title</p>
+                                        <p class="subtitle is-6 has-text-grey">
+                                            Issued by 
+                                            <a href="@actor?.Uri" class="has-text-info">
+                                                @(actor?.FullName ?? record.IssuedBy)
+                                            </a>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(record.Description))
+                                {
+                                    <div class="content">
+                                        <p class="is-size-7">@record.Description</p>
+                                    </div>
+                                }
+
+                                <!-- Badge Metadata -->
+                                <div class="badge-meta">
+                                    <div class="field is-grouped is-grouped-multiline">
+                                        <div class="control">
+                                            <div class="tags has-addons">
+                                                <span class="tag is-light">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-calendar"></i>
+                                                    </span>
+                                                </span>
+                                                <span class="tag is-info">@record.IssuedOn.ToString("MMM dd, yyyy")</span>
+                                            </div>
+                                        </div>
+
+                                        @if (record.AcceptedOn.HasValue)
+                                        {
+                                            <div class="control">
+                                                <div class="tags has-addons">
+                                                    <span class="tag is-light">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-check"></i>
+                                                        </span>
+                                                    </span>
+                                                    <span class="tag is-success">Accepted</span>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (record.IsExternal)
+                                        {
+                                            <div class="control">
+                                                <div class="tags has-addons">
+                                                    <span class="tag is-light">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </span>
+                                                    </span>
+                                                    <span class="tag is-warning">External</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(record.Hashtags))
+                                    {
+                                        <div class="hashtags mt-2">
+                                            @foreach (var hashtag in record.Hashtags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                            {
+                                                <span class="tag is-small is-light">#@hashtag.Trim()</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Card Footer -->
+                            <footer class="card-footer">
+                                @if (!string.IsNullOrEmpty(record.NoteId))
+                                {
+                                    @if (record.IsExternal)
+                                    {
+                                        var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
+                                        <a class="card-footer-item has-text-info" href="/view/grant/@noteIdParam">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            <span>View Details</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a class="card-footer-item has-text-info" href="@record.NoteId">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            <span>View Details</span>
+                                        </a>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="card-footer-item has-text-grey-light">
+                                        <span class="icon">
+                                            <i class="fas fa-eye-slash"></i>
+                                        </span>
+                                        <span>No Details</span>
+                                    </span>
+                                }
+                            </footer>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .badge-card {
+        height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .badge-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge-image {
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .badge-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+    }
+
+    .badge-meta .field {
+        margin-bottom: 0.5rem;
+    }
+
+    .hashtags .tag {
+        margin-right: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .hero {
+        margin-bottom: 0;
+    }
+
+    @@media screen and (max-width: 768px) {
+        .hero-body {
+            padding: 1.5rem;
+        }
+        
+        .title.is-2 {
+            font-size: 1.75rem;
+        }
+        
+        .subtitle.is-5 {
+            font-size: 1rem;
+        }
+        
+        .section {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string RecipientUri { get; set; } = string.Empty;
+    
+    private string decodedRecipientUri = string.Empty;
+    private string recipientName = string.Empty;
+    private List<BadgeRecord> badgeRecords = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(RecipientUri))
+        {
+            try
+            {
+                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                await LoadRecipientBadges();
+            }
+            catch
+            {
+                // Handle invalid base64 string
+                decodedRecipientUri = "invalid_uri";
+                badgeRecords = new List<BadgeRecord>();
+                recipientName = "Invalid Profile";
+                isLoading = false;
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(RecipientUri))
+        {
+            try
+            {
+                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                await LoadRecipientBadges();
+            }
+            catch
+            {
+                // Handle invalid base64 string
+                decodedRecipientUri = "invalid_uri";
+                badgeRecords = new List<BadgeRecord>();
+                recipientName = "Invalid Profile";
+                isLoading = false;
+            }
+        }
+    }
+
+    private async Task LoadRecipientBadges()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load badges for this recipient
+            var filter = $@"
+                FingerPrint IS NOT NULL 
+                AND NoteId IS NOT NULL 
+                AND Visibility = 'Public' 
+                AND LOWER(IssuedToSubjectUri) = '{decodedRecipientUri.ToLower()}'
+            ";
+
+            badgeRecords = LocalDbService.GetBadgeRecords(filter);
+
+            recipientName = badgeRecords?.First()?.IssuedToName ?? 
+                            ExtractNameFromUri(decodedRecipientUri);
+        }
+        catch (Exception)
+        {
+            badgeRecords = new List<BadgeRecord>();
+            recipientName = ExtractNameFromUri(decodedRecipientUri);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string ExtractNameFromUri(string uri)
+    {
+        try
+        {
+            // Try to extract a meaningful name from the URI
+            if (uri.StartsWith("@"))
+            {
+                // Fediverse handle format @user@domain
+                return uri.Split('@')[1];
+            }
+            else if (uri.StartsWith("http"))
+            {
+                // URL format - extract from path or domain
+                var parsedUri = new Uri(uri);
+                var path = parsedUri.AbsolutePath.Trim('/');
+                if (!string.IsNullOrEmpty(path))
+                {
+                    return path.Split('/').Last();
+                }
+                return parsedUri.Host;
+            }
+            else
+            {
+                // Fallback to the URI itself
+                return uri;
+            }
+        }
+        catch
+        {
+            return "Unknown Recipient";
+        }
+    }
+}

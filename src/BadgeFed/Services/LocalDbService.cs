@@ -123,7 +123,7 @@ public class LocalDbService
         var command = connection.CreateCommand();
         if (onlyWithBadges)
         {
-            command.CommandText = @"SELECT fi.*, COUNT(br.id) AS TotalISsued
+            command.CommandText = @"SELECT fi.*, COUNT(br.id) AS TotalIssued
                                  FROM FollowedIssuer AS fi 
                                  INNER JOIN BadgeRecord br ON (br.IssuedBy = fi.Url) 
                                  GROUP BY fi.Id";
@@ -150,7 +150,6 @@ public class LocalDbService
                 TotalIssued = reader["TotalIssued"] == DBNull.Value ? null : (int?)reader.GetInt32(reader.GetOrdinal("TotalIssued"))
             });
         }
-
 
         return issuers;
     }
@@ -503,19 +502,50 @@ public class LocalDbService
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Follower (FollowerUri, Domain, ActorId)
-            VALUES (@FollowerUri, @Domain, @ActorId)
-            ON CONFLICT(FollowerUri, ActorId) DO NOTHING;
+            INSERT INTO Follower (FollowerUri, Domain, ActorId, AvatarUri, DisplayName)
+            VALUES (@FollowerUri, @Domain, @ActorId, @AvatarUri, @DisplayName)
+            ON CONFLICT(FollowerUri, ActorId) DO UPDATE SET
+            AvatarUri = excluded.AvatarUri,
+            DisplayName = excluded.DisplayName;
         ";
 
         command.Parameters.AddWithValue("@FollowerUri", follower.FollowerUri);
         command.Parameters.AddWithValue("@Domain", follower.Domain);
         command.Parameters.AddWithValue("@ActorId", follower.Parent.Id);
+        command.Parameters.AddWithValue("@AvatarUri", follower.AvatarUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@DisplayName", follower.DisplayName ?? (object)DBNull.Value);
 
         command.ExecuteNonQuery();
         transaction.Commit();
 
         InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}");
+    }
+
+    public List<Follower> GetFollowersToProcess()
+    {
+        var followers = new List<Follower>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Follower WHERE DisplayName IS NULL OR AvatarUri IS NULL LIMIT 5";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            followers.Add(new Follower
+            {
+                FollowerUri = reader.GetString(0),
+                Domain = reader.GetString(1),
+                CreatedAt = reader.GetDateTime(2),
+                Parent = new Actor() { Id = reader.GetInt64(3) },
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
+                DisplayName = reader["DisplayName"] == DBNull.Value ? null : reader["DisplayName"].ToString()
+            });
+        }
+
+        return followers;
     }
 
     public List<Follower> GetFollowersByActorId(long actorId)
@@ -537,7 +567,9 @@ public class LocalDbService
                 FollowerUri = reader.GetString(0),
                 Domain = reader.GetString(1),
                 CreatedAt = reader.GetDateTime(2),
-                Parent = new Actor() { Id = reader.GetInt64(3) }
+                Parent = new Actor() { Id = reader.GetInt64(3) },
+                AvatarUri = reader["AvatarUri"] == DBNull.Value ? null : reader["AvatarUri"].ToString(),
+                DisplayName = reader["DisplayName"] == DBNull.Value ? null : reader["DisplayName"].ToString()
             });
         }
 
@@ -1220,7 +1252,7 @@ public class ActorStats
         return null;
     }
 
-    public BadgeRecord? GetBadgeToAccept(long id, string key = null)
+    public BadgeRecord? GetBadgeToAccept(long id, string? key = null)
     {
         using var connection = GetConnection();
         connection.Open();

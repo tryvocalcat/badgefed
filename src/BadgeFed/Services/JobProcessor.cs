@@ -22,6 +22,8 @@ public class JobProcessor
         await ProcessNextProcessGrantAsync();
 
         await ProcessNextNotifyGrantAsync();
+
+        await ProcessFollowersAsync();
     }
 
     private async Task ProcessNextNotifyGrantAsync()
@@ -47,10 +49,33 @@ public class JobProcessor
 
         var record = await _badgeProcessor.SignAndGenerateBadge(grantId);
 
-        if (record != null) {
+        if (record != null)
+        {
             await _badgeProcessor.BroadcastGrant(grantId);
 
             await _badgeProcessor.NotifyProcessedGrant(grantId);
         }
-    }   
+    }
+    
+    private async Task ProcessFollowersAsync()
+    {
+        var followers = _dbService.GetFollowersToProcess();
+
+        if (followers.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var follower in followers)
+        {
+            try
+            {
+                _badgeProcessor.ProcessFollowerAsync(follower);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, $"Failed to process follower {follower.FollowerUri}");
+            }
+        }
+    }
 }

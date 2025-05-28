@@ -195,17 +195,55 @@ else
         </div>
 
         <div class="section">
-            <h2 class="title is-3 mb-5">Community Members</h2>
+            <h2 class="title is-3 mb-5">Followers</h2>
             <div class="columns is-multiline">
                 @foreach (var follower in followers)
                 {
                     var username = follower.FollowerUri.Split('/').LastOrDefault();
+                    var displayName = string.IsNullOrEmpty(follower.DisplayName) ? username : follower.DisplayName;
+
+                    var image = string.IsNullOrEmpty(follower.AvatarUri) ? null : follower.AvatarUri;
+                    var initials = string.Join("", displayName.Split(' ').Select(word => word[0])).ToUpper();
+                    var random = new Random();
+                    var randomColor = $"#{random.Next(0x1000000):X6}";
+                    var r = Convert.ToInt32(randomColor.Substring(1, 2), 16);
+                    var g = Convert.ToInt32(randomColor.Substring(3, 2), 16);
+                    var b = Convert.ToInt32(randomColor.Substring(5, 2), 16);
+
+                    // Ensure the color is dark enough for white text to contrast
+                    if ((r * 0.299 + g * 0.587 + b * 0.114) > 186) // Luminance threshold
+                    {
+                        r = (int)(r * 0.5);
+                        g = (int)(g * 0.5);
+                        b = (int)(b * 0.5);
+                    }
+
+                    randomColor = $"#{r:X2}{g:X2}{b:X2}";
+
                     <div class="column is-4">
                         <div class="follower-card">
                             <div class="content">
-                                <p class="has-text-weight-medium"><a href="@follower.FollowerUri">@username</a></p>
-                                <span class="tag is-light is-small">@follower.Domain</span>
-                            </div>
+                                <div class="media">
+                                    <div class="media-left">
+                                        @if (string.IsNullOrEmpty(image))
+                                        {
+                                            <div class="is-rounded" style="width: 48px; height: 48px; background-color: @randomColor; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">
+                                                @initials
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <figure class="image is-48x48">
+                                                <img class="is-rounded" src="@image" alt="@displayName" style="margin: 0px;">
+                                            </figure>
+                                        }
+                                    </div>
+                                    <div class="media-content" style="margin-left: 12px;">
+                                        <p class="title is-5">@displayName</p>
+                                        <p class="subtitle is-6"><a href="@follower.FollowerUri"><span class="tag is-light is-small">@(username)@@@(follower.Domain)</span></a></p>
+                                    </div>
+                                </div>
+                           </div>
                         </div>
                     </div>
                 }

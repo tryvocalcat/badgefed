@@ -39,3 +39,71 @@
 .tags-input-container .tag .delete {
     margin-left: 0.25rem;
 } 
+
+
+.search-container {
+    transition: all 0.3s ease;
+}
+
+.search-container:focus-within {
+    transform: scale(1.02);
+}
+
+.empty-state {
+    padding: 3rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.empty-state:hover {
+    background: #f1f3f5;
+}
+
+.search-icon {
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+
+.empty-state:hover .search-icon {
+    color: #495057;
+    transform: scale(1.1);
+}
+
+.badge-table {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.badge-table th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.badge-table tr {
+    transition: background-color 0.2s ease;
+}
+
+.badge-table tr:hover {
+    background-color: #f1f3f5 !important;
+}
+
+.loading-spinner {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.fade-enter {
+    opacity: 0;
+}
+
+.fade-enter-active {
+    opacity: 1;
+    transition: opacity 300ms ease-in;
+}

@@ -221,7 +221,7 @@
 
     <div class="badge-content">
         <div class="badge-image-container">
-            <img src="@badgeRecord.Image" alt="@badgeRecord.ImageAltText" class="badge-image">
+            <img src="@badgeRecord.FullImageUrl" alt="@badgeRecord.ImageAltText" class="badge-image">
         </div>
 
         <div class="badge-meta">
@@ -443,22 +443,12 @@
         
         badgeRecord = DbService.GetGrantByNoteId(NoteIdParam);
 
-        var originalImage = badgeRecord.Image;
-        
         if (badgeRecord == null)
         {
             return;
         }
 
         if (badgeRecord.IsExternal) {
-            if (!badgeRecord.Image.StartsWith("http"))
-            {
-                var issuedByUri = new Uri(badgeRecord.IssuedBy);
-                // ex justg took protocol, domain .e.g https://verifiedby.maho.dev/actors/verifiedby.maho.dev/studio/ goes to https://verifiedby.maho.dev/ and add /uploads/badges/334500f7-cfed-4280-b96c-c027c26546ec.png
-                var baseDomain = issuedByUri.GetLeftPart(UriPartial.Authority);
-                badgeRecord.Image = $"{baseDomain.TrimEnd('/')}/{badgeRecord.Image.TrimStart('/')}";
-            }
-
             actorUri = new Uri(badgeRecord.IssuedBy);
          
             var issuer = DbService.GetFollowedIssuerByUrl(badgeRecord.IssuedBy);
@@ -469,6 +459,8 @@
             } else {
                 actorName = badgeRecord.IssuedBy.Split('/').LastOrDefault() ?? string.Empty + "@" + actorUri.Host;
             }
+
+            ogImage = badgeRecord.FullImageUrl;
         } else {
             badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
             badgeRecord.Badge = badge;
@@ -476,9 +468,9 @@
             actorUri = badgeRecord.Actor.Uri;
             actorName = badgeRecord.Actor.FullName;
 
-            var extension = Path.GetExtension(originalImage);
-            var directory = Path.GetDirectoryName(originalImage);
-            var filename = Path.GetFileNameWithoutExtension(originalImage);
+            var extension = Path.GetExtension(badgeRecord.Image);
+            var directory = Path.GetDirectoryName(badgeRecord.Image);
+            var filename = Path.GetFileNameWithoutExtension(badgeRecord.Image);
             var ogFileImage = Path.Combine(directory ?? "", $"{filename}-share{extension}");
 
             ogImage = $"{NavManager.BaseUri.TrimEnd('/')}{ogFileImage}";

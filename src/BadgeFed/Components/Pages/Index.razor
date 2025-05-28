@@ -71,10 +71,10 @@
     <div class="container">
         <div class="columns is-vcentered">
             <div class="column is-7">
-                <h1 class="hero-title">Empower Your Community with Digital Badges</h1>
-                <p class="hero-subtitle">Create, issue, and verify digital credentials in a decentralized, secure, and community-driven ecosystem.</p>
+                <h1 class="hero-title">Empower Achievement with Digital Badges</h1>
+                <p class="hero-subtitle">Create, issue, and verify digital credentials in a decentralized and secure ecosystem.</p>
                 <div class="buttons">
-                    <a href="/register" class="button is-primary is-large">
+                    <a href="#create-instance" class="button is-primary is-large">
                         <span class="icon"><i class="fas fa-rocket"></i></span>
                         <span>Get Started</span>
                     </a>
@@ -109,16 +109,16 @@
                         <i class="fas fa-network-wired"></i>
                     </div>
                     <h3 class="title is-4">Decentralized</h3>
-                    <p class="subtitle is-6">No single point of control. Communities maintain their own badge systems while staying connected.</p>
+                    <p class="subtitle is-6">No single point of control. Badge issuers maintain their own systems while staying connected.</p>
                 </div>
             </div>
             <div class="column is-4">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-award"></i>
                     </div>
-                    <h3 class="title is-4">Community-Focused</h3>
-                    <p class="subtitle is-6">Designed for communities to create and manage their own badge ecosystems with full autonomy.</p>
+                    <h3 class="title is-4">Achievement-Focused</h3>
+                    <p class="subtitle is-6">Designed for organizations to recognize and verify achievements with full autonomy.</p>
                 </div>
             </div>
         </div>
@@ -130,7 +130,7 @@
                 <h2 class="title is-2">Why Choose BadgeFed?</h2>
                 <div class="content">
                     <ul>
-                        <li>🎯 Create custom badges that reflect your community's values and achievements</li>
+                        <li>🎯 Create custom badges that reflect real achievements and skills</li>
                         <li>🔒 Secure verification system built on open standards</li>
                         <li>🌐 Interoperable with other badge systems and platforms</li>
                         <li>⚡ Lightning-fast badge issuance and verification</li>
@@ -173,20 +173,20 @@
     </section>
 
     <section class="section">
-        <h2 class="title is-2 has-text-centered">Featured Communities</h2>
-        <p class="subtitle is-5 has-text-centered mb-6">Join these communities and start earning badges today</p>
+        <h2 class="title is-2 has-text-centered">Featured Badge Issuers</h2>
+        <p class="subtitle is-5 has-text-centered mb-6">Discover trusted organizations issuing verifiable badges</p>
 
         @if (Actors == null)
         {
             <div class="has-text-centered">
                 <div class="loader is-loading"></div>
-                <p>Loading communities...</p>
+                <p>Loading badge issuers...</p>
             </div>
         }
         else if (!Actors.Any())
         {
             <div class="notification is-info">
-                No communities found yet. Be the first to join!
+                No featured badge issuers available at the moment. Please check back later to discover trusted organizations in our network.
             </div>
         }
         else
@@ -214,8 +214,8 @@
                                     <div class="field is-grouped">
                                         <p class="control">
                                             <a class="button is-small is-primary" href="/view/actor/@actor.Domain/@actor.Username">
-                                                <span class="icon"><i class="fas fa-door-open"></i></span>
-                                                <span>Join</span>
+                                                <span class="icon"><i class="fas fa-eye"></i></span>
+                                                <span>View Badges</span>
                                             </a>
                                         </p>
                                     </div>
@@ -247,31 +247,97 @@
   </div>
 </section>
 
-<!-- Main Call to Action Section - bigger, stronger -->
-<section class="section">
-  <div class="container">
-    <div class="columns is-vcentered">
-      <div class="column is-8">
-        <h2 class="title is-2">Ready to Start Your Badge Journey?</h2>
-        <p class="subtitle is-4">Join our growing community of badge issuers and earners today.</p>
-      </div>
-      <div class="column is-4 has-text-right">
-        <a href="/register" class="button is-primary is-large is-rounded">
-          <span class="icon">
-            <i class="fas fa-user-plus"></i>
-          </span>
-          <span>Create Account</span>
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- Badge Issuers Section -->
+    <section class="section">
+        <div class="container">
+            <h3 class="title is-4 has-text-centered">Connected Badge Issuers</h3>
+            <p class="subtitle is-6 has-text-centered mb-5">Part of a growing decentralized ecosystem of badge issuers</p>
+            
+            @if (FollowedIssuers == null)
+            {
+                <div class="has-text-centered">
+                    <div class="loader is-loading"></div>
+                    <p>Loading badge issuers...</p>
+                </div>
+            }
+            else if (!FollowedIssuers.Any())
+            {
+                <div class="notification is-light">
+                    <p class="has-text-centered">Our network is growing! Stay tuned as more badge issuers join the federation.</p>
+                </div>
+            }
+            else
+            {
+                <div class="columns is-multiline is-centered">
+                    @foreach (var issuer in FollowedIssuers)
+                    {
+                        <div class="column is-3">
+                            <div class="card">
+                                <div class="card-content">
+                                    <div class="content has-text-centered">
+                                        @if (!string.IsNullOrEmpty(issuer.AvatarUri))
+                                        {
+                                            <figure class="image is-64x64 mx-auto mb-3">
+                                                <img src="@issuer.AvatarUri" alt="@issuer.Name" class="is-rounded">
+                                            </figure>
+                                        }
+                                        <h4 class="title is-5 mb-2">@issuer.Name</h4>
+                                        @if (issuer.TotalIssued.HasValue)
+                                        {
+                                            <div class="has-text-centered" style="margin-top: 1rem;">
+                                                <p class="subtitle is-6">@issuer.TotalIssued Badges Issued</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <footer class="card-footer">
+                                    <a href="@issuer.Url" class="card-footer-item">
+                                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                                        <span>View Profile</span>
+                                    </a>
+                                </footer>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Instance Creation Section - subtle -->
+    <section class="section has-background-light py-5" id="create-instance">
+        <div class="container">
+            <div class="columns is-vcentered">
+                <div class="column is-7">
+                    <h3 class="title is-4">Create Your Badge System</h3>
+                    <p class="subtitle is-6">Want to run your own badge instance? Set up a dedicated badge system for your organization and join our decentralized network.</p>
+                    <div class="content is-small">
+                        <ul>
+                            <li>Full control over your badge infrastructure</li>
+                            <li>Custom branding and domain setup</li>
+                            <li>Interoperable with the BadgeFed network</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="column is-5 has-text-right">
+                    <a href="https://github.com/tryvocalcat/badgefed" class="button is-info is-outlined">
+                        <span class="icon">
+                            <i class="fas fa-server"></i>
+                        </span>
+                        <span>Get Started</span>
+                    </a>
+                    
+                </div>
+            </div>
+        </div>
+    </section>
 
 </div>
 
 @code {
     private InstanceInfoDefinition InstanceInfo { get; set; }
     private List<Actor> Actors { get; set; }
+    private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,8 +362,8 @@
                 UserCount = 1000,
                 BadgeCount = 5000
             };
-            Actors = LocalDbService.GetActors("Featured = TRUE");
-            
+            Actors = LocalDbService.GetActors("Featured = TRUE AND IsMain = FALSE");
+            FollowedIssuers = LocalDbService.GetAllFollowedIssuers(true);
             HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
         }
         catch (Exception ex)

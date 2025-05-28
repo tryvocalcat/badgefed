@@ -19,6 +19,39 @@ namespace BadgeFed.Models
         public string Description { get; set; } = "";
         public string Image { get; set; } = "";
         public string ImageAltText { get; set; } = "";
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string FullImageUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Image))
+                {
+                    return string.Empty;
+                }
+
+                if (Image.StartsWith("http://") || Image.StartsWith("https://") || !IsExternal)
+                {
+                    return Image;
+                }
+
+                // Assuming the image is a relative URL, prepend the base URL
+                if (string.IsNullOrEmpty(NoteId))
+                {
+                    if (string.IsNullOrEmpty(IssuedBy))
+                    {
+                        return string.Empty;
+                    }
+
+                    var issuerUri = new Uri(IssuedBy);
+                    return issuerUri.Scheme + "://" + issuerUri.Host + Image;
+                }
+
+                var uri = new Uri(NoteId);
+                return uri.Scheme + "://" + uri.Host + Image;
+            }
+        }
+
         public string EarningCriteria { get; set; } = "";
 
         public DateTime IssuedOn { get; set; }

@@ -165,10 +165,11 @@ CREATE TABLE Follower (
     Domain TEXT NOT NULL CHECK(length(Domain) <= 100),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     ActorId INTEGER NOT NULL,
+    AvatarUri TEXT,
+    DisplayName TEXT,
     PRIMARY KEY (FollowerUri, ActorId),
     FOREIGN KEY (ActorId) REFERENCES Actor(Id)
 );
-
 
 CREATE TABLE FollowerNew (
     FollowerUri TEXT NOT NULL CHECK(length(FollowerUri) <= 300),

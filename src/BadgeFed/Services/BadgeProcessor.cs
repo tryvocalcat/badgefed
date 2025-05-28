@@ -79,6 +79,29 @@ public class BadgeProcessor
         return record;
     }
 
+    public async Task ProcessFollowerAsync(Follower follower)
+    {
+        // This method is called to process a follower
+        // It can be used to send a welcome message or perform other actions
+        Console.WriteLine($"Processing follower: {follower.FollowerUri}");
+
+        if (string.IsNullOrEmpty(follower.DisplayName) || string.IsNullOrEmpty(follower.AvatarUri))
+        {
+            var actor = _localDbService.GetActorById(follower.Parent.Id);
+
+            // Fetch actor information to get display name and avatar
+            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+            var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
+
+            if (fediverseInfo != null)
+            {
+                follower.DisplayName = fediverseInfo.Name ?? fediverseInfo.PreferredUsername;
+                follower.AvatarUri = fediverseInfo.Icon?.Url ?? string.Empty;
+                _localDbService.UpsertFollower(follower);
+            }
+        }
+    }
+
     public async Task NotifyNote(ActivityPubNote note, BadgeRecord record)
     {
         var actor = record.Actor;
@@ -86,7 +109,7 @@ public class BadgeProcessor
         var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
 
         var fediverseInfo = await actorHelper.FetchActorInformationAsync(record.IssuedToSubjectUri);
-    
+
         record.IssuedToName = !string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToName : fediverseInfo.Name;
 
         var createAction = NotesService.GetCreateNote(note, actor);

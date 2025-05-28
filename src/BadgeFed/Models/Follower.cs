@@ -7,5 +7,9 @@ namespace BadgeFed.Models
         public DateTime CreatedAt { get; set; }
 
         public Actor Parent { get; set; } = new Actor();
+
+        public string AvatarUri { get; set; } = string.Empty;
+
+        public string DisplayName { get; set; } = string.Empty;
     }
 }

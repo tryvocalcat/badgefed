@@ -5,15 +5,22 @@
 @using System.Security.Claims;
 @inject CurrentUser CurrentUser
 
-<div class="user-logout-container">
-    <span class="user-greeting">
-        <i class="bi bi-person-circle"></i>
-        @CurrentUser.Name
-    </span>
-    <a href="/admin/logout" class="logout-link">
-        <i class="bi bi-box-arrow-right"></i> Logout
-    </a>
-</div>
+@if (CurrentUser == null || !CurrentUser.IsAuthenticated)
+{
+    <p class="text-danger">User is not authenticated.</p>
+}
+else
+{
+    <div class="user-logout-container">
+        <span class="user-greeting">
+            <i class="bi bi-person-circle"></i>
+            @CurrentUser.Name
+        </span>
+        <a href="/admin/logout" class="logout-link">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
+}
 
 <style>
     .user-logout-container {
