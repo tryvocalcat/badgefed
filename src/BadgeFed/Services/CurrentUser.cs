@@ -24,8 +24,6 @@ public class CurrentUser
 
     public string? UserId => IsAuthenticated ? string.Concat(Issuer, "_", Id) : null;
 
-    public bool IsAdmin => IsAuthenticated && UserId == "XXX";
-
     public bool HasClaim(string claimType) => 
         _httpContextAccessor.HttpContext?.User.HasClaim(c => c.Type == claimType) ?? false;
 } 

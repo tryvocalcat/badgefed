@@ -1,0 +1,107 @@
+@page "/import/openbadge"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using ActivityPubDotNet.Core
+@inject LocalDbService LocalDbService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "Admin, Superuser")]
+
+<div class="container">
+    <h1 class="title has-text-centered mb-5">Import OpenBadge</h1>
+    
+    <div class="columns is-centered">
+        <div class="column is-two-thirds">
+            <div class="box">
+                <div class="content">
+                    <p>
+                        Import an OpenBadge by pasting its JSON data below. The badge must be in 
+                        <a href="https://www.imsglobal.org/sites/default/files/Badges/OBv2p0Final/index.html" target="_blank">OpenBadges v2.0</a> 
+                        format.
+                    </p>
+                </div>
+
+                <form @onsubmit="ImportBadge" @onsubmit:preventDefault>
+                    <div class="field">
+                        <div class="control">
+                            <textarea 
+                                class="textarea" 
+                                placeholder="Paste OpenBadge JSON here..." 
+                                rows="10"
+                                @bind="badgeJson"
+                                required
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="notification is-danger">
+                            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="field">
+                        <div class="control">
+                            <button class="button is-info @(isLoading ? "is-loading" : "")" type="submit" disabled="@isLoading">
+                                <span class="icon">
+                                    <i class="fas fa-file-import"></i>
+                                </span>
+                                <span>Import Badge</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string badgeJson = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task ImportBadge()
+    {
+        if (string.IsNullOrWhiteSpace(badgeJson))
+        {
+            errorMessage = "Please enter the OpenBadge JSON data";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var openBadgeService = new OpenBadgeImportService(LocalDbService);
+            var badgeRecord = await openBadgeService.ImportOpenBadge(badgeJson);
+
+            if (badgeRecord != null)
+            {
+                // Redirect to the recipient's profile page
+                var recipientUri = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(badgeRecord.IssuedToSubjectUri));
+                NavigationManager.NavigateTo($"/recipient/{recipientUri}");
+            }
+            else
+            {
+                errorMessage = "Failed to import badge. Please check the JSON format and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error importing badge: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

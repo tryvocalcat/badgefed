@@ -209,8 +209,9 @@ public static class MastodonOAuthExtensions {
             o.ClaimActions.MapJsonKey($"urn:mastodon:username", "username");
 
             o.Events = new OAuthEvents {
-                OnCreatingTicket = async context => {
-                    
+                OnCreatingTicket = async context =>
+                {
+
                     var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
                     request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -218,36 +219,38 @@ public static class MastodonOAuthExtensions {
                     var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
                     response.EnsureSuccessStatusCode();
 
-                    if (context.Options.SaveTokens) {
+                    if (context.Options.SaveTokens)
+                    {
                         context.Properties.StoreTokens(new[] {
                             new AuthenticationToken { Name = "access_token", Value = context.AccessToken }
                         });
                     }
 
                     using var user = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-                    
+
                     context.RunClaimActions(user.RootElement);
 
                     // Now that we have the user information, check if they're an admin
                     var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
 
                     // Check if this user is in the admin list
-                    var isAdmin = adminConfig?.AdminUsers?.Any(a => 
-                        a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) && 
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a =>
+                        a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) &&
                         a.Id == username) ?? false;
-                    
+
                     Console.WriteLine($"Is admin: {username} {isAdmin}");
                     if (isAdmin)
                     {
-                        context.Principal.AddIdentity(new ClaimsIdentity(new[] { 
+                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:mastodon:hostname", hostname),
                             new Claim(ClaimTypes.Role, "Admin")
                         }));
                     }
                     else
                     {
-                        context.Principal.AddIdentity(new ClaimsIdentity(new[] { 
-                            new Claim("urn:mastodon:hostname", hostname)
+                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                            new Claim("urn:mastodon:hostname", hostname),
+                            new Claim(ClaimTypes.Role, "User")
                         }));
                     }
                 },

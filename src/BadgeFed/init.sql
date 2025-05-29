@@ -1,5 +1,7 @@
 -- SQLITE DATABASE Schema
 
+-- tables that need ownership
+
 CREATE TABLE Actor (
     Id INTEGER PRIMARY KEY,
     Name TEXT NOT NULL CHECK(length(Name) >= 2 AND length(Name) <= 100),
@@ -17,7 +19,6 @@ CREATE TABLE Actor (
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     IsMain BOOLEAN DEFAULT FALSE
 );
-
 
 CREATE TRIGGER UpdateActorTimestamp
 AFTER UPDATE ON Actor

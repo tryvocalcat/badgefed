@@ -529,7 +529,7 @@ public class LocalDbService
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM Follower WHERE DisplayName IS NULL OR AvatarUri IS NULL LIMIT 5";
+        command.CommandText = "SELECT * FROM Follower WHERE DisplayName IS NULL AND AvatarUri IS NULL LIMIT 5";
 
         using var reader = command.ExecuteReader();
         while (reader.Read())

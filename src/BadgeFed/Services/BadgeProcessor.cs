@@ -87,18 +87,31 @@ public class BadgeProcessor
 
         if (string.IsNullOrEmpty(follower.DisplayName) || string.IsNullOrEmpty(follower.AvatarUri))
         {
-            var actor = _localDbService.GetActorById(follower.Parent.Id);
-
-            // Fetch actor information to get display name and avatar
-            var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
-            var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
-
-            if (fediverseInfo != null)
+            try
             {
-                follower.DisplayName = fediverseInfo.Name ?? fediverseInfo.PreferredUsername;
-                follower.AvatarUri = fediverseInfo.Icon?.Url ?? string.Empty;
-                _localDbService.UpsertFollower(follower);
+                var actor = _localDbService.GetActorById(follower.Parent.Id);
+
+                // Fetch actor information to get display name and avatar
+                var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+                var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
+
+                if (fediverseInfo != null)
+                {
+                    follower.DisplayName = fediverseInfo.Name ?? fediverseInfo.PreferredUsername;
+                    follower.AvatarUri = fediverseInfo.Icon?.Url ?? string.Empty;
+                }
+            } catch (Exception e)
+            {
+                Console.WriteLine($"Failed to fetch actor information for {follower.FollowerUri}: {e.Message}");
             }
+
+            if (string.IsNullOrEmpty(follower.DisplayName))
+            {
+                var uriSegments = follower.FollowerUri.Split('/');
+                follower.DisplayName = uriSegments.LastOrDefault() ?? follower.FollowerUri;
+            }
+
+            _localDbService.UpsertFollower(follower);
         }
     }
 

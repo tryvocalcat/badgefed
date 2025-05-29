@@ -301,11 +301,14 @@
                 </a>
             }
 
-            <a href="/openbadge/@badgeRecord.NoteId" 
+            @{
+                var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
+            }
+            <a href="/openbadge/@badgeId" 
                class="share-button openbadge-button"
-               download="badge.json">
+               download="openbadge_@(badgeId).json">
                 <span class="icon"><i class="fas fa-certificate"></i></span>
-                <span>Export OpenBadge</span>
+                <span>Download OpenBadge</span>
             </a>
         </div>
     </div>

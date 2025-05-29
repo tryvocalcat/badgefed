@@ -8,28 +8,29 @@ namespace ActivityPubDotNet.Core
     public class ExternalBadgeService
     {
         public ILogger? Logger { get; set; }
-
         private readonly LocalDbService _localDbService;
+        private readonly OpenBadgeImportService _openBadgeImportService;
 
         public ExternalBadgeService(LocalDbService localDbService)
         {
             _localDbService = localDbService;
+            _openBadgeImportService = new OpenBadgeImportService(localDbService);
         }
 
-        public Task ProcessExternalBadge(ActivityPubNote objectNote)
+        public async Task<BadgeRecord?> ProcessExternalBadge(ActivityPubNote objectNote)
         {
             Logger?.LogInformation($"Processing external badge for note: {objectNote.Id}");
 
             if (objectNote!.InReplyTo != null)
             {
                 Logger?.LogInformation("Reply detected, no action taken.");
-                return Task.CompletedTask;
+                return null;
             }
 
             if (objectNote.Attachment == null || objectNote.Attachment.Count == 0)
             {
                 Logger?.LogInformation("No attachment detected, no action taken.");
-                return Task.CompletedTask;
+                return null;
             }
 
             var grant = objectNote.Attachment.FirstOrDefault();
@@ -37,57 +38,66 @@ namespace ActivityPubDotNet.Core
             if (grant == null)
             {
                 Logger?.LogInformation("No grant detected, no action taken.");
-                return Task.CompletedTask;
+                return null;
             }
 
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
             };
-            
+
             try {
-                Console.WriteLine(JsonSerializer.Serialize(grant, options));
-                var badgeRecord = JsonSerializer.Deserialize<BadgeRecord>(JsonSerializer.Serialize(grant, options), options);
-                Console.WriteLine(JsonSerializer.Serialize(badgeRecord));
+                // Try to deserialize as ActivityPub badge first
+                var serializedGrant = JsonSerializer.Serialize(grant, options);
 
-                if (badgeRecord == null)
+                if (serializedGrant.Contains("https://vocalcat.com/badgefed/1.0"))
                 {
-                    Logger?.LogInformation("No badge record detected, no action taken.");
-                    return Task.CompletedTask;
+                    var badgeRecord = JsonSerializer.Deserialize<BadgeRecord>(serializedGrant, options);
+
+                    if (badgeRecord?.Context == "https://vocalcat.com/badgefed/1.0")
+                    {
+                        return await ProcessActivityPubBadge(badgeRecord, objectNote.Id);
+                    }
+                }
+                
+                // If not ActivityPub, try OpenBadge format
+                if (serializedGrant.Contains("https://w3id.org/openbadges/v2"))
+                {
+                    _openBadgeImportService.Logger = Logger;
+                    return await _openBadgeImportService.ImportOpenBadge(serializedGrant);
                 }
 
-                if (badgeRecord.Context != "https://vocalcat.com/badgefed/1.0")
-                {
-                    Logger?.LogInformation("Invalid context detected, no action taken.");
-                    return Task.CompletedTask;
-                }
-
-                var existingLocal = _localDbService.GetGrantByNoteId(badgeRecord.NoteId);
-
-                if (existingLocal != null)
-                {
-                    Logger?.LogInformation($"Grant already exists in local database: {existingLocal.Id}");
-                    return Task.CompletedTask;
-                }
-
-                badgeRecord.IsExternal = true;
-
-                Logger?.LogInformation($"Creating new badge record in local database");
-
-                _localDbService.CreateBadgeRecord(badgeRecord);
+                Logger?.LogInformation("Unrecognized badge format");
+                return null;
             }
             catch (JsonException ex)
             {
                 Logger?.LogError($"Failed to deserialize badge record: {ex.Message}");
-                return Task.CompletedTask;
+                return null;
             }
             catch (Exception ex)
             {
                 Logger?.LogError($"An unexpected error occurred: {ex.Message}");
-                return Task.CompletedTask;
+                return null;
             }
-            
-            return Task.CompletedTask;
+        }
+
+        private async Task<BadgeRecord?> ProcessActivityPubBadge(BadgeRecord badgeRecord, string noteId)
+        {
+            var existingLocal = _localDbService.GetGrantByNoteId(badgeRecord.NoteId);
+
+            if (existingLocal != null)
+            {
+                Logger?.LogInformation($"Grant already exists in local database: {existingLocal.Id}");
+                return existingLocal;
+            }
+
+            badgeRecord.IsExternal = true;
+            Logger?.LogInformation($"Creating new ActivityPub badge record in local database");
+            _localDbService.CreateBadgeRecord(badgeRecord);
+
+            return badgeRecord;
         }
     }
 }
