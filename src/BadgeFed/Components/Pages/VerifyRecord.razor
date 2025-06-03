@@ -310,6 +310,19 @@
                 <span class="icon"><i class="fas fa-certificate"></i></span>
                 <span>Download OpenBadge</span>
             </a>
+
+            @* Independent Verification Button *@
+            @{
+                var openBadgeUrl = $"{NavManager.BaseUri.TrimEnd('/')}/openbadge/{badgeRecord.NoteId.Split('/').LastOrDefault()}";
+                var recipientUrl = badgeRecord.IssuedToSubjectUri;
+                var verificationUrl = $"https://badgecheck.us.badgr.com/?url={openBadgeUrl}&identity__url={recipientUrl}";
+            }
+            <a href="@verificationUrl" 
+               class="share-button verification-button" 
+               target="_blank">
+                <span class="icon"><i class="fas fa-check-circle"></i></span>
+                <span>Verify Independently</span>
+            </a>
         </div>
     </div>
 </div>
