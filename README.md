@@ -61,52 +61,139 @@ A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md),
 ---
 
 ## Configuration
-Application settings are managed using a layered configuration approach in .NET, which supports multiple sources such as environment variables, `appsettings.json`, and platform-specific configurations (e.g., Azure App Configuration). Key configuration options include:
 
-The configuration system automatically merges these layers, with environment variables taking precedence over `appsettings.json`. This ensures flexibility for local development, containerized deployments, and cloud-hosted environments.
+BadgeFed uses a layered configuration system in .NET, allowing settings to be defined in `appsettings.json`, `appsettings.Development.json`, environment variables, and other sources. Below is a detailed guide to the available settings and how to use them.
 
-- **Database:**
-    - SQLite file path can be set via the `SQLITE_DB_FILENAME` environment variable (default: `badgefed.db`).
-- **OAuth Providers:**
-    - Mastodon and LinkedIn credentials are configured in `appsettings.json` under `MastodonConfig` and `LinkedInConfig`.
-- **Admin Users:**
-    - Set in `AdminAuthentication` section.
-- **Email Settings (Optional):**
-    - Configure SMTP and sender details in `EmailSettings`.
+### Available Settings
 
----
+#### 1. **Logging**
+- **Purpose:** Configures the logging levels for the application.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+  ```
+- **Usage:** Adjust the log levels to control the verbosity of logs. Common levels include `Information`, `Warning`, and `Error`.
 
-## Docker
+#### 2. **Allowed Hosts**
+- **Purpose:** Specifies the allowed hosts for the application.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "AllowedHosts": "*"
+  ```
+- **Usage:** Use `*` to allow all hosts or specify a list of allowed domains.
 
-```sh
-docker pull ghcr.io/tryvocalcat/badgefed:latest
-docker run -v `pwd`/data:/app/data \
-    -p 8080:8080 \
-    -e SQLITE_DB_FILENAME=/app/data/badges.db \
-    -e AdminAuthentication__AdminUsers__0__Id=your-mastodon-username \
-    -e AdminAuthentication__AdminUsers__0__Type=Mastodon \
-    -e MastodonConfig__ClientId=your-mastodon-client-id \
-    -e MastodonConfig__ClientSecret=your-mastodon-client-secret \
-    -e MastodonConfig__Server=your-mastodon-server \
-    ghcr.io/tryvocalcat/badgefed
-```
+#### 3. **Badges Domains**
+- **Purpose:** Defines the domains used for badge issuance and verification.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "BadgesDomains": [
+    "badgefed.example.com"
+  ]
+  ```
+- **Usage:** Update this setting with the domain(s) where your application is hosted.
 
-Example:
+#### 4. **Admin Authentication**
+- **Purpose:** Configures admin users and their authentication types.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "AdminAuthentication": {
+    "AdminUsers": [
+      {
+        "Id": "admin@example.com",
+        "Type": "LinkedIn"
+      },
+      {
+        "Id": "mastodon_user",
+        "Type": "Mastodon"
+      }
+    ]
+- **Usage:** Add admin users with their IDs and authentication types (`LinkedIn` or `Mastodon`). LinkedIn uses email as IDs, and Mastodon uses usernames. If only Mastodon users are specified or only LinkedIn users are specified, only the corresponding login button will appear. For example, if no Mastodon users are specified, the Mastodon login button will not appear.
 
-```
-docker run -v `pwd`/data:/app/data \
-    -p 8080:8080 \
-    -e SQLITE_DB_FILENAME=/app/data/badges.db \
-    -e AdminAuthentication__AdminUsers__0__Id=mapache \
-    -e AdminAuthentication__AdminUsers__0__Type=Mastodon \
-    -e MastodonConfig__ClientId=yourclientid \
-    -e MastodonConfig__ClientSecret=yourclientsecret \
-    -e MastodonConfig__Server=hachyderm.io \
-    ghcr.io/tryvocalcat/badgefed
-```
+#### 5. **Mastodon Configuration**
+- **Purpose:** Configures Mastodon OAuth for authentication.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "MastodonConfig": {
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "Server": "hachyderm.io"
+  }
+  ```
+- **Usage:** Replace `ClientId`, `ClientSecret`, and `Server` with your Mastodon app credentials. For more details, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
 
-- The container exposes port 8080.
-- Mount a volume or set environment variables as needed for persistent storage and configuration.
+#### 6. **LinkedIn Configuration**
+- **Purpose:** Configures LinkedIn OAuth for authentication.
+- **Location:** `Program.cs` (via `LinkedInConfig` class)
+- **Example:**
+  ```json
+  "LinkedInConfig": {
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret"
+  }
+  ```
+- **Usage:** Add Linked credentials in the configuration file or environment variables. You need to create a LinkedIn app with OpenId auth scope. For more details, visit the [LinkedIn Developer Documentation](https://docs.microsoft.com/en-us/linkedin/shared/authentication/authentication).
+
+#### 7. **Email Settings**
+- **Purpose:** Configures SMTP settings for sending emails.
+- **Location:** `appsettings.json` and `appsettings.Development.json`
+- **Example:**
+  ```json
+  "EmailSettings": {
+    "SmtpServer": "smtp.example.com",
+    "Port": 587,
+    "SenderEmail": "noreply@example.com",
+    "SenderName": "BadgeFed",
+    "Username": "smtp-username",
+    "Password": "smtp-password"
+  }
+  ```
+- **Usage:** Update the SMTP server, port, sender email, and credentials for email functionality. Mail feature
+
+### Docker Configuration
+
+To run BadgeFed in a Docker container, follow these steps:
+
+1. **Build the Docker Image:**
+   ```sh
+   docker build -t badgefed .
+   ```
+
+2. **Run the Container:**
+   ```sh
+   docker run -d -p 5000:80 --name badgefed -e SQLITE_DB_FILENAME="badgefed.db" badgefed
+   ```
+
+3. **Environment Variables:**
+   - Pass environment variables using the `-e` flag.
+   - Example:
+     ```sh
+     docker run -d -p 5000:80 --name badgefed \
+       -e SQLITE_DB_FILENAME="badgefed.db" \
+       -e ASPNETCORE_ENVIRONMENT="Development" \
+       badgefed
+     ```
+
+4. **Volume Mounts:**
+   - Mount volumes for persistent data storage.
+   - Example:
+     ```sh
+     docker run -d -p 5000:80 --name badgefed \
+       -v $(pwd)/data:/app/data \
+       badgefed
+     ```
+
+For more details, refer to the [Microsoft Configuration Documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration).
 
 ---
 
