@@ -50,7 +50,7 @@
                             <td>
                                 <div class="buttons">
                                     <button class="button is-primary" @onclick="() => GrantBadge(badge)">Grant</button>
-                                    <button class="button is-link" @onclick="() => ViewBadge(badge)">View</button>
+                                    <button class="button is-link" @onclick="() => PreviewBadge(badge)">View</button>
                                     <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
                                     <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
                                 </div>
@@ -83,9 +83,9 @@
         NavigationManager.NavigateTo($"/admin/grant/{badge.Id}");
     }
 
-    private void ViewBadge(Badge badge)
+    private void PreviewBadge(Badge badge)
     {
-        NavigationManager.NavigateTo($"/view/badge/{badge.Id}");
+        NavigationManager.NavigateTo($"/admin/preview/badge/{badge.Id}", forceLoad: true);
     }
 
     private void EditBadge(Badge badge)

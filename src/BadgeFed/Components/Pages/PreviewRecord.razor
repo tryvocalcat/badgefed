@@ -1,0 +1,342 @@
+@page "/admin/preview/badge/{badgeId:long}"
+@using ActivityPubDotNet.Core
+@using System.Text.Json
+@using System.IO
+
+@inject NavigationManager NavManager
+@inject LocalDbService DbService
+@inject IJSRuntime JSRuntime
+@layout BadgeFed.Components.Layouts.AdminLayout
+@rendermode InteractiveServer
+
+@attribute [Authorize(Roles = "Admin, Superuser")]
+
+<HeadContent>
+  <meta name="description" content="Preview of @badge!.Title" />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="@badge.Title" />
+  <meta property="og:description" content="@badge.Description" />
+  <meta property="og:url" content="@NavManager.Uri" />
+</HeadContent>
+
+<style>
+    a {
+        position: relative;
+        z-index: 10;
+    }
+    .badge-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .verification-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .verification-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+        opacity: 0.1;
+    }
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        padding: 0.75rem 1.5rem;
+        border-radius: 30px;
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .badge-content {
+        padding: 3rem;
+    }
+    .badge-image-container {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .badge-image {
+        max-height: 300px;
+        margin: 0 auto;
+    }
+    .badge-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+    }
+    .badge-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .meta-item {
+        background: #f3f4f6;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .meta-item i {
+        color: #6b7280;
+    }
+    .badge-description {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: #4b5563;
+        margin-bottom: 2rem;
+    }
+    .badge-criteria {
+        background: #f3f4f6;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+    .criteria-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+    }
+    .security-info {
+        background: #f3f4f6;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-top: 2rem;
+    }
+    .security-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .fingerprint {
+        font-family: monospace;
+        background: #1a1a2e;
+        color: #10b981;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        word-break: break-all;
+    }
+    .share-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    .share-button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .share-button:hover {
+        transform: translateY(-2px);
+    }
+    .preview-banner {
+        background: #ff6347;
+        color: white;
+        text-align: center;
+        padding: 0.5rem;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        font-weight: bold;
+    }
+    .admin-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+        gap: 1rem;
+    }
+</style>
+
+<div class="preview-banner">
+    PREVIEW MODE - This is how the badge will appear when issued to a recipient
+</div>
+
+<div class="admin-actions">
+    <a href="/admin/badges/edit/@BadgeId" class="button is-primary">
+        <span class="icon"><i class="fas fa-edit"></i></span>
+        <span>Edit Badge</span>
+    </a>
+    <a href="/admin/grant/@BadgeId" class="button is-success">
+        <span class="icon"><i class="fas fa-award"></i></span>
+        <span>Grant Badge</span>
+    </a>
+    <a href="/admin/badges" class="button is-light">
+        <span class="icon"><i class="fas fa-arrow-left"></i></span>
+        <span>Back to Badges</span>
+    </a>
+</div>
+
+<div class="badge-container">
+    <div class="verification-header">
+        <div class="verification-badge">
+            <span class="icon"><i class="fas fa-shield-alt"></i></span>
+            <span>Verified Badge</span>
+        </div>
+        <h1 class="title is-3 has-text-white">@badge.Title</h1>
+        <p class="subtitle is-5 has-text-white-bis">Issued to <a href="#">@recipientName</a> on @issuedOnDate.ToString("MMMM d, yyyy")</p>
+    </div>
+
+    <div class="badge-content">
+        <div class="badge-image-container">
+            <img src="@badge.Image" alt="@badge.ImageAltText" class="badge-image">
+        </div>
+
+        <div class="badge-meta">
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-user"></i></span>
+                <span>Issued by <a href="#" class="has-text-primary">@actorName</a></span>
+            </div>
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-calendar"></i></span>
+                <span>Accepted on @acceptedOnDate?.ToString("MMMM d, yyyy")</span>
+            </div>
+            <div class="meta-item">
+                <span class="icon"><i class="fas fa-tag"></i></span>
+                <span>@badge.BadgeType</span>
+            </div>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(badge.Hashtags))
+        {
+            <div class="tags">
+            @{
+                var hashtagsList = badge.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            @foreach (var tag in hashtagsList)
+            {
+                <span class="tag">@tag.Trim()</span>
+            }
+            </div>
+        }
+
+        <div class="badge-description">
+            @badge.Description
+        </div>
+
+        <div class="badge-criteria">
+            <h3 class="criteria-title">Earning Criteria</h3>
+            <p>@((MarkupString)badge.EarningCriteria.Replace("\n", "<br />"))</p>
+        </div>
+
+        <div class="security-info">
+            <h3 class="security-title">
+                <span class="icon"><i class="fas fa-lock"></i></span>
+                <span>Security Verification</span>
+            </h3>
+            <p>This badge has been cryptographically verified and is securely decentralized on the fediverse through ActivityPub.</p>
+            <div class="fingerprint">
+                @placeholderFingerprint
+            </div>
+        </div>
+
+        <div class="share-actions">
+            <a href="#" class="share-button" style="background: #6364ff; color: white;">
+                <span class="icon"><i class="fab fa-mastodon"></i></span>
+                <span>Share on Mastodon</span>
+            </a>
+            <a href="#" class="share-button" style="background: #0a66c2; color: white;">
+                <span class="icon"><i class="fab fa-linkedin"></i></span>
+                <span>Share on LinkedIn</span>
+            </a>
+            <a href="#" class="share-button" style="background: #f59e0b; color: white;">
+                <span class="icon"><i class="fas fa-certificate"></i></span>
+                <span>Download OpenBadge</span>
+            </a>
+            <a href="#" class="share-button verification-button" style="background: #10b981; color: white;">
+                <span class="icon"><i class="fas fa-check-circle"></i></span>
+                <span>Verify Independently</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="badge-container comments-section">
+    <h3 class="title is-4" style="margin-left: 1.5em">Comments</h3>
+    
+    <div class="mb-3" style="margin-left: 1.5em">
+        <p>Comments will appear here when recipients or others respond to the badge on Fediverse.</p>
+    </div>
+    
+    <div class="has-text-centered py-4">
+        <p class="has-text-grey">No comments yet.</p>
+    </div>
+</div>
+
+<div class="admin-actions">
+    <a href="/admin/badges/edit/@BadgeId" class="button is-primary">
+        <span class="icon"><i class="fas fa-edit"></i></span>
+        <span>Edit Badge</span>
+    </a>
+    <a href="/admin/grant/@BadgeId" class="button is-success">
+        <span class="icon"><i class="fas fa-award"></i></span>
+        <span>Grant Badge</span>
+    </a>
+    <a href="/admin/badges" class="button is-light">
+        <span class="icon"><i class="fas fa-arrow-left"></i></span>
+        <span>Back to Badges</span>
+    </a>
+</div>
+
+@code {
+    [Parameter] 
+    public long BadgeId { get; set; }
+    
+    private Badge? badge;
+    private Actor? actor;
+    private string actorName = "Example Issuer";
+    private string recipientName = "Example Recipient";
+    private DateTime issuedOnDate = DateTime.Now;
+    private DateTime? acceptedOnDate = DateTime.Now.AddDays(1);
+    private string placeholderFingerprint = "00000C7AAAAAAA9E0F1A2B3C4D5E600000DAAAAA000";
+
+    protected override void OnInitialized()
+    {
+        badge = DbService.GetBadgeDefinitionById(BadgeId);
+        
+        if (badge == null)
+        {
+            NavManager.NavigateTo("/admin/badges");
+            return;
+        }
+
+        actor = DbService.GetActorById(badge.IssuedBy);
+        
+        if (actor != null)
+        {
+            actorName = actor.FullName;
+        }
+    }
+}
