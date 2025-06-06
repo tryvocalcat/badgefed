@@ -1,15 +1,12 @@
 @page "/recipient/{recipientUri}"
+@page "/wallet/{recipientUri}"
 @using BadgeFed.Models
+@using Microsoft.AspNetCore.Components.Web
 @inject LocalDbService LocalDbService
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
-<HeadContent>
-    <meta name="description" content="@recipientName's digital badge collection" />
-    <meta property="og:title" content="@recipientName's Badge Collection" />
-    <meta property="og:description" content="View the digital badges earned by @recipientName" />
-    <meta property="og:type" content="profile" />
-</HeadContent>
+<PageTitle>@recipientName's Badge Collection</PageTitle>
 
 <div class="container">
     <!-- Header Section -->
@@ -79,9 +76,9 @@
                             <!-- Badge Image -->
                             <div class="card-image">
                                 <figure class="image is-square">
-                                    @if (!string.IsNullOrEmpty(record.Image))
+                                    @if (!string.IsNullOrEmpty(record.FullImageUrl))
                                     {
-                                        <img src="@record.Image" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
+                                        <img src="@record.FullImageUrl" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
                                     }
                                     else
                                     {
@@ -250,7 +247,7 @@
         margin-bottom: 0;
     }
 
-    @media screen and (max-width: 768px) {
+    @@media screen and (max-width: 768px) {
         .hero-body {
             padding: 1.5rem;
         }
@@ -281,8 +278,19 @@
     {
         if (!string.IsNullOrEmpty(RecipientUri))
         {
-            decodedRecipientUri = Uri.UnescapeDataString(RecipientUri);
-            await LoadRecipientBadges();
+            try
+            {
+                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                await LoadRecipientBadges();
+            }
+            catch
+            {
+                // Handle invalid base64 string
+                decodedRecipientUri = "invalid_uri";
+                badgeRecords = new List<BadgeRecord>();
+                recipientName = "Invalid Profile";
+                isLoading = false;
+            }
         }
     }
 
@@ -290,8 +298,19 @@
     {
         if (!string.IsNullOrEmpty(RecipientUri))
         {
-            decodedRecipientUri = Uri.UnescapeDataString(RecipientUri);
-            await LoadRecipientBadges();
+            try
+            {
+                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                await LoadRecipientBadges();
+            }
+            catch
+            {
+                // Handle invalid base64 string
+                decodedRecipientUri = "invalid_uri";
+                badgeRecords = new List<BadgeRecord>();
+                recipientName = "Invalid Profile";
+                isLoading = false;
+            }
         }
     }
 
@@ -311,17 +330,9 @@
             ";
 
             badgeRecords = LocalDbService.GetBadgeRecords(filter);
-            
-            // Extract recipient name from the first badge record or use URI
-            if (badgeRecords.Any())
-            {
-                recipientName = badgeRecords.First().IssuedToName ?? 
-                               ExtractNameFromUri(decodedRecipientUri);
-            }
-            else
-            {
-                recipientName = ExtractNameFromUri(decodedRecipientUri);
-            }
+
+            recipientName = badgeRecords?.First()?.IssuedToName ?? 
+                            ExtractNameFromUri(decodedRecipientUri);
         }
         catch (Exception)
         {
