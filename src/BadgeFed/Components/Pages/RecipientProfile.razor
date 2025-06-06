@@ -1,11 +1,15 @@
 @page "/recipient/{recipientUri}"
 @using BadgeFed.Models
-@using Microsoft.AspNetCore.Components.Web
 @inject LocalDbService LocalDbService
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
-<PageTitle>@recipientName's Badge Collection</PageTitle>
+<HeadContent>
+    <meta name="description" content="@recipientName's digital badge collection" />
+    <meta property="og:title" content="@recipientName's Badge Collection" />
+    <meta property="og:description" content="View the digital badges earned by @recipientName" />
+    <meta property="og:type" content="profile" />
+</HeadContent>
 
 <div class="container">
     <!-- Header Section -->
@@ -22,7 +26,7 @@
                     <span class="icon">
                         <i class="fas fa-link"></i>
                     </span>
-                    <a href="@decodedRecipientUri" target="_blank" rel="noopener">@decodedRecipientUri</a>
+                    <a href="@decodedRecipientUri" target="_blank" rel="me">@decodedRecipientUri</a>
                 </p>
                 <div class="tags is-centered mt-4">
                     <span class="tag is-info is-medium">
@@ -75,9 +79,9 @@
                             <!-- Badge Image -->
                             <div class="card-image">
                                 <figure class="image is-square">
-                                    @if (!string.IsNullOrEmpty(record.FullImageUrl))
+                                    @if (!string.IsNullOrEmpty(record.Image))
                                     {
-                                        <img src="@record.FullImageUrl" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
+                                        <img src="@record.Image" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
                                     }
                                     else
                                     {
@@ -246,7 +250,7 @@
         margin-bottom: 0;
     }
 
-    @@media screen and (max-width: 768px) {
+    @media screen and (max-width: 768px) {
         .hero-body {
             padding: 1.5rem;
         }
@@ -277,19 +281,8 @@
     {
         if (!string.IsNullOrEmpty(RecipientUri))
         {
-            try
-            {
-                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
-                await LoadRecipientBadges();
-            }
-            catch
-            {
-                // Handle invalid base64 string
-                decodedRecipientUri = "invalid_uri";
-                badgeRecords = new List<BadgeRecord>();
-                recipientName = "Invalid Profile";
-                isLoading = false;
-            }
+            decodedRecipientUri = Uri.UnescapeDataString(RecipientUri);
+            await LoadRecipientBadges();
         }
     }
 
@@ -297,19 +290,8 @@
     {
         if (!string.IsNullOrEmpty(RecipientUri))
         {
-            try
-            {
-                decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
-                await LoadRecipientBadges();
-            }
-            catch
-            {
-                // Handle invalid base64 string
-                decodedRecipientUri = "invalid_uri";
-                badgeRecords = new List<BadgeRecord>();
-                recipientName = "Invalid Profile";
-                isLoading = false;
-            }
+            decodedRecipientUri = Uri.UnescapeDataString(RecipientUri);
+            await LoadRecipientBadges();
         }
     }
 
@@ -329,9 +311,17 @@
             ";
 
             badgeRecords = LocalDbService.GetBadgeRecords(filter);
-
-            recipientName = badgeRecords?.First()?.IssuedToName ?? 
-                            ExtractNameFromUri(decodedRecipientUri);
+            
+            // Extract recipient name from the first badge record or use URI
+            if (badgeRecords.Any())
+            {
+                recipientName = badgeRecords.First().IssuedToName ?? 
+                               ExtractNameFromUri(decodedRecipientUri);
+            }
+            else
+            {
+                recipientName = ExtractNameFromUri(decodedRecipientUri);
+            }
         }
         catch (Exception)
         {
