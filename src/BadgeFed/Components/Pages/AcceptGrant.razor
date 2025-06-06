@@ -25,6 +25,7 @@ else if (accepted)
         <p class="subtitle is-5 has-text-white">
             Your badge has been successfully accepted and added to your collection.
             It will be published to the decentralized network shortly, and you'll receive a confirmation when completed.
+            <strong>Feel free to refresh this page in a few moments to see the badge in your collection.</strong>
         </p>
     </div>
 } else {
@@ -236,13 +237,13 @@ else if (accepted)
                     ValidationProfileMessage += " ✓ Name autofilled from profile.";
                 }
             } else {
-                ValidationProfileMessage += "⚠️ Could not retrieve the actor information. Your badge can still be issued, but the actor may not be federated.";
+                // ValidationProfileMessage += "⚠️ Could not retrieve the actor information. Your badge can still be issued, but the actor may not be federated.";
                 Model.IsActivityPubActor = false;
             }
         }
         catch (Exception ex)
         {
-            ValidationProfileMessage += $"⚠️ Could not validate url. Your badge can still be issued, but the actor won't be federated.";
+            // ValidationProfileMessage += $"⚠️ Could not validate url. Your badge can still be issued, but the actor won't be federated.";
         }
     }
 
