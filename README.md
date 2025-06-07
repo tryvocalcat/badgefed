@@ -10,7 +10,7 @@ BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system insp
 ## Features
 
 - Issue and manage digital badges
-- ActivityPub protocol support for federation
+- ActivityPub protocol support for federation ([see implementation details](./DETAILS.md))
 - Minimalistic, modern design
 - Built with .NET 9 for robust performance
 - OAuth login (Mastodon, LinkedIn)
@@ -57,6 +57,18 @@ A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md),
     ```sh
     dotnet run --project src/BadgeFed/BadgeFed.csproj
     ```
+
+---
+
+## Usage Guide
+
+See the [USAGE.md](./USAGE.md) file for a detailed usage guide, including badge management, grant workflow, recipient profiles, and more.
+
+---
+
+## ActivityPub & OpenBadge Implementation
+
+For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [DETAILS.md](./DETAILS.md).
 
 ---
 
@@ -117,6 +129,8 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
         "Type": "Mastodon"
       }
     ]
+  }
+  ```
 - **Usage:** Add admin users with their IDs and authentication types (`LinkedIn` or `Mastodon`). LinkedIn uses email as IDs, and Mastodon uses usernames. If only Mastodon users are specified or only LinkedIn users are specified, only the corresponding login button will appear. For example, if no Mastodon users are specified, the Mastodon login button will not appear.
 
 #### 5. **Mastodon Configuration**
