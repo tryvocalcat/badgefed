@@ -27,48 +27,63 @@ A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md),
 
 ## Getting Started
 
-### Prerequisites
+### Docker Method
 
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+To run BadgeFed in a Docker container, follow these steps:
 
-### Installation
+1. **Build the Docker Image:**
+   ```sh
+   docker build -t badgefed .
+   ```
 
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/tryvocalcat/activitypub-badges.git
-    cd activitypub-badges
-    ```
-2. Restore dependencies:
-    ```sh
-    dotnet restore
-    ```
-3. Build the project:
-    ```sh
-    dotnet build
-    ```
+2. **Run the Container:**
+   ```sh
+   docker run -d -p 5000:80 --name badgefed -e SQLITE_DB_FILENAME="badgefed.db" badgefed
+   ```
 
-### Running the Application
+3. **Environment Variables:**
+   - Pass environment variables using the `-e` flag.
+   - Example:
+     ```sh
+     docker run -d -p 5000:80 --name badgefed \
+       -e SQLITE_DB_FILENAME="badgefed.db" \
+       -e ASPNETCORE_ENVIRONMENT="Development" \
+       badgefed
+     ```
 
-- **Development:**
-    ```sh
-    dotnet watch --project src/BadgeFed/BadgeFed.csproj
-    ```
-- **Production:**
-    ```sh
-    dotnet run --project src/BadgeFed/BadgeFed.csproj
-    ```
+4. **Volume Mounts:**
+   - Mount volumes for persistent data storage.
+   - Example:
+     ```sh
+     docker run -d -p 5000:80 --name badgefed \
+       -v $(pwd)/data:/app/data \
+       badgefed
+     ```
+
+A fully docker example would be:
+
+```sh
+docker run -d \
+  -p 5000:80 \
+    --name badgefed \
+    -e SQLITE_DB_FILENAME="badgefed.db" \
+    -e ASPNETCORE_ENVIRONMENT="Production" \
+    -e "MastodonConfig__ClientId=your-client-id" \
+    -e "MastodonConfig__ClientSecret=your-client-secret" \
+    -e "MastodonConfig__Server=hachyderm.io" \
+    -e "AdminAuthentication__AdminUsers__0__Id=mymastodonusername" \
+    -e "AdminAuthentication__AdminUsers__0__Type=Mastodon" \
+    -v $(pwd)/data:/app/data \
+    badgefed
+```
+
+For more details, refer to the [Microsoft Configuration Documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration) about how to pass environment variables in a dotnet docker image.
 
 ---
 
 ## Usage Guide
 
 See the [USAGE.md](./USAGE.md) file for a detailed usage guide, including badge management, grant workflow, recipient profiles, and more.
-
----
-
-## ActivityPub & OpenBadge Implementation
-
-For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [DETAILS.md](./DETAILS.md).
 
 ---
 
@@ -172,48 +187,20 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
     "Password": "smtp-password"
   }
   ```
-- **Usage:** Update the SMTP server, port, sender email, and credentials for email functionality. Mail feature
+- **Usage:** Update the SMTP server, port, sender email, and credentials for email functionality.
 
-### Docker Configuration
+---
 
-To run BadgeFed in a Docker container, follow these steps:
+## ActivityPub & OpenBadge Implementation
 
-1. **Build the Docker Image:**
-   ```sh
-   docker build -t badgefed .
-   ```
-
-2. **Run the Container:**
-   ```sh
-   docker run -d -p 5000:80 --name badgefed -e SQLITE_DB_FILENAME="badgefed.db" badgefed
-   ```
-
-3. **Environment Variables:**
-   - Pass environment variables using the `-e` flag.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -e SQLITE_DB_FILENAME="badgefed.db" \
-       -e ASPNETCORE_ENVIRONMENT="Development" \
-       badgefed
-     ```
-
-4. **Volume Mounts:**
-   - Mount volumes for persistent data storage.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -v $(pwd)/data:/app/data \
-       badgefed
-     ```
-
-For more details, refer to the [Microsoft Configuration Documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration).
+For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [DETAILS.md](./DETAILS.md).
 
 ---
 
 ## Contributing
 
-Contributions are welcome! To add a new server, update `servers.json` and run `gen.sh`. For code contributions, please open an issue or submit a pull request.
+Contributions are welcome! To add a new server, update `servers.json` and run `gen.sh`. 
+For code contributions, please open an issue or submit a pull request.
 
 ---
 
