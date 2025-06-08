@@ -1,21 +1,20 @@
-# BadgeFed - ActivityPub Badges
+# BadgeFed - ActivityPub + OpenBadges
 
-BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system inspired by Credly, built with .NET and leveraging the ActivityPub protocol. It enables issuing, managing, and verifying digital badges across federated servers.
+BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system inspired by Credly, built with .NET and leveraging the ActivityPub protocol and the OpenBadges spec. It enables issuing, managing, and verifying digital badges across federated servers.
 
-- **Primary Instance:** [badges.vocalcat.com](https://badges.vocalcat.com)
 - **Blog:** [badgefed.vocalcat.com](https://badgefed.vocalcat.com/)
 
 ---
 
 ## Features
 
-- Issue and manage digital badges
+- Issue and manage digital badges and grants
 - ActivityPub protocol support for federation ([see implementation details](./DETAILS.md))
-- Minimalistic, modern design
-- Built with .NET 9 for robust performance
+- Built with .NET 9
 - OAuth login (Mastodon, LinkedIn)
 - Email notifications
 - Easily extensible and self-hostable
+- 100% Open Source under the [LGPL license](LICENSE.md).
 
 ---
 
