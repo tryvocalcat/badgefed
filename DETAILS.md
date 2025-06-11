@@ -5,6 +5,7 @@ BadgeFed leverages the ActivityPub protocol to enable decentralized badge issuan
 ## Issuers as Actors
 
 - **Issuers** in BadgeFed are represented as **ActivityPub Actors**.
+
 - Each issuer acts as an ActivityPub actor and can interact with other actors in the network.
 
 ## Decentralized Badges via ActivityPub Notes
@@ -20,6 +21,35 @@ BadgeFed leverages the ActivityPub protocol to enable decentralized badge issuan
 - The badge attachment within the Note follows the **OpenBadge 2.0 specification**.
 - This ensures interoperability and standardization for badge data.
 - When an issuer receives a Note in their inbox with an OpenBadge 2.0 attachment, the badge is automatically imported into the system. Other incoming Notes are ignored unless they are comments (replies) to a badge Note, in which case they are processed as federated comments.
+
+## Verification and Issuer Linking
+
+To ensure the authenticity of badges and prevent spoofing, BadgeFed enforces a strict link between the OpenBadge Issuer profile and the corresponding ActivityPub Actor:
+
+- The `url` field in the OpenBadge Issuer profile **must exactly match** the ActivityPub Actor's URL for the issuer.
+- When a badge is received, BadgeFed validates that the OpenBadge's `issuer.url` is identical to the ActivityPub Actor that sent the Note.
+- Only badges where this relationship is confirmed are accepted and imported. Any OpenBadge assertions found in Notes where the issuer's URL does not match the sending ActivityPub Actor are ignored.
+
+This mechanism ensures that only legitimate issuers can issue badges under their identity, and prevents badges from being circulated in the Fediverse by unauthorized actors.
+
+## Recipient URL Linking
+
+To further strengthen badge authenticity and traceability, BadgeFed enforces strict recipient URL linking:
+
+- The **recipient** in the OpenBadge Assertion must use the `url` type, specifying the recipient's ActivityPub actor URL.
+- This recipient URL must also appear as a **Mention** in the ActivityPub Note's `tags` array, referencing the same actor.
+- BadgeFed validates that the recipient's URL in the OpenBadge matches the Mention in the ActivityPub object. Only badges where this relationship is confirmed are accepted and imported.
+
+This ensures that badges are issued to verifiable, federated identities and prevents misattribution or spoofing of badge recipients.
+
+## Signature Validation
+
+BadgeFed validates both **OpenBadge** and **ActivityPub** signatures to ensure the authenticity and integrity of badge data:
+
+- **ActivityPub signatures** are checked using HTTP Signatures to verify that incoming Notes and activities are genuinely sent by the claimed actor.
+- **OpenBadge signatures** (if present) are validated according to the OpenBadge specification, ensuring that badge assertions have not been tampered with.
+
+This dual-signature validation provides strong guarantees that badges and related activities originate from trusted sources and have not been altered in transit.
 
 ## Federation and Decentralization
 
