@@ -249,16 +249,14 @@
                     </div>
                 }
         </div>
-        @if (!string.IsNullOrEmpty(badgeRecord.Hashtags))
+        
+        @if (badgeRecord.HashtagsList != null && badgeRecord.HashtagsList.Any())
         {
-            <div class="tags">
-            @{
-                var hashtagsList = badgeRecord.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            }
-            @foreach (var tag in hashtagsList)
-            {
-                <span class="tag">@tag.Trim()</span>
-            }
+            <div class="hashtags mt-2">
+                @foreach (var hashtag in badgeRecord.HashtagsList)
+                {
+                    <span class="tag is-small is-light">#@hashtag.Trim()</span>
+                }
             </div>
         }
 

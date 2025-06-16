@@ -66,6 +66,8 @@ builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton(sp => new BadgeService(sp.GetRequiredService<LocalDbService>()));
+builder.Services.AddSingleton<OpenBadgeService>();
+builder.Services.AddScoped<OpenBadgeImportService>();
 
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();

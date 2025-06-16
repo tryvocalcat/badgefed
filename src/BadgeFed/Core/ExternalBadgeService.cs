@@ -51,6 +51,7 @@ namespace ActivityPubDotNet.Core
                 // Try to deserialize as ActivityPub badge first
                 var serializedGrant = JsonSerializer.Serialize(grant, options);
 
+                // To be deprecated -- avoiding creating custom spec
                 if (serializedGrant.Contains("https://vocalcat.com/badgefed/1.0"))
                 {
                     var badgeRecord = JsonSerializer.Deserialize<BadgeRecord>(serializedGrant, options);
@@ -61,12 +62,15 @@ namespace ActivityPubDotNet.Core
                     }
                 }
                 
-                // If not ActivityPub, try OpenBadge format
+                // Trying openbadges v2
                 if (serializedGrant.Contains("https://w3id.org/openbadges/v2"))
                 {
                     _openBadgeImportService.Logger = Logger;
                     return await _openBadgeImportService.ImportOpenBadge(serializedGrant);
                 }
+
+                // TODO: Implement OpenBadges v3
+                // TODO: Implement https://w3c.github.io/vc-data-model/
 
                 Logger?.LogInformation("Unrecognized badge format");
                 return null;

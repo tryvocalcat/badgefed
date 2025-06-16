@@ -229,15 +229,12 @@
             </div>
         </div>
         
-        @if (!string.IsNullOrEmpty(badge.Hashtags))
+        @if (badge.HashtagsList != null && badge.HashtagsList.Any())
         {
-            <div class="tags">
-            @{
-                var hashtagsList = badge.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            }
-            @foreach (var tag in hashtagsList)
+            <div class="hashtags mt-2">
+            @foreach (var hashtag in badge.HashtagsList)
             {
-                <span class="tag">@tag.Trim()</span>
+                <span class="tag is-small is-light">#@hashtag.Trim()</span>
             }
             </div>
         }

@@ -10,10 +10,12 @@ namespace BadgeFed.Controllers
     public class OpenBadgeController : ControllerBase
     {
         private readonly LocalDbService _localDbService;
+        private readonly OpenBadgeService _openBadgeService;
 
-        public OpenBadgeController(LocalDbService localDbService)
+        public OpenBadgeController(LocalDbService localDbService, OpenBadgeService openBadgeService)
         {
             _localDbService = localDbService;
+            _openBadgeService = openBadgeService;
         }
 
         [HttpGet("issuer/{domain}/{username}")]
@@ -26,25 +28,7 @@ namespace BadgeFed.Controllers
                 return NotFound("Issuer not found");
             }
 
-            var issuer = new
-            {
-                _context = "https://w3id.org/openbadges/v2",
-                type = "Profile",
-                id = $"https://{actor.Domain}/openbadge/issuer/{actor.Domain}/{actor.Username}",
-                name = actor.FullName,
-                url = actor.InformationUri,
-                email = $"{actor.Username}@{actor.Domain}"
-            };
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-
-            var json = JsonSerializer.Serialize(issuer, options);
-            json = json.Replace("\"_context\":", "\"@context\":");
-
+            var json = _openBadgeService.GetIssuerJson(actor);
             return Content(json, "application/json");
         }
 
@@ -60,98 +44,21 @@ namespace BadgeFed.Controllers
 
             var actor = _localDbService.GetActorById(badge.IssuedBy);
 
-            var badgeClass = new
-            {
-                _context = "https://w3id.org/openbadges/v2",
-                type = "BadgeClass",
-                id = $"https://{actor.Domain}/openbadge/class/{badge.Id}",
-                name = badge.Title,
-                description = badge.Description,
-                image = $"https://{actor.Domain}{badge.Image}",
-                criteria = new
-                {
-                    narrative = badge.EarningCriteria
-                },
-                issuer = $"https://{actor.Domain}/openbadge/issuer/{actor.Domain}/{actor.Username}"
-            };
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-
-            var json = JsonSerializer.Serialize(badgeClass, options);
-            json = json.Replace("\"_context\":", "\"@context\":");
-
+            var json = _openBadgeService.GetBadgeClassJson(badge, actor);
             return Content(json, "application/json");
         }
 
         [HttpGet("{noteId}")]
         public IActionResult GetOpenBadge(string noteId)
         {
-            var record = _localDbService.GetGrantByNoteId(noteId);
+            var record = _openBadgeService.GetOpenBadgeFromBadgeRecord(noteId);
             
             if (record == null)
             {
                 return NotFound("Badge not found");
             }
 
-            var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
-            var actor = _localDbService.GetActorByFilter($"Uri = \"{record.IssuedBy}\"")!;
-
-            record.Badge = badge;
-            record.Actor = actor;
-
-            var openBadge = new
-            {
-                _context = "https://w3id.org/openbadges/v2",
-                type = "Assertion",
-                id = $"https://{record.Actor.Domain}/openbadge/{noteId}",
-                recipient = new
-                {
-                    type = "url",
-                    identity = record.IssuedToSubjectUri,
-                    hashed = false
-                },
-                badge = new {
-                    _context = "https://w3id.org/openbadges/v2",
-                    type = "BadgeClass",
-                    id = $"https://{actor.Domain}/openbadge/class/{badge.Id}",
-                    name = badge.Title,
-                    description = badge.Description,
-                    image = $"https://{actor.Domain}{badge.Image}",
-                    criteria = new
-                    {
-                        narrative = badge.EarningCriteria
-                    },
-                    issuer = $"https://{actor.Domain}/openbadge/issuer/{actor.Domain}/{actor.Username}"
-                },
-                verification = new
-                {
-                    type = "hosted"
-                },
-                issuedOn = record.IssuedOn.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                evidence = new[]
-                {
-                    new
-                    {
-                        type = "Evidence",
-                        id = $"https://{record.Actor.Domain}/view/grant/{noteId}",
-                        narrative = "This badge was issued through BadgeFed, a decentralized badge issuing platform using ActivityPub."
-                    }
-                }
-            };
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-
-            var json = JsonSerializer.Serialize(openBadge, options);
-            json = json.Replace("\"_context\":", "\"@context\":");
-
+            var json = _openBadgeService.GetOpenBadgeJson(record);
             return Content(json, "application/json");
         }
     }

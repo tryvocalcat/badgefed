@@ -9,9 +9,12 @@ public class BadgeService
 {
     private readonly LocalDbService DbService;
 
-    public BadgeService(LocalDbService dbService)
+    private readonly OpenBadgeService OpenBadgeService;
+
+    public BadgeService(LocalDbService dbService, OpenBadgeService openBadgeService)
     {
         DbService = dbService;
+        OpenBadgeService = openBadgeService;
     }
 
     public static BadgeRecord GetBadge()
@@ -89,8 +92,10 @@ public class BadgeService
     {
         var note = NotesService.GetBadgeNote(record);
 
+        var openbadge = openBadgeService.GetOpenBadgeObject(record);
+
         note.BadgeMetadata = record;
-        note.Attachment.Add(record);
+        note.Attachment.Add(openbadge); // this is ActivityPub + OpenBadge
 
         return note;
     }

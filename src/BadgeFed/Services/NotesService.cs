@@ -200,13 +200,12 @@ public class NotesService
 
         var hashtagsContent = string.Empty;
 
-        // Add hashtags as tags
-        if (!string.IsNullOrEmpty(record.Hashtags))
+        // Add hashtags as tags using the clean HashtagsList
+        if (record.HashtagsList != null && record.HashtagsList.Any())
         {
-            var hashtags = record.Hashtags.Replace(" ", string.Empty).Trim().Split(new[] { ',', ';', ':', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var hashtag in hashtags)
+            foreach (var hashtag in record.HashtagsList)
             {
-                var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag.Replace("#", "")}";
+                var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag}";
                 hashtagsContent += " " + GetHashTag(hashtag, tagUrl, tags);
             }
         }

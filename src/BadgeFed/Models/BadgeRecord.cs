@@ -68,6 +68,19 @@ namespace BadgeFed.Models
 
         public string Hashtags { get; set; } = "";
 
+        [System.Text.Json.Serialization.JsonIgnore]
+        public List<string> HashtagsList { get
+            {
+                return string.IsNullOrWhiteSpace(Hashtags)
+                    ? new List<string>()
+                    : Hashtags
+                        .Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(h => h.Trim().TrimStart('#'))
+                        .Where(h => !string.IsNullOrEmpty(h))
+                        .ToList();
+            }
+        }
+
         public string FingerPrint { get; set; } = "";
 
         [JsonPropertyName("id")]

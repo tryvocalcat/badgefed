@@ -155,10 +155,10 @@
                                         }
                                     </div>
 
-                                    @if (!string.IsNullOrEmpty(record.Hashtags))
+                                    @if (record.HashtagsList.Any())
                                     {
                                         <div class="hashtags mt-2">
-                                            @foreach (var hashtag in record.Hashtags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                            @foreach (var hashtag in record.HashtagsList)
                                             {
                                                 <span class="tag is-small is-light">#@hashtag.Trim()</span>
                                             }
@@ -300,6 +300,13 @@
         {
             try
             {
+                var padding = RecipientUri.Length % 4;
+                
+                if (padding > 0)
+                {
+                    RecipientUri += new string('=', 4 - padding);
+                }
+                
                 decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
                 await LoadRecipientBadges();
             }
