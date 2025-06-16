@@ -26,4 +26,22 @@ public class CurrentUser
 
     public bool HasClaim(string claimType) => 
         _httpContextAccessor.HttpContext?.User.HasClaim(c => c.Type == claimType) ?? false;
+
+    public string GetRole()
+    {
+        var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role);
+        return roleClaim?.Value ?? string.Empty;
+    }
+
+    public bool IsAdmin()
+    {
+        var role = GetRole();
+        return !string.IsNullOrEmpty(role) && role.Equals("admin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool CanManage()
+    {
+        var role = GetRole();
+        return !string.IsNullOrEmpty(role) && role.Equals("manager", StringComparison.OrdinalIgnoreCase) || IsAdmin();
+    }
 } 

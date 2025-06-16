@@ -6,10 +6,11 @@
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
+@inject CurrentUser CurrentUser
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 <h1>Manage Badge Grant Records</h1>
 
 <div class="box">
@@ -183,11 +184,22 @@ else
     private DateTime? dateToFilter;
 
     private void PerformSearch() {
+        var filter = new LocalDbService.Filter();
+
         if (!string.IsNullOrEmpty(searchTerm)) {
-            records = LocalDbService.SearchGrants(searchTerm);
-        } else {
-            records = LocalDbService.GetBadgeRecords()!;
-        }        
+            filter.Where = @"
+                (   Title LIKE @Term
+                OR IssuedToSubjectUri LIKE @Term
+                OR IssuedBy LIKE @Term)";
+            filter.Parameters.Add("Term", $"%{searchTerm}%");
+        }
+
+        if (!CurrentUser.IsAdmin()) {
+            filter.Where += $" AND OwnerId = @UserId";
+            filter.Parameters.Add("UserId", CurrentUser.UserId);
+        }
+
+        records = LocalDbService.GetBadgeRecords(filter, true)!;      
     }
 
     private void ApplyFilters() {
@@ -212,7 +224,7 @@ else
         dateFromFilter = null;
         dateToFilter = null;
         
-        records = LocalDbService.GetBadgeRecords()!;
+        PerformSearch();
         filteredRecords = new List<BadgeRecord?>(records);
     }
 
@@ -244,7 +256,7 @@ else
 
         actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
-        records = LocalDbService.GetBadgeRecords()!;
+        PerformSearch();
         filteredRecords = new List<BadgeRecord?>(records);
     }
 }

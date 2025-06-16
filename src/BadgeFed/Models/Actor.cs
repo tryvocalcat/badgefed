@@ -22,6 +22,8 @@ public class Actor
 
     public bool IsMain { get; set; } = false; // New property
 
+    public string OwnerId { get; set; } = string.Empty;
+
     public string? InformationUri { get; set; }
 
     public Uri? Uri {

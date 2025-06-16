@@ -30,7 +30,7 @@ public class JobProcessor
     {
         var grantId = _dbService.PeekNotifyGrantId();
 
-        if (grantId == null || grantId == 0)
+        if (grantId == 0)
         {
             return;
         }
@@ -42,7 +42,7 @@ public class JobProcessor
     {
         var grantId = _dbService.PeekProcessGrantId();
 
-        if (grantId == null || grantId == 0)
+        if (grantId == 0)
         {
             return;
         }
@@ -70,7 +70,7 @@ public class JobProcessor
         {
             try
             {
-                _badgeProcessor.ProcessFollowerAsync(follower);
+                await _badgeProcessor.ProcessFollowerAsync(follower);
             }
             catch (Exception ex)
             {

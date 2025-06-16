@@ -55,10 +55,10 @@ builder.Services.AddScoped<CreateNoteService>();
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
-builder.Services.AddSingleton<LocalDbService>(sp => {
-    var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
-    return new LocalDbService(dbFileName);
-});
+var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
+var localDbService = new LocalDbService(dbFileName);
+
+builder.Services.AddSingleton<LocalDbService>(localDbService);
 
 builder.Services.AddSingleton<BadgeProcessor>();
 builder.Services.AddHttpContextAccessor();
@@ -87,7 +87,7 @@ if (mastodonConfig != null)
         o.ClientId = mastodonConfig.ClientId;
         o.ClientSecret = mastodonConfig.ClientSecret;
         o.SaveTokens = true;
-    });
+    }, localDbService);
 }
 
 if (linkedInConfig != null)
@@ -98,7 +98,7 @@ if (linkedInConfig != null)
             o.ClientSecret = linkedInConfig.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
             o.SaveTokens = true;
-        });
+        }, localDbService);
 }
 
 builder.Services.AddHostedService<JobExecutor>();
@@ -123,7 +123,7 @@ builder.Services.Configure<StaticFileOptions>(options =>
 var app = builder.Build();
 
 // Setup default actor on first run
-SetupDefaultActor(app.Services);
+await SetupDefaultActor(app.Services);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -189,7 +189,8 @@ public static class MastodonOAuthExtensions {
         this AuthenticationBuilder builder, 
         AdminConfig adminConfig, 
         MastodonConfig mastodonConfig, 
-        Action<OAuthOptions> configureOptions) 
+        Action<OAuthOptions> configureOptions,
+        LocalDbService localDbService) 
     {
         var hostname = mastodonConfig.Server;
         _hosts.Add(hostname);
@@ -243,16 +244,27 @@ public static class MastodonOAuthExtensions {
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:mastodon:hostname", hostname),
-                            new Claim(ClaimTypes.Role, "Admin")
+                            new Claim(ClaimTypes.Role, "admin")
                         }));
                     }
                     else
                     {
+                        var userId = $"{hostname}_{username}";
+
+                        Console.WriteLine($"User ID: {userId}");
+
+                        var registeredUser = localDbService.GetUserById(userId);
+
+                        Console.WriteLine($"Registered user: {System.Text.Json.JsonSerializer.Serialize(registeredUser)}");
+                        
+                        var role = registeredUser != null ? registeredUser.Role : "User";
+
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:mastodon:hostname", hostname),
-                            new Claim(ClaimTypes.Role, "User")
+                            new Claim(ClaimTypes.Role, role)
                         }));
                     }
+                    
                 },
                 OnRemoteFailure = context => {
                     context.HandleResponse();
@@ -272,7 +284,8 @@ public static class LinkedInOAuthExtensions
         this AuthenticationBuilder builder,
         AdminConfig adminConfig,
         LinkedInConfig config,
-        Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions)
+        Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
+        LocalDbService localDbService)
     {
         return builder.AddOAuth("LinkedIn", "LinkedIn", o =>
         {
@@ -318,18 +331,39 @@ public static class LinkedInOAuthExtensions
 
                     if (isAdmin)
                     {
-                        role = "Admin";
+                        role = "admin";
                     }
+                    else
+                    {
+                        var registeredUserId = "LinkedIn_" + userEmail;
 
-                    var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
+                        var registeredUser = localDbService.GetUserById(registeredUserId);
 
-                    Console.WriteLine($"User {name} {userName} {userEmail} is an {role}");
+                        if (registeredUser == null) {
+                            // If the user is not registered, create a new user entry
+                            registeredUser = new User
+                            {
+                                Id = registeredUserId,
+                                Email = userEmail,
+                                GivenName = name, // LinkedIn may provide full name; adjust if you split first/last elsewhere
+                                Surname = string.Empty, // No surname info from LinkedIn userinfo endpoint
+                                CreatedAt = DateTime.UtcNow,
+                                Provider = "LinkedIn",
+                                Role = "user",
+                                IsActive = false
+                            };
+
+                            localDbService.UpsertUser(registeredUser);
+                        }
+
+                        role = registeredUser != null ? registeredUser.Role : "user";
+                    }
 
                     context.Principal.AddIdentity(new ClaimsIdentity(
                         [
-                            new Claim(ClaimTypes.Name, name ?? userName),
+                            new Claim(ClaimTypes.Name, name ?? userEmail),
                             new Claim(ClaimTypes.Role, role),
-                            new Claim(ClaimTypes.NameIdentifier, userName),
+                            new Claim(ClaimTypes.NameIdentifier, userEmail),
                             new Claim(ClaimTypes.Email, userEmail ?? string.Empty),
                         ], "LinkedIn"));
                 },

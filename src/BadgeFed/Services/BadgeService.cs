@@ -51,8 +51,6 @@ public class BadgeService
                 return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
             }
         }
-
-        return string.Empty;
     }
 
     public static string GetMention(string name, string link)

@@ -22,5 +22,7 @@ namespace BadgeFed.Models
         public static List<string> BadgeTypes = new List<string> { "Achievement", "Badge", "Credential", "Recognition", "Milestone", "Honor", "Certification", "Distinction" }; 
 
         public string Hashtags { get; set; } = "";
+
+        public string OwnerId { get; set; } = string.Empty;
     }
 }

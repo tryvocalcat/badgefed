@@ -9,7 +9,7 @@
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin")]
 
 <h3>General Settings</h3>
 <div class="mt-4">
@@ -229,8 +229,8 @@
 
     private async Task LoadCustomCss()
     {
-        CssMessage = null;
-        CssError = null;
+        CssMessage = string.Empty;
+        CssError = string.Empty;;
         try
         {
             var cssPath = Path.Combine(Environment.WebRootPath, "css", "custom.css");
@@ -251,8 +251,8 @@
 
     private async Task SaveCss()
     {
-        CssMessage = null;
-        CssError = null;
+        CssMessage = string.Empty;;
+        CssError = string.Empty;;
         try
         {
             var cssFolder = Path.Combine(Environment.WebRootPath, "css");
