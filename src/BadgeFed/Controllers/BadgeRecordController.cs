@@ -9,10 +9,13 @@ namespace BadgeFed.Controllers
     public class BadgeController : ControllerBase
     {
         private LocalDbService _localDbService;
+        
+        private BadgeService _badgeService { get; }
 
-        public BadgeController(LocalDbService localDbService)
+        public BadgeController(LocalDbService localDbService, BadgeService badgeService)
         {
             _localDbService = localDbService;
+            _badgeService = badgeService;
         }
 
         [HttpGet("{noteId}")]
@@ -37,7 +40,7 @@ namespace BadgeFed.Controllers
 
             record.Actor = actor;
             
-            var note = BadgeService.GetNoteFromBadgeRecord(record);
+            var note = _badgeService.GetNoteFromBadgeRecord(record);
 
             var options = new System.Text.Json.JsonSerializerOptions
             {

@@ -7,17 +7,19 @@ namespace BadgeFed.Services;
 public class BadgeProcessor
 {
     private readonly LocalDbService _localDbService;
+    private readonly BadgeService _badgeService;
 
-    public BadgeProcessor(LocalDbService localDbService)
+    public BadgeProcessor(LocalDbService localDbService, BadgeService badgeService)
     {
         _localDbService = localDbService;
+        _badgeService = badgeService;
     }
-
+    
     private BadgeRecord? GetBadgeRecord(long recordId)
     {
         // - retrieve badges without fingerprint, no acceptkey, but acceptedOn
         var records = _localDbService.GetBadgeRecords(recordId);
-        
+
         if (records.Count == 0)
         {
             return null;
@@ -158,12 +160,10 @@ public class BadgeProcessor
         record.NoteId = $"https://{record.Actor.Domain}/grant/{noteId}";
 
         // - generate activitypub note
-        var note = BadgeService.GetNoteFromBadgeRecord(record);
-
-        var badgeService = new BadgeService(_localDbService);
+        var note = _badgeService.GetNoteFromBadgeRecord(record);
 
         // - generate/update fingerprint
-        record.FingerPrint = badgeService.GetFingerprint(note, record);
+        record.FingerPrint = _badgeService.GetFingerprint(note, record);
 
         // - update record
         _localDbService.UpdateBadgeSignature(record);
@@ -289,7 +289,7 @@ public class BadgeProcessor
 
         Console.WriteLine("Badge found");
 
-        var note = BadgeService.GetNoteFromBadgeRecord(record);
+        var note = _badgeService.GetNoteFromBadgeRecord(record);
 
         var createNote = NotesService.GetCreateNote(note!, actor);
 

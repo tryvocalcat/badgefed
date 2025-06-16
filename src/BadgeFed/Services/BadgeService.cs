@@ -7,14 +7,14 @@ namespace BadgeFed.Services;
 
 public class BadgeService
 {
-    private readonly LocalDbService DbService;
+    private readonly LocalDbService _dbService;
 
-    private readonly OpenBadgeService OpenBadgeService;
+    private readonly OpenBadgeService _openBadgeService;
 
     public BadgeService(LocalDbService dbService, OpenBadgeService openBadgeService)
     {
-        DbService = dbService;
-        OpenBadgeService = openBadgeService;
+        _dbService = dbService;
+        _openBadgeService = openBadgeService;
     }
 
     public static BadgeRecord GetBadge()
@@ -36,8 +36,8 @@ public class BadgeService
     {
         var serializedNote = System.Text.Json.JsonSerializer.Serialize(note);
 
-        var badge = DbService.GetBadgeDefinitionById(record.Badge.Id);
-        var actor = DbService.GetActorById(badge.IssuedBy);
+        var badge = _dbService.GetBadgeDefinitionById(record.Badge.Id);
+        var actor = _dbService.GetActorById(badge.IssuedBy);
 
         using (RSA rsa = RSA.Create())
         {
@@ -88,11 +88,11 @@ public class BadgeService
         return noteId;
     }
 
-    public static ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
+    public ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
     {
         var note = NotesService.GetBadgeNote(record);
 
-        var openbadge = openBadgeService.GetOpenBadgeObject(record);
+        var openbadge = _openBadgeService.GetOpenBadgeObject(record);
 
         note.BadgeMetadata = record;
         note.Attachment.Add(openbadge); // this is ActivityPub + OpenBadge
@@ -109,7 +109,7 @@ public class BadgeService
     {
         var acceptKey = Guid.NewGuid().ToString();
 
-        var actor = DbService.GetActorById(badge.IssuedBy);
+        var actor = _dbService.GetActorById(badge.IssuedBy);
 
         var badgeRecord = new BadgeRecord()
         {
