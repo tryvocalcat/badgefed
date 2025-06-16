@@ -6,10 +6,11 @@
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
+@inject CurrentUser CurrentUser
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 
     <h1 class="title">Manage Badges</h1>
 
@@ -37,7 +38,8 @@
                 <tbody>
                     @foreach (var badge in badges)
                     {
-                        var actor = actors != null && actors.ContainsKey(badge.IssuedBy) ? actors[badge.IssuedBy].FullName : badge.IssuedBy.ToString();
+                        //var actor = actors != null && actors.ContainsKey(badge.IssuedBy) ? actors[badge.IssuedBy].FullName : badge.IssuedBy.ToString();
+                        var actor = badge.Issuer?.FullName ?? badge.IssuedBy.ToString();
                         <tr>
                             <td>@badge.Id</td>
                             <td>@badge.Title</td>
@@ -63,7 +65,7 @@
     }
 
 @code {
-    private List<Badge?> badges;
+    private List<Badge> badges;
 
     private Dictionary<long, Actor> actors;
 
@@ -71,11 +73,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        badges = LocalDbService.GetAllBadgeDefinitions();
-        
-        var actorList = LocalDbService.GetActors();
+        FetchBadges();
+    }
 
-        actors = actorList.ToDictionary(a => a.Id, a => a);
+    private void FetchBadges()
+    {
+        string? filter = null;
+
+        if (!CurrentUser.IsAdmin())
+        {
+            filter = $"a.OwnerId = '{CurrentUser.UserId}'";
+        }
+
+        badges = LocalDbService.GetAllBadgeDefinitions(true, filter);
     }
 
     private void GrantBadge(Badge badge)
@@ -97,7 +107,7 @@
     {
         LocalDbService.DeleteBadgeDefinition(badge.Id);
        
-        badges = LocalDbService.GetAllBadgeDefinitions();
+        FetchBadges();
     }
     
 }

@@ -35,5 +35,7 @@ namespace BadgeFed.Models
                         .ToList();
             }
         }
+
+        public string OwnerId { get; set; } = string.Empty;
     }
 }

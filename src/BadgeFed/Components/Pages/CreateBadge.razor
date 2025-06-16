@@ -4,11 +4,13 @@
 @inject NavigationManager NavigationManager
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
+
+@inject CurrentUser CurrentUser
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 
 @if (string.IsNullOrEmpty(BadgeId))
 {
@@ -162,11 +164,24 @@
 
     protected override void OnInitialized()
     {
-        actors = LocalDbService.GetActors();
+        FetchActors();
 
         if (!string.IsNullOrEmpty(BadgeId)) {
             var id = long.Parse(BadgeId);
             Model = LocalDbService.GetBadgeById(id);
+        }
+    }
+
+    private void FetchActors()
+    {
+        if (CurrentUser.IsAdmin())
+        {
+            actors = LocalDbService.GetActors();
+        }
+        else
+        {
+            var userId = CurrentUser.UserId;
+            actors = LocalDbService.GetActors($"OwnerId = '{userId}'");
         }
     }
 
@@ -217,6 +232,8 @@
             }
 
             Console.WriteLine($"Saving badge: {Model.Image}");
+
+            Model.OwnerId = CurrentUser.UserId;
 
             // TODO: Save actor to database
             LocalDbService.UpsertBadgeDefinition(Model);

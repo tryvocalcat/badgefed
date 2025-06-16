@@ -11,7 +11,7 @@
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 
 <div class="mb-4">
     <a href="/admin/badges" class="button is-light">
@@ -29,7 +29,7 @@
         @if(!string.IsNullOrEmpty(errorMessage))
         {
             <div class="notification is-danger mb-4">
-                <button class="delete" @onclick="() => errorMessage = null"></button>
+                <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
                 @errorMessage
             </div>
         }
@@ -37,7 +37,7 @@
         @if(!string.IsNullOrEmpty(notificationMessage) && string.IsNullOrEmpty(ProfileUri))
         {
             <div class="notification is-info mb-4">
-                <button class="delete" @onclick="() => notificationMessage = null"></button>
+                <button class="delete" @onclick="() => notificationMessage = string.Empty"></button>
                 @notificationMessage
             </div>
         }

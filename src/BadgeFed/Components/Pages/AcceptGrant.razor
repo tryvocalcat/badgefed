@@ -243,6 +243,7 @@ else if (accepted)
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error validating profile URL: {ex.Message}");
             // ValidationProfileMessage += $"⚠️ Could not validate url. Your badge can still be issued, but the actor won't be federated.";
         }
     }

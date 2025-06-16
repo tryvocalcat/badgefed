@@ -8,8 +8,10 @@
 @inject LocalDbService LocalDbService
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
+@using System.Security.Claims;
+@inject CurrentUser CurrentUser
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 
 <h1 class="title">Manage Issuers</h1>
 
@@ -69,7 +71,20 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        actors = LocalDbService.GetActors();
+        FetchActors();
+    }
+
+    private void FetchActors()
+    {
+        if (CurrentUser.IsAdmin())
+        {
+            actors = LocalDbService.GetActors();
+        }
+        else
+        {
+            var userId = CurrentUser.UserId;
+            actors = LocalDbService.GetActors($"OwnerId = '{userId}'");
+        }
     }
 
     private void EditActor(Actor actor)
@@ -88,13 +103,13 @@ else
     {
         Console.WriteLine($"Deleting actor: {actor.Id}");
         LocalDbService.DeleteActor(actor.Id);
-        actors = LocalDbService.GetActors();
+        FetchActors();
     }
 
     private void MarkAsMain(Actor actor)
     {
         actor.IsMain = true;
         LocalDbService.UpsertActor(actor);
-        actors = LocalDbService.GetActors();
+        FetchActors();
     }
 }

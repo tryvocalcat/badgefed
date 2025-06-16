@@ -8,11 +8,12 @@
 @inject LocalDbService LocalDbService
 @inject IConfiguration Configuration
 @inject FollowService FollowService
+@inject CurrentUser CurrentUser
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "Admin, Superuser")]
+@attribute [Authorize(Roles = "admin, manager")]
 
 <style>
     .form-section {
@@ -417,6 +418,8 @@
                 
                 Model.AvatarPath = $"/uploads/avatars/{fileName}";
             }
+
+            Model.OwnerId = CurrentUser.UserId;
             
             LocalDbService.UpsertActor(Model);
             NavigationManager.NavigateTo("/admin/actors");
