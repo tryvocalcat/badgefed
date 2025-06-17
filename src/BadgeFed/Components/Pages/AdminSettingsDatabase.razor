@@ -1,0 +1,565 @@
+@page "/admin/settings/database"
+
+@using BadgeFed.Models
+@using BadgeFed.Services
+
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Environment
+@inject LocalDbService LocalDbService
+@inject DatabaseMigrationService MigrationService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/settings/general">Settings</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Database</a></li>
+        </ul>
+    </nav>
+
+    <h1 class="title">Database Settings</h1>
+    <p class="subtitle">Manage database migrations and maintenance</p>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Database Information -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-database"></i>
+                </span>
+                <span>Database Information</span>
+            </span>
+        </h2>
+        
+        <div class="columns">
+            <div class="column">
+                <div class="field">
+                    <label class="label">Current Database Version:</label>
+                    <div class="control">
+                        <input class="input" type="text" value="@currentVersion" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Pending Migrations:</label>
+                    <div class="control">
+                        <input class="input" type="text" value="@pendingMigrationsCount" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Database Size:</label>
+                    <div class="control">
+                        <input class="input" type="text" value="@(DatabaseSize?.ToString("N2") ?? "Calculating...") MB" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-primary" @onclick="RefreshMigrationStatus">
+                    <span class="icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </span>
+                    <span>Refresh Status</span>
+                </button>
+            </div>
+            <div class="control">
+                <button class="button is-success" @onclick="ApplyAllPendingMigrations" disabled="@(pendingMigrationsCount == 0)">
+                    <span class="icon">
+                        <i class="fas fa-play"></i>
+                    </span>
+                    <span>Apply All Pending Migrations</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Management -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-tools"></i>
+                </span>
+                <span>Database Management</span>
+            </span>
+        </h2>
+        
+        <div class="content">
+            <p>Download a backup of your entire database or execute custom SQL queries.</p>
+        </div>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-info" @onclick="DownloadDatabase">
+                    <span class="icon">
+                        <i class="fas fa-download"></i>
+                    </span>
+                    <span>Download Database Backup</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom SQL -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-terminal"></i>
+                </span>
+                <span>Custom SQL Queries</span>
+            </span>
+        </h2>
+        
+        <div class="notification is-warning is-light">
+            <p><strong>Warning:</strong> Executing SQL directly can modify or delete data. Ensure you have backups before running destructive queries.</p>
+        </div>
+
+        <div class="field">
+            <label class="label">SQL Query</label>
+            <div class="control">
+                <textarea @bind="SqlQuery" class="textarea" rows="6" placeholder="Enter your SQL query here..."></textarea>
+            </div>
+        </div>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-warning" @onclick="ExecuteSql">
+                    <span class="icon">
+                        <i class="fas fa-play"></i>
+                    </span>
+                    <span>Execute Command</span>
+                </button>
+            </div>
+            <div class="control">
+                <button class="button is-warning" @onclick="ExecuteSqlQuery">
+                    <span class="icon">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <span>Execute Query</span>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(SqlResult))
+        {
+            <div class="field">
+                <label class="label">Query Result</label>
+                <div class="control">
+                    <div class="box has-background-light">
+                        <pre style="max-height: 400px; overflow-y: auto;">@SqlResult</pre>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Migrations List -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-list"></i>
+                </span>
+                <span>Available Migrations</span>
+            </span>
+        </h2>
+
+        @if (migrations == null)
+        {
+            <div class="notification is-info is-light">
+                <p>Loading migrations...</p>
+            </div>
+        }
+        else if (!migrations.Any())
+        {
+            <div class="notification is-warning is-light">
+                <p>No migrations found in the assets/migrations folder.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Applied At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var migration in migrations.OrderBy(m => m.Version))
+                        {
+                            <tr>
+                                <td>
+                                    <span class="tag @(migration.IsApplied ? "is-success" : "is-warning")">
+                                        @migration.Version
+                                    </span>
+                                </td>
+                                <td>@migration.Name</td>
+                                <td>
+                                    @if (migration.IsApplied)
+                                    {
+                                        <span class="tag is-success">
+                                            <span class="icon">
+                                                <i class="fas fa-check"></i>
+                                            </span>
+                                            <span>Applied</span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tag is-warning">
+                                            <span class="icon">
+                                                <i class="fas fa-clock"></i>
+                                            </span>
+                                            <span>Pending</span>
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (migration.AppliedAt.HasValue)
+                                    {
+                                        @migration.AppliedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                                    }
+                                    else
+                                    {
+                                        <span class="has-text-grey">Not applied</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <button class="button is-info is-outlined" @onclick="() => ShowMigrationContent(migration)">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            <span>View</span>
+                                        </button>
+                                        @if (migration.IsApplied)
+                                        {
+                                            <button class="button is-warning is-outlined" @onclick="() => ReapplyMigration(migration.Version)">
+                                                <span class="icon">
+                                                    <i class="fas fa-redo"></i>
+                                                </span>
+                                                <span>Re-apply</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="button is-success is-outlined" @onclick="() => ApplySingleMigration(migration)">
+                                                <span class="icon">
+                                                    <i class="fas fa-play"></i>
+                                                </span>
+                                                <span>Apply</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Migration Content Modal -->
+    <div class="modal @(showMigrationModal ? "is-active" : "")">
+        <div class="modal-background" @onclick="CloseMigrationModal"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">
+                    @if (selectedMigration != null)
+                    {
+                        <text>Migration @selectedMigration.Version: @selectedMigration.Name</text>
+                    }
+                </p>
+                <button class="delete" aria-label="close" @onclick="CloseMigrationModal"></button>
+            </header>
+            <section class="modal-card-body">
+                @if (selectedMigration != null)
+                {
+                    <div class="content">
+                        <h4>File Path:</h4>
+                        <p><code>@selectedMigration.FilePath</code></p>
+                        
+                        <h4>SQL Content:</h4>
+                        <pre class="has-background-light p-4"><code>@selectedMigration.Content</code></pre>
+                        
+                        @if (!string.IsNullOrEmpty(selectedMigration.Checksum))
+                        {
+                            <h4>Checksum:</h4>
+                            <p><small><code>@selectedMigration.Checksum</code></small></p>
+                        }
+                    </div>
+                }
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button" @onclick="CloseMigrationModal">Close</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<style>
+    .migration-content {
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 1rem;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+
+@code {
+    private string currentVersion = "Loading...";
+    private int pendingMigrationsCount = 0;
+    private List<Migration>? migrations;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool showMigrationModal = false;
+    private Migration? selectedMigration;
+    private double? DatabaseSize { get; set; } = null;
+
+    // SQL execution properties
+    private string SqlQuery { get; set; } = string.Empty;
+    private string SqlResult { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshMigrationStatus();
+        await CalculateDatabaseSize();
+    }
+
+    private async Task CalculateDatabaseSize()
+    {
+        try
+        {
+            var dbPath = LocalDbService.DbPath;
+            if (File.Exists(dbPath))
+            {
+                var fileInfo = new FileInfo(dbPath);
+                DatabaseSize = fileInfo.Length / (1024.0 * 1024.0); // Convert to MB
+            }
+            else
+            {
+                errorMessage = "Database file not found!";
+                DatabaseSize = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error calculating database size: {ex.Message}";
+            DatabaseSize = 0;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshMigrationStatus()
+    {
+        try
+        {
+            currentVersion = MigrationService.GetCurrentDatabaseVersion();
+            migrations = MigrationService.GetMigrationsWithStatus();
+            pendingMigrationsCount = migrations.Count(m => !m.IsApplied);
+            
+            successMessage = string.Empty;
+            errorMessage = string.Empty;
+            
+            // Also refresh database size
+            await CalculateDatabaseSize();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading migration status: {ex.Message}";
+        }
+    }
+
+    private void ExecuteSql()
+    {
+        try
+        {
+            SqlResult = string.Empty;
+            errorMessage = string.Empty;
+            
+            // Assuming LocalDbService has a method to execute SQL and return results as string
+            LocalDbService.ExecuteSql(SqlQuery);
+
+            SqlResult = "SQL executed successfully.";
+            successMessage = "SQL command executed successfully.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error executing SQL: {ex.Message}";
+            SqlResult = string.Empty;
+        }
+    }
+
+    private void ExecuteSqlQuery()
+    {
+        try
+        {
+            SqlResult = string.Empty;
+            errorMessage = string.Empty;
+            
+            // Assuming LocalDbService has a method to execute SQL and return results as string
+            var listItems = LocalDbService.ExecuteSqlQuery(SqlQuery);
+
+            SqlResult = System.Text.Json.JsonSerializer.Serialize(listItems, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            successMessage = "SQL query executed successfully.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error executing SQL query: {ex.Message}";
+            SqlResult = string.Empty;
+        }
+    }
+
+    private void DownloadDatabase()
+    {
+        try
+        {
+            // Get current datetime for filename suffix
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var sourceFile = LocalDbService.DbPath;
+            var destinationFolder = "wwwroot/db/";
+            var destinationFile = $"{destinationFolder}backup_{timestamp}.db";
+
+            // Ensure directory exists
+            Directory.CreateDirectory(destinationFolder);
+
+            // Copy the database file
+            File.Copy(sourceFile, destinationFile, true);
+
+            // Navigate to the file for download
+            NavigationManager.NavigateTo($"/db/backup_{timestamp}.db", true);
+            
+            successMessage = $"Database backup created: backup_{timestamp}.db";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating database backup: {ex.Message}";
+        }
+    }
+
+    private async Task ApplyAllPendingMigrations()
+    {
+        try
+        {
+            var result = await MigrationService.ApplyPendingMigrations();
+            
+            if (result.Success)
+            {
+                successMessage = result.Message;
+                if (result.AppliedMigrations.Any())
+                {
+                    successMessage += "<br>Applied migrations:<ul>";
+                    foreach (var migration in result.AppliedMigrations)
+                    {
+                        successMessage += $"<li>{migration}</li>";
+                    }
+                    successMessage += "</ul>";
+                }
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
+            
+            await RefreshMigrationStatus();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error applying migrations: {ex.Message}";
+        }
+    }
+
+    private async Task ApplySingleMigration(Migration migration)
+    {
+        try
+        {
+            var success = await MigrationService.ApplyMigration(migration);
+            
+            if (success)
+            {
+                successMessage = $"Successfully applied migration {migration.Version}: {migration.Name}";
+                await RefreshMigrationStatus();
+            }
+            else
+            {
+                errorMessage = $"Failed to apply migration {migration.Version}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error applying migration {migration.Version}: {ex.Message}";
+        }
+    }
+
+    private async Task ReapplyMigration(string version)
+    {
+        try
+        {
+            var success = await MigrationService.ReapplyMigration(version);
+            
+            if (success)
+            {
+                successMessage = $"Successfully re-applied migration {version}";
+                await RefreshMigrationStatus();
+            }
+            else
+            {
+                errorMessage = $"Failed to re-apply migration {version}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error re-applying migration {version}: {ex.Message}";
+        }
+    }
+
+    private void ShowMigrationContent(Migration migration)
+    {
+        selectedMigration = migration;
+        showMigrationModal = true;
+    }
+
+    private void CloseMigrationModal()
+    {
+        showMigrationModal = false;
+        selectedMigration = null;
+    }
+}
