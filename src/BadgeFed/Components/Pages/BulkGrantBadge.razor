@@ -1,0 +1,559 @@
+@page "/admin/bulk-grant/{badgeId}"
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject LocalDbService LocalDbService
+@inject IConfiguration Configuration
+@inject BadgeService BadgeService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager")]
+
+<div class="mb-4">
+    <a href="/admin/badges" class="button is-light">
+        <span class="icon">
+            <i class="fas fa-arrow-left"></i>
+        </span>
+        <span>Back to Manage Badges</span>
+    </a>
+</div>
+
+
+<section class="section">
+    <div class="container">
+        <h1 class="title">Bulk Grant Badge</h1>
+        <p class="subtitle">Grant badges to multiple recipients at once</p>
+
+        @if(!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="notification is-danger mb-4">
+                <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+                @errorMessage
+            </div>
+        }
+
+        @if(!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="notification is-success mb-4">
+                <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+                @successMessage
+            </div>
+        }
+
+        @if (currentStep == 1)
+        {
+            <!-- Step 1: Data Input -->
+            <div class="box">
+                <h2 class="subtitle">Step 1: Prepare Recipients Data</h2>
+                
+                <div class="field">
+                    <label class="label">Field Separator</label>
+                    <p class="help">Choose the character that separates the fields in your data</p>
+                    <div class="control">
+                        <div class="select">
+                            <select @bind="fieldSeparator">
+                                <option value=";">Semicolon (;)</option>
+                                <option value=",">Comma (,)</option>
+                                <option value="|">Pipe (|)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field" style="display: none;">
+                    <label class="label">Custom Separator</label>
+                    <p class="help">Or enter a custom separator character</p>
+                    <div class="control">
+                        <input type="text" class="input" @bind="customSeparator" placeholder="Enter custom separator" maxlength="1" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Recipients Data</label>
+                    <p class="help">
+                        <strong>Format:</strong> One recipient per line with the following columns:<br />
+                        <code>Profile URL</code> <strong>@GetCurrentSeparator()</strong> <code>Name (optional)</code> <strong>@GetCurrentSeparator()</strong> <code>Email (optional if URL is provided)</code> <strong>@GetCurrentSeparator()</strong> <code>Evidence (optional)</code><br />
+                        <br />
+                        <strong>Example:</strong><br />
+                        <code>https://mastodon.social/@@user1 @GetCurrentSeparator() John Doe @GetCurrentSeparator() john@example.com @GetCurrentSeparator() Completed advanced course</code><br />
+                        <code>https://lemmy.world/u/user2 @GetCurrentSeparator() Jane Smith @GetCurrentSeparator() @GetCurrentSeparator() Outstanding project work</code><br />
+                        <code>https://linkedin.com/in/mahomedalid</code>
+                        <br />
+                    </p>
+                    <div class="control">
+                        <textarea id="recipientsData" @bind="recipientsData" class="textarea" placeholder="Paste your CSV/Excel data here..." rows="10"></textarea>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <button type="button" class="button is-primary" @onclick="ParseRecipientsData" disabled="@string.IsNullOrWhiteSpace(recipientsData)">
+                            <span class="icon">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <span>Parse and Preview</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (currentStep == 2)
+        {
+            <!-- Step 2: Preview -->
+            <div class="box">
+                <h2 class="subtitle">Step 2: Preview Recipients (@parsedRecipients.Count)</h2>
+                
+                @if (parseErrors.Any())
+                {
+                    <div class="notification is-warning">
+                        <h4 class="title is-5">Parsing Errors</h4>
+                        <ul>
+                            @foreach (var error in parseErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @if (parsedRecipients.Any())
+                {
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped">
+                            <thead>
+                                <tr>
+                                    <th>Profile URL</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Evidence</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var recipient in parsedRecipients)
+                                {
+                                    <tr class="@(recipient.HasErrors ? "has-background-danger-light" : "")">
+                                        <td>@recipient.ProfileUri</td>
+                                        <td>@recipient.Name</td>
+                                        <td>@recipient.Email</td>
+                                        <td>@recipient.Evidence</td>
+                                        <td>
+                                            @if (recipient.HasErrors)
+                                            {
+                                                <span class="tag is-danger">
+                                                    <span class="icon">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                    </span>
+                                                    <span>Error</span>
+                                                </span>
+                                                <div class="help is-danger">@recipient.ErrorMessage</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-success">
+                                                    <span class="icon">
+                                                        <i class="fas fa-check"></i>
+                                                    </span>
+                                                    <span>Valid</span>
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="field is-grouped mt-4">
+                        <div class="control">
+                            <button type="button" class="button is-light" @onclick="() => currentStep = 1">
+                                <span class="icon">
+                                    <i class="fas fa-arrow-left"></i>
+                                </span>
+                                <span>Back to Edit</span>
+                            </button>
+                        </div>
+                        <div class="control">
+                            <button type="button" class="button is-success" @onclick="ProcessBulkGrant" disabled="@(!parsedRecipients.Any(r => !r.HasErrors) || isProcessing)">
+                                @if (isProcessing)
+                                {
+                                    <span class="icon">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </span>
+                                    <span>Processing...</span>
+                                }
+                                else
+                                {
+                                    <span class="icon">
+                                        <i class="fas fa-award"></i>
+                                    </span>
+                                    <span>Grant Badges (@parsedRecipients.Count(r => !r.HasErrors))</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (currentStep == 3)
+        {
+            <!-- Step 3: Results -->
+            <div class="box">
+                <h2 class="subtitle">Step 3: Results</h2>
+                
+                <div class="notification is-success">
+                    <h4 class="title is-4">Bulk Grant Complete!</h4>
+                    <p>Successfully granted @successfulGrants badges out of @totalProcessed attempts.</p>
+                    @if (failedGrants > 0)
+                    {
+                        <p class="has-text-danger">@failedGrants grants failed. See details below.</p>
+                    }
+                </div>
+
+                @if (grantResults.Any())
+                {
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped">
+                            <thead>
+                                <tr>
+                                    <th>Recipient</th>
+                                    <th>Profile URL</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var result in grantResults)
+                                {
+                                    <tr class="@(result.Success ? "has-background-success-light" : "has-background-danger-light")">
+                                        <td>@result.Name</td>
+                                        <td>@result.ProfileUri</td>
+                                        <td>
+                                            @if (result.Success)
+                                            {
+                                                <span class="tag is-success">
+                                                    <span class="icon">
+                                                        <i class="fas fa-check"></i>
+                                                    </span>
+                                                    <span>Success</span>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-danger">
+                                                    <span class="icon">
+                                                        <i class="fas fa-times"></i>
+                                                    </span>
+                                                    <span>Failed</span>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>@result.Message</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="field is-grouped mt-4">
+                    <div class="control">
+                        <button type="button" class="button is-light" @onclick="ResetForm">
+                            <span class="icon">
+                                <i class="fas fa-redo"></i>
+                            </span>
+                            <span>Grant More Badges</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <a href="/admin/grants" class="button is-primary">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>View All Grants</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string BadgeId { get; set; }
+
+    // Form state
+    private int currentStep = 1;
+    private string fieldSeparator = ";";
+    private string customSeparator = "";
+    private string recipientsData = "";
+    private bool isProcessing = false;
+
+    // Data processing
+    private List<BulkRecipient> parsedRecipients = new();
+    private List<string> parseErrors = new();
+    private List<GrantResult> grantResults = new();
+
+    // Results tracking
+    private int successfulGrants = 0;
+    private int failedGrants = 0;
+    private int totalProcessed = 0;
+
+    // Messages
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    private BadgeGrant Model = new();
+
+    private Badge? badge;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (long.TryParse(BadgeId, out long badgeIdValue))
+        {
+            Model.BadgeId = badgeIdValue;
+
+            badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
+
+            if (badge == null)
+            {
+                errorMessage = $"Badge with ID {Model.BadgeId} not found.";
+                return;
+            }
+            else
+            {
+                Model.Evidence = badge.EarningCriteria;
+            }
+        }
+        else
+        {
+            errorMessage = $"Invalid badge ID format: {BadgeId}";
+            NavigationManager.NavigateTo("/admin/badges");
+        }
+    }
+
+    public string GetCurrentSeparator()
+    {
+        return !string.IsNullOrWhiteSpace(customSeparator) ? customSeparator : fieldSeparator;
+    }
+
+    public void ParseRecipientsData()
+    {
+        parsedRecipients.Clear();
+        parseErrors.Clear();
+
+        var separator = GetCurrentSeparator();
+        if (separator == "\\t") separator = "\t"; // Handle tab display
+
+        var lines = recipientsData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        Console.WriteLine($"Parsing {lines.Length} lines with separator '{separator}'");
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            Console.WriteLine($"Processing line {i + 1}: {line}");
+            var lineNumber = i + 1;
+            var parts = line.Split(separator);
+
+            if (parts.Length < 1)
+            {
+                parseErrors.Add($"Line {lineNumber}: Insufficient columns. Expected at least 1 (Profile URL or Email), got {parts.Length}");
+                continue;
+            }
+
+            Console.WriteLine($"Parsed parts: {parts.Length} - {string.Join(", ", parts)}");
+
+            var recipient = new BulkRecipient
+            {
+                ProfileUri = parts.Length > 0 ? parts[0].Trim() : "",
+                Name = parts.Length > 1 ? parts[1].Trim() : "",
+                Email = parts.Length > 2 ? parts[2].Trim() : "",
+                Evidence = parts.Length > 3 ? parts[3].Trim() : badge.EarningCriteria, // Use badge default if not provided
+                LineNumber = lineNumber
+            };
+
+            // Validate recipient data
+            ValidateRecipient(recipient);
+            parsedRecipients.Add(recipient);
+        }
+
+        if (parsedRecipients.Any() || parseErrors.Any())
+        {
+            currentStep = 2;
+        }
+    }
+
+    public void ValidateRecipient(BulkRecipient recipient)
+    {
+        var errors = new List<string>();
+
+        // Validate Profile URL and Email requirement
+        if (string.IsNullOrWhiteSpace(recipient.ProfileUri) && string.IsNullOrWhiteSpace(recipient.Email))
+        {
+            errors.Add("Either Profile URL or Email must be provided");
+        }
+
+        // Validate Profile URL format if provided
+        if (!string.IsNullOrWhiteSpace(recipient.ProfileUri))
+        {
+            if (!Uri.TryCreate(recipient.ProfileUri, UriKind.Absolute, out _))
+            {
+                errors.Add("Invalid Profile URL format");
+            }
+        }
+
+        // Validate Email format if provided
+        if (!string.IsNullOrWhiteSpace(recipient.Email))
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(recipient.Email);
+                if (addr.Address != recipient.Email)
+                {
+                    errors.Add("Invalid email format");
+                }
+            }
+            catch
+            {
+                errors.Add("Invalid email format");
+            }
+        }
+
+        // Check for existing grants
+        var sqlExisting = $"BadgeId = {Model.BadgeId}";
+        if (string.IsNullOrEmpty(recipient.ProfileUri))
+        {
+            //sqlExisting += $" AND IssuedToEmail = '{recipient.Email.Replace("'", "''")}'";
+        }
+        else
+        {
+            //sqlExisting += $" AND IssuedToSubjectUri = '{recipient.ProfileUri.Replace("'", "''")}'";
+        }
+
+        var existing = LocalDbService.GetBadgeRecords(sqlExisting);
+        if (existing != null && existing.Count > 0)
+        {
+            errors.Add("Badge already granted to this recipient");
+        }
+
+        if (errors.Any())
+        {
+            recipient.HasErrors = true;
+            recipient.ErrorMessage = string.Join("; ", errors);
+        }
+    }
+
+    public async Task ProcessBulkGrant()
+    {
+        isProcessing = true;
+        grantResults.Clear();
+        successfulGrants = 0;
+        failedGrants = 0;
+        totalProcessed = 0;
+
+        var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
+
+        var validRecipients = parsedRecipients.Where(r => !r.HasErrors).ToList();
+        totalProcessed = validRecipients.Count;
+
+        foreach (var bulkRecipient in validRecipients)
+        {
+            var result = new GrantResult
+            {
+                Name = bulkRecipient.Name,
+                ProfileUri = bulkRecipient.ProfileUri,
+                Email = bulkRecipient.Email
+            };
+
+            try
+            {
+                var recipient = new Recipient()
+                {
+                    ProfileUri = bulkRecipient.ProfileUri,
+                    Name = bulkRecipient.Name,
+                    Email = bulkRecipient.Email
+                };
+
+                var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
+                
+                // Use custom evidence if provided, otherwise use badge default
+                badgeRecord.EarningCriteria = !string.IsNullOrWhiteSpace(bulkRecipient.Evidence) 
+                    ? bulkRecipient.Evidence 
+                    : Model.Evidence;
+
+                LocalDbService.CreateBadgeRecord(badgeRecord);
+
+                result.Success = true;
+                result.Message = "Badge granted successfully";
+                successfulGrants++;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Message = $"Error: {ex.Message}";
+                failedGrants++;
+            }
+
+            grantResults.Add(result);
+        }
+
+        isProcessing = false;
+        currentStep = 3;
+
+        if (successfulGrants > 0)
+        {
+            successMessage = $"Successfully granted {successfulGrants} badges!";
+        }
+    }
+
+    public void ResetForm()
+    {
+        currentStep = 1;
+        recipientsData = "";
+        parsedRecipients.Clear();
+        parseErrors.Clear();
+        grantResults.Clear();
+        errorMessage = "";
+        successMessage = "";
+        successfulGrants = 0;
+        failedGrants = 0;
+        totalProcessed = 0;
+    }
+
+    public class BulkRecipient
+    {
+        public string ProfileUri { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Evidence { get; set; } = "";
+        public int LineNumber { get; set; }
+        public bool HasErrors { get; set; } = false;
+        public string ErrorMessage { get; set; } = "";
+    }
+
+    public class GrantResult
+    {
+        public string Name { get; set; } = "";
+        public string ProfileUri { get; set; } = "";
+        public string Email { get; set; } = "";
+        public bool Success { get; set; } = false;
+        public string Message { get; set; } = "";
+    }
+
+    public class BadgeGrant
+    {
+        public long BadgeId { get; set; }
+
+        public string IssuedTo { get; set; } = "";
+
+        public string Evidence { get; set; } = "";
+    }
+}
