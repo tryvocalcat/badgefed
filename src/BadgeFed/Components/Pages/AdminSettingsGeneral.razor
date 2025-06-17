@@ -11,173 +11,161 @@
 
 @attribute [Authorize(Roles = "admin")]
 
-<h3>General Settings</h3>
-<div class="mt-4">
-    <h4>Database Management</h4>
-    <p>Click the button below to download your entire database.</p>
-    <button class="btn btn-primary" @onclick="DownloadDatabase">Download DB</button>
-    @if (DatabaseSize.HasValue)
-    {
-        <p>Database Size: @DatabaseSize.Value.ToString("N2") MB</p>
-    }
-    else
-    {
-        <p>Calculating database size...</p>
-    }
-</div>
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/settings">Settings</a></li>
+            <li class="is-active"><a href="#" aria-current="page">General</a></li>
+        </ul>
+    </nav>
 
-<div class="mt-4">
-    <h4>Custom SQL</h4>
-    <p>Execute custom SQL queries below. Use with caution.</p>
-    <textarea @bind="SqlQuery" class="form-control" rows="6" placeholder="Enter your SQL query here..."></textarea>
-    <div class="mt-2">
-        <button class="btn btn-warning" @onclick="ExecuteSql">Execute Command</button>
-        <button class="btn btn-warning" @onclick="ExecuteSqlQuery">Execute Query</button>
+    <h1 class="title">General Settings</h1>
+    <p class="subtitle">Customize your application appearance and behavior</p>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Custom Logo -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-image"></i>
+                </span>
+                <span>Custom Logo</span>
+            </span>
+        </h2>
+        
+        <div class="content">
+            <p>Upload a custom logo to replace the default. <strong>File must be PNG</strong> and will be saved as <code>logo.h.png</code>.</p>
+        </div>        <div class="field">
+            <label class="label">Choose Logo File</label>
+            <div class="control">
+                <div class="file has-name">
+                    <label class="file-label">
+                        <InputFile OnChange="OnLogoFileSelected" accept=".png" class="file-input" />
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">Choose PNG file…</span>
+                        </span>
+                        <span class="file-name">@(SelectedLogoFile?.Name ?? "No file selected")</span>
+                    </label>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(LogoUploadError))
+            {
+                <p class="help is-danger">@LogoUploadError</p>
+            }
+        </div>
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="UploadLogo" disabled="@(SelectedLogoFile == null)">
+                    <span class="icon">
+                        <i class="fas fa-check"></i>
+                    </span>
+                    <span>Upload Logo</span>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(LogoUploadMessage))
+        {
+            <div class="notification is-success is-light">
+                @LogoUploadMessage
+            </div>
+        }
     </div>
-    @if (!string.IsNullOrEmpty(SqlResult))
-    {
-        <div class="mt-3 p-3 bg-light">
-            <pre>@SqlResult</pre>
-        </div>
-    }
-    @if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <div class="mt-3 p-3 bg-danger text-white">
-            <strong>Error:</strong> @ErrorMessage
-        </div>
-    }
-    <p class="mt-2">Note: Executing SQL directly can modify or delete data. Ensure you have backups.</p>
-</div>
 
-<div class="mt-4">
-    <h4>Custom Logo</h4>
-    <p>Upload a custom logo to replace the default. <strong>File must be PNG</strong> and will be saved as <code>logo.h.png</code>. The filename cannot be changed.</p>
-    <InputFile OnChange="OnLogoFileSelected" accept=".png" />
-    <button class="btn btn-success mt-2" @onclick="UploadLogo" disabled="@(SelectedLogoFile == null)">Upload Logo</button>
-    @if (!string.IsNullOrEmpty(LogoUploadMessage))
-    {
-        <div class="mt-2 p-2 bg-info text-dark">
-            @LogoUploadMessage
+    <!-- Custom CSS -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-palette"></i>
+                </span>
+                <span>Custom CSS</span>
+            </span>
+        </h2>
+        
+        <div class="content">
+            <p>Edit custom CSS directly to override styles. Changes will be saved as <code>custom.css</code> in <code>wwwroot/css/</code>.</p>
         </div>
-    }
-    @if (!string.IsNullOrEmpty(LogoUploadError))
-    {
-        <div class="mt-2 p-2 bg-danger text-white">
-            <strong>Error:</strong> @LogoUploadError
-        </div>
-    }
-</div>
 
-<div class="mt-4">
-    <h4>Custom CSS</h4>
-    <p>Edit custom CSS directly to override styles. Changes will be saved as <code>custom.css</code> in <code>wwwroot/css/</code>.</p>
-    <textarea @bind="CustomCssContent" class="form-control" rows="10" placeholder="Enter your custom CSS here..."></textarea>
-    <div class="mt-2">
-        <button class="btn btn-success" @onclick="SaveCss">Save CSS</button>
-        <button class="btn btn-secondary" @onclick="ReloadCss">Reload CSS</button>
+        <div class="field">
+            <label class="label">CSS Content</label>
+            <div class="control">
+                <textarea @bind="CustomCssContent" class="textarea" rows="12" placeholder="Enter your custom CSS here..."></textarea>
+            </div>
+        </div>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-success" @onclick="SaveCss">
+                    <span class="icon">
+                        <i class="fas fa-save"></i>
+                    </span>
+                    <span>Save CSS</span>
+                </button>
+            </div>
+            <div class="control">
+                <button class="button is-info" @onclick="ReloadCss">
+                    <span class="icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </span>
+                    <span>Reload CSS</span>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(CssMessage))
+        {
+            <div class="notification is-success is-light">
+                @CssMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(CssError))
+        {
+            <div class="notification is-danger is-light">
+                <strong>Error:</strong> @CssError
+            </div>
+        }
     </div>
-    @if (!string.IsNullOrEmpty(CssMessage))
-    {
-        <div class="mt-2 p-2 bg-info text-dark">
-            @CssMessage
-        </div>
-    }
-    @if (!string.IsNullOrEmpty(CssError))
-    {
-        <div class="mt-2 p-2 bg-danger text-white">
-            <strong>Error:</strong> @CssError
-        </div>
-    }
 </div>
 
 @code {
-
-    private string SqlQuery { get; set; }
-    private string SqlResult { get; set; }
-    private string ErrorMessage { get; set; }
-    private double? DatabaseSize { get; set; } = null;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
 
     private IBrowserFile? SelectedLogoFile { get; set; }
     private string? LogoUploadMessage { get; set; }
     private string? LogoUploadError { get; set; }
 
     private string CustomCssContent { get; set; } = string.Empty;
-    private string CssMessage { get; set; }
-    private string CssError { get; set; }
+    private string CssMessage { get; set; } = string.Empty;
+    private string CssError { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        await CalculateDatabaseSize();
         await LoadCustomCss();
-    }
-
-    private async Task CalculateDatabaseSize()
-    {
-        var dbPath = "prod.db"; // Assuming your database is in the root.  Adjust if not.
-        if (File.Exists(dbPath))
-        {
-            var fileInfo = new FileInfo(dbPath);
-            DatabaseSize = fileInfo.Length / (1024.0 * 1024.0); // Convert to MB
-        }
-        else
-        {
-            ErrorMessage = "Database file not found!";
-            DatabaseSize = 0;
-        }
-
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private void ExecuteSql()
-    {
-        try
-        {
-            // Assuming LocalDbService has a method to execute SQL and return results as string
-            LocalDbService.ExecuteSql(SqlQuery);
-
-            SqlResult = "SQL executed successfully.";
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Error executing SQL: {ex.Message}";
-        }
-    }
-
-    private void ExecuteSqlQuery()
-    {
-        try
-        {
-            // Assuming LocalDbService has a method to execute SQL and return results as string
-            var listItems = LocalDbService.ExecuteSqlQuery(SqlQuery);
-
-            SqlResult = System.Text.Json.JsonSerializer.Serialize(listItems, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Error executing SQL: {ex.Message}";
-        }
-    }
-
-    private void DownloadDatabase()
-    {
-        // Example endpoint or a direct link to the DB file
-        // Get current datetime for filename suffix
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var sourceFile = "prod.db";
-        var destinationFolder = "wwwroot/db/";
-        var destinationFile = $"{destinationFolder}backup_{timestamp}.db";
-
-        // Ensure directory exists
-        Directory.CreateDirectory(destinationFolder);
-
-        // Copy the database file
-        File.Copy(sourceFile, destinationFile, true);
-
-        // Navigate to the file for download
-        NavigationManager.NavigateTo($"/db/backup_{timestamp}.db", true);
-    }
-
-    private void OnLogoFileSelected(InputFileChangeEventArgs e)
+    }    private void OnLogoFileSelected(InputFileChangeEventArgs e)
     {
         LogoUploadMessage = null;
         LogoUploadError = null;
@@ -200,6 +188,9 @@
     {
         LogoUploadMessage = null;
         LogoUploadError = null;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        
         if (SelectedLogoFile == null)
         {
             LogoUploadError = "No file selected.";
@@ -219,10 +210,12 @@
                 await stream.CopyToAsync(fs);
             }
             LogoUploadMessage = "Logo uploaded successfully!";
+            successMessage = "Logo has been updated. Refresh the page to see changes.";
         }
         catch (Exception ex)
         {
             LogoUploadError = $"Error uploading logo: {ex.Message}";
+            errorMessage = $"Failed to upload logo: {ex.Message}";
         }
         SelectedLogoFile = null;
     }
@@ -230,7 +223,7 @@
     private async Task LoadCustomCss()
     {
         CssMessage = string.Empty;
-        CssError = string.Empty;;
+        CssError = string.Empty;
         try
         {
             var cssPath = Path.Combine(Environment.WebRootPath, "css", "custom.css");
@@ -246,13 +239,17 @@
         catch (Exception ex)
         {
             CssError = $"Error loading CSS: {ex.Message}";
+            errorMessage = $"Failed to load custom CSS: {ex.Message}";
         }
     }
 
     private async Task SaveCss()
     {
-        CssMessage = string.Empty;;
-        CssError = string.Empty;;
+        CssMessage = string.Empty;
+        CssError = string.Empty;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        
         try
         {
             var cssFolder = Path.Combine(Environment.WebRootPath, "css");
@@ -260,15 +257,21 @@
             var cssPath = Path.Combine(cssFolder, "custom.css");
             await File.WriteAllTextAsync(cssPath, CustomCssContent);
             CssMessage = "CSS saved successfully!";
+            successMessage = "Custom CSS has been saved successfully.";
         }
         catch (Exception ex)
         {
             CssError = $"Error saving CSS: {ex.Message}";
+            errorMessage = $"Failed to save CSS: {ex.Message}";
         }
     }
 
     private async Task ReloadCss()
     {
         await LoadCustomCss();
+        if (string.IsNullOrEmpty(CssError))
+        {
+            successMessage = "CSS content reloaded from file.";
+        }
     }
 }

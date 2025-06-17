@@ -10,7 +10,7 @@ public class LocalDbService
 {
     private readonly string connectionString;
 
-    private readonly string dbPath;
+    public readonly string DbPath;
 
     public static LocalDbService GetInstance(string dbName)
     {
@@ -21,8 +21,8 @@ public class LocalDbService
 
     public LocalDbService(string dbPath)
     {
-        this.dbPath = dbPath;
-        this.connectionString = $"Data Source={dbPath};Version=3;";
+        this.DbPath = dbPath;
+        this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
     }
@@ -40,7 +40,7 @@ public class LocalDbService
     private void CreateDb()
     {
         // create if not exists
-        if (!File.Exists(dbPath))
+        if (!File.Exists(DbPath))
         {
             using var connection = GetConnection();
             connection.Open();
@@ -52,9 +52,40 @@ public class LocalDbService
             command.ExecuteNonQuery();
             connection.Close();
 
-            Console.WriteLine($"Database created at {dbPath}");
+            Console.WriteLine($"Database created at {DbPath}");
         }
+
+        // Apply any pending migrations
+        ApplyPendingMigrations();
+    }
+
+    private void ApplyPendingMigrations()
+    {
+        try
+        {
+            var migrationService = new DatabaseMigrationService(this);
+            var pendingMigrations = migrationService.GetPendingMigrations();
             
+            if (pendingMigrations.Any())
+            {
+                Console.WriteLine($"Found {pendingMigrations.Count} pending migrations. Applying...");
+                
+                foreach (var migration in pendingMigrations)
+                {
+                    Console.WriteLine($"Applying migration: {migration.Version} - {migration.Name}");
+                    var task = migrationService.ApplyMigration(migration);
+                    task.Wait(); // Wait for async operation to complete
+                    Console.WriteLine($"Successfully applied migration: {migration.Version}");
+                }
+                
+                Console.WriteLine("All pending migrations applied successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying migrations: {ex.Message}");
+            // Don't throw here to avoid breaking database initialization
+        }
     }
 
     public void UpsertFollowedIssuer(FollowedIssuer issuer)

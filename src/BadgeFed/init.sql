@@ -18,7 +18,7 @@ CREATE TABLE Actor (
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     IsMain BOOLEAN DEFAULT FALSE,
-    OwnerId TEXT NOT NULL UNIQUE
+    OwnerId TEXT NOT NULL
 );
 
 CREATE TRIGGER UpdateActorTimestamp
@@ -139,11 +139,18 @@ CREATE TABLE BadgeComments (
     UNIQUE(BadgeUri, NoteId)
 );
 
-CREATE TABLE IF NOT EXISTS DbVersion (Version INTEGER);
+CREATE TABLE IF NOT EXISTS DbMigrations (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Version TEXT NOT NULL UNIQUE,
+    Name TEXT NOT NULL,
+    AppliedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Checksum TEXT
+);
 
-INSERT INTO DbVersion (Version) 
-SELECT 1
-WHERE NOT EXISTS (SELECT 1 FROM DbVersion);
+-- Insert the initial migration record
+INSERT INTO DbMigrations (Version, Name, Checksum) 
+SELECT '1.0.0', 'Initial Database Schema', 'initial'
+WHERE NOT EXISTS (SELECT 1 FROM DbMigrations WHERE Version = '1.0.0');
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
@@ -172,22 +179,3 @@ CREATE TABLE Follower (
     PRIMARY KEY (FollowerUri, ActorId),
     FOREIGN KEY (ActorId) REFERENCES Actor(Id)
 );
-
--------- 6/6/2025 
-
-CREATE TABLE IF NOT EXISTS Users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL,
-    givenName TEXT NOT NULL,
-    surname TEXT NOT NULL,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-    provider TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
-    isActive BOOLEAN DEFAULT TRUE
-);
-
-INSERT INTO Users (id, email, givenName, surname, provider, role)
-VALUES ('hachyderm.io_mapache', '', 'mapache', '', 'hachyderm.io', 'manager');
-
--- ALTER TABLE Actor ADD COLUMN OwnerId TEXT NOT NULL UNIQUE;
--- ALTER TABLE Badge ADD COLUMN OwnerId TEXT NOT NULL UNIQUE;
