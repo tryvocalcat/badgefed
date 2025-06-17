@@ -80,7 +80,7 @@ public class DatabaseMigrationService
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Version, Name, AppliedAt, Checksum FROM DbMigrations ORDER BY Version";
+        command.CommandText = "SELECT Version, Name, AppliedAt, Checksum FROM DbMigrations ORDER BY Version DESC";
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -364,21 +364,6 @@ public class DatabaseMigrationService
 
     private int CompareVersions(string version1, string version2)
     {
-        var v1Parts = version1.Split('.').Select(int.Parse).ToArray();
-        var v2Parts = version2.Split('.').Select(int.Parse).ToArray();
-
-        var maxLength = Math.Max(v1Parts.Length, v2Parts.Length);
-
-        for (int i = 0; i < maxLength; i++)
-        {
-            var v1Part = i < v1Parts.Length ? v1Parts[i] : 0;
-            var v2Part = i < v2Parts.Length ? v2Parts[i] : 0;
-
-            var comparison = v1Part.CompareTo(v2Part);
-            if (comparison != 0)
-                return comparison;
-        }
-
-        return 0;
+        return Version.Parse(version1).CompareTo(Version.Parse(version2));
     }
 }

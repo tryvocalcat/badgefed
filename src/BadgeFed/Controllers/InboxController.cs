@@ -49,7 +49,7 @@ namespace BadgeFed.Controllers
             {
                 _followService.Logger = _logger;
                 _createNoteService.Logger = _logger;
-                
+
                 if (message.IsFollow())
                 {
                     _logger?.LogInformation($"Follow action for actor: {message.Actor}");
@@ -65,10 +65,12 @@ namespace BadgeFed.Controllers
                     _logger?.LogInformation($"Create action for actor: {message.Actor}");
                     await _createNoteService.ProcessMessage(message);
                 }
-                else
+                else if (message.IsAnnounce())
                 {
-                    // Handle other activity types or return a default response
+                    _logger?.LogInformation($"Announce action for actor: {message.Actor}");
+                    await _createNoteService.ProcessAnnounce(message);
                 }
+                
             }
             catch (Exception e)
             {

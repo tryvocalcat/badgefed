@@ -47,6 +47,11 @@ builder.Services.AddRazorComponents()
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
 
+var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
+var localDbService = new LocalDbService(dbFileName);
+
+builder.Services.AddSingleton<LocalDbService>(localDbService);
+
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
@@ -55,10 +60,6 @@ builder.Services.AddScoped<CreateNoteService>();
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
-var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
-var localDbService = new LocalDbService(dbFileName);
-
-builder.Services.AddSingleton<LocalDbService>(localDbService);
 builder.Services.AddScoped<DatabaseMigrationService>();
 
 builder.Services.AddSingleton<BadgeProcessor>();
@@ -177,6 +178,7 @@ async Task SetupDefaultActor(IServiceProvider services)
             PublicKeyPem = keyPair.PublicKeyPem,
             PrivateKeyPem = keyPair.PrivateKeyPem,
             InformationUri = $"https://{defaultDomain}/about",
+            AvatarPath = "img/defaultavatar.png",
             IsMain = true
         };
 

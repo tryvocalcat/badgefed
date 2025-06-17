@@ -48,13 +48,15 @@
                                 <figure class="image is-64x64">
                                     <img src="@badge.Image" alt="@badge.ImageAltText">
                                 </figure>
-                            </td>
+                            </td>                            
                             <td>
                                 <div class="buttons">
                                     <button class="button is-primary" @onclick="() => GrantBadge(badge)">Grant</button>
+                                    <button class="button is-info" @onclick="() => BulkGrantBadge(badge)">Bulk Grant</button>
                                     <button class="button is-link" @onclick="() => PreviewBadge(badge)">View</button>
                                     <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
                                     <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
+
                                 </div>
                             </td>
                         </tr>
@@ -86,11 +88,14 @@
         }
 
         badges = LocalDbService.GetAllBadgeDefinitions(true, filter);
-    }
-
-    private void GrantBadge(Badge badge)
+    }    private void GrantBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/admin/grant/{badge.Id}");
+    }
+
+    private void BulkGrantBadge(Badge badge)
+    {
+        NavigationManager.NavigateTo($"/admin/bulk-grant/{badge.Id}");
     }
 
     private void PreviewBadge(Badge badge)
