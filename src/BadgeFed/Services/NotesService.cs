@@ -200,10 +200,28 @@ public class NotesService
 
         var hashtagsContent = string.Empty;
 
-        // Add hashtags as tags using the clean HashtagsList
-        if (record.HashtagsList != null && record.HashtagsList.Any())
+        var hashtagsList = record.HashtagsList;
+
+        if (hashtagsList == null)
         {
-            foreach (var hashtag in record.HashtagsList)
+            hashtagsList = new List<string>();
+        }
+
+        // Always add the required tags if not already present
+        var requiredTags = new[] { "IssuedByBadgeFed", "_BadgeDrop" };
+        
+        foreach (var tag in requiredTags)
+        {
+            if (!hashtagsList.Contains(tag, StringComparer.OrdinalIgnoreCase))
+            {
+                hashtagsList.Add(tag);
+            }
+        }
+
+        // Add hashtags as tags using the clean HashtagsList
+        if (hashtagsList.Any())
+        {
+            foreach (var hashtag in hashtagsList)
             {
                 var tagUrl = $"https://{record.Actor.Domain}/tags/{hashtag}";
                 hashtagsContent += " " + GetHashTag(hashtag, tagUrl, tags);

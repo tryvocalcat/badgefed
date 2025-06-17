@@ -86,10 +86,26 @@
     <div class="field">
         <label class="label" for="hashtags">Hashtags</label>
         <div class="control">
-            <InputText id="hashtags" @bind-Value="Model.Hashtags" class="input" placeholder="Enter hashtags separated by spaces (e.g. #achievement #certification)" />
+            <InputText 
+                id="hashtags" 
+                @bind-Value="Model.Hashtags" 
+                class="input" 
+                placeholder="e.g. #achievement #certification" 
+            />
         </div>
-        <p class="help">Enter hashtags with # prefix, separated by spaces</p>
+        <p class="help is-size-7 mt-1">
+            Enter hashtags with a <code>#</code> prefix, separated by spaces.
+        </p>
+        <p class="help is-size-7 mb-1">
+            <strong>Note:</strong> All badges will automatically include 
+            <code>#IssuedByBadgeFed</code> and <code>#BadgeDrop</code> to help others filter badge posts.
+        </p>
+        <p class="help is-danger is-size-7 mt-2">
+            <strong>Warning:</strong> Submitting a large batch of badges at once may flood followers' timelines. 
+            Please select hashtags carefully to avoid spam-like behavior.
+        </p>
     </div>
+
     
     <div class="field">
         <label class="label" for="issuedBy">Issued By</label>
