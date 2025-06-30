@@ -10,11 +10,13 @@ namespace ActivityPubDotNet.Core
         public ILogger? Logger { get; set; }
         private readonly LocalDbService _localDbService;
         private readonly OpenBadgeImportService _openBadgeImportService;
+        private readonly BadgeProcessor _badgeProcessor;
 
-        public ExternalBadgeService(LocalDbService localDbService)
+        public ExternalBadgeService(LocalDbService localDbService, BadgeProcessor badgeProcessor)
         {
             _localDbService = localDbService;
             _openBadgeImportService = new OpenBadgeImportService(localDbService);
+            _badgeProcessor = badgeProcessor;
         }
 
         public async Task<BadgeRecord?> ProcessExternalBadge(ActivityPubNote objectNote)
@@ -51,6 +53,8 @@ namespace ActivityPubDotNet.Core
                 // Try to deserialize as ActivityPub badge first
                 var serializedGrant = JsonSerializer.Serialize(grant, options);
 
+                BadgeRecord? processedBadgeRecord = null;
+
                 // To be deprecated -- avoiding creating custom spec
                 if (serializedGrant.Contains("https://vocalcat.com/badgefed/1.0"))
                 {
@@ -58,7 +62,7 @@ namespace ActivityPubDotNet.Core
 
                     if (badgeRecord?.Context == "https://vocalcat.com/badgefed/1.0")
                     {
-                        return await ProcessActivityPubBadge(badgeRecord, objectNote.Id);
+                        processedBadgeRecord = await ProcessActivityPubBadge(badgeRecord, objectNote.Id);
                     }
                 }
                 
@@ -66,14 +70,34 @@ namespace ActivityPubDotNet.Core
                 if (serializedGrant.Contains("https://w3id.org/openbadges/v2"))
                 {
                     _openBadgeImportService.Logger = Logger;
-                    return await _openBadgeImportService.ImportOpenBadge(serializedGrant);
+                    processedBadgeRecord = await _openBadgeImportService.ImportOpenBadge(serializedGrant);
+                }
+
+                // If we successfully processed a badge, announce it
+                if (processedBadgeRecord != null)
+                {
+                    Logger?.LogInformation($"Successfully processed external badge, creating announcement for record ID: {processedBadgeRecord.Id}");
+                    try
+                    {
+                        await _badgeProcessor.AnnounceGrantByMainActor(processedBadgeRecord);
+                        Logger?.LogInformation($"Successfully announced external badge: {processedBadgeRecord.NoteId}");
+                    }
+                    catch (Exception announceEx)
+                    {
+                        Logger?.LogError($"Failed to announce external badge: {announceEx.Message}");
+                        // Don't fail the whole process if announce fails
+                    }
                 }
 
                 // TODO: Implement OpenBadges v3
                 // TODO: Implement https://w3c.github.io/vc-data-model/
 
-                Logger?.LogInformation("Unrecognized badge format");
-                return null;
+                if (processedBadgeRecord == null)
+                {
+                    Logger?.LogInformation("Unrecognized badge format");
+                }
+
+                return processedBadgeRecord;
             }
             catch (JsonException ex)
             {
