@@ -40,6 +40,7 @@ CREATE TABLE Badge (
     Hashtags TEXT,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    OwnerId TEXT NOT NULL,
     FOREIGN KEY (IssuedBy) REFERENCES Actor(Id)
 );
 
@@ -149,8 +150,8 @@ CREATE TABLE IF NOT EXISTS DbMigrations (
 
 -- Insert the initial migration record
 INSERT INTO DbMigrations (Version, Name, Checksum) 
-SELECT '1.0.0', 'Initial Database Schema', 'initial'
-WHERE NOT EXISTS (SELECT 1 FROM DbMigrations WHERE Version = '1.0.0');
+SELECT '1.1.0', 'Initial Database Schema', 'initial'
+WHERE NOT EXISTS (SELECT 1 FROM DbMigrations WHERE Version = '1.1.0');
 
 CREATE TABLE Recipient (
     Id INTEGER PRIMARY KEY,
