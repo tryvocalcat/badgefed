@@ -8,13 +8,16 @@ namespace Microsoft.AspNetCore.Routing;
 
 internal static class LoginLogoutEndpointRouteBuilderExtensions
 {
-    internal static IEndpointConventionBuilder MapLoginAndLogout(this IEndpointRouteBuilder endpoints)
+    internal static IEndpointConventionBuilder MapLoginAndLogout(this IEndpointRouteBuilder endpoints, List<string>? servers = null)
     {
         var group = endpoints.MapGroup("");
 
-        group.MapGet("/login/mastodon", (string? returnUrl) => 
-            TypedResults.Challenge(GetAuthProperties(returnUrl), ["hachyderm.io"]))
-                .AllowAnonymous();
+        if (servers?.Any() ?? false)
+        {
+            group.MapGet("/login/mastodon", (string? returnUrl) =>
+                TypedResults.Challenge(GetAuthProperties(returnUrl), servers))
+                    .AllowAnonymous();
+        }
 
         // Sign out of the Cookie and OIDC handlers. If you do not sign out with the OIDC handler,
         // the user will automatically be signed back in the next time they visit a page that requires authentication

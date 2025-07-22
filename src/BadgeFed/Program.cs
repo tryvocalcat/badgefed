@@ -148,7 +148,15 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapControllers();
-app.MapGroup("/admin").MapLoginAndLogout();
+
+var loginSchemas = new List<string>();
+
+if (mastodonConfig != null && !string.IsNullOrEmpty(mastodonConfig.Server))
+{
+    loginSchemas.Add(mastodonConfig.Server);
+}
+
+app.MapGroup("/admin").MapLoginAndLogout(loginSchemas);
 
 app.Run();
 

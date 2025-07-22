@@ -199,7 +199,7 @@ else
             <div class="columns is-multiline">
                 @foreach (var follower in followers)
                 {
-                    var username = follower.FollowerUri.Split('/').LastOrDefault();
+                    var username = follower.FollowerUri.TrimEnd('/').Split('/').LastOrDefault();
                     var displayName = string.IsNullOrEmpty(follower.DisplayName) ? username : follower.DisplayName;
 
                     var image = string.IsNullOrEmpty(follower.AvatarUri) ? null : follower.AvatarUri;
