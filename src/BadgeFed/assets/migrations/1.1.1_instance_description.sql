@@ -1,0 +1,9 @@
+
+CREATE TABLE InstanceDescription (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL DEFAULT '',
+    Description TEXT NOT NULL DEFAULT '',
+    Purpose TEXT NOT NULL DEFAULT '',
+    ContactInfo TEXT NOT NULL DEFAULT '',
+    IsEnabled BOOLEAN NOT NULL DEFAULT 0
+);

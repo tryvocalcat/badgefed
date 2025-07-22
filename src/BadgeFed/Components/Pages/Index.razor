@@ -171,6 +171,41 @@
         </div>
     </section>
 
+    <!-- Instance Description Section -->
+    @if (InstanceDescriptionData?.IsEnabled == true && !string.IsNullOrWhiteSpace(InstanceDescriptionData.Name))
+    {
+        <section class="section has-background-white-ter py-6 rounded-lg shadow-sm">
+            <div class="container">
+                <div class="box has-background-white px-5 py-6" style="border-radius: 16px;">
+                    <h2 class="title is-2 has-text-centered mb-2" style="color: #4f46e5;">
+                        <span class="icon is-large mr-2"><i class="fas fa-info-circle"></i></span>
+                        @InstanceDescriptionData.Name
+                    </h2>
+                    <br />
+                    <p class="subtitle is-5 has-text-centered mb-5" style="color: #374151;">
+                        @InstanceDescriptionData.Description
+                    </p>
+                    
+                    @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.Purpose))
+                    {
+                        <div class="notification is-info is-light mt-4 px-4 py-3" style="border-radius: 12px;">
+                            <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-bullseye"></i></span> Our Purpose</h3>
+                            <p>@InstanceDescriptionData.Purpose</p>
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.ContactInfo))
+                    {
+                        <div class="notification is-link is-light mt-3 px-4 py-3" style="border-radius: 12px;">
+                            <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-envelope"></i></span> Contact Information</h3>
+                            <p>@InstanceDescriptionData.ContactInfo</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
     <section class="section">
         <h2 class="title is-2 has-text-centered">Featured Badge Issuers</h2>
         <p class="subtitle is-5 has-text-centered mb-6">Discover trusted organizations issuing verifiable badges</p>
@@ -337,6 +372,7 @@
     private InstanceInfoDefinition InstanceInfo { get; set; }
     private List<Actor> Actors { get; set; }
     private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
+    private InstanceDescription InstanceDescriptionData { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,6 +399,11 @@
             };
             Actors = LocalDbService.GetActors("Featured = TRUE AND IsMain = FALSE");
             FollowedIssuers = LocalDbService.GetAllFollowedIssuers(true);
+            
+            // Initialize table and load instance description
+            LocalDbService.InitializeInstanceDescriptionTable();
+            InstanceDescriptionData = LocalDbService.GetInstanceDescription();
+            
             HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
         }
         catch (Exception ex)

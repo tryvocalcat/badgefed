@@ -1638,4 +1638,103 @@ public class ActorStats
 
         return records;
     }
+
+    public InstanceDescription GetInstanceDescription()
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new InstanceDescription
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Name = reader["Name"] as string ?? "",
+                Description = reader["Description"] as string ?? "",
+                Purpose = reader["Purpose"] as string ?? "",
+                ContactInfo = reader["ContactInfo"] as string ?? "",
+                IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled"))
+            };
+        }
+
+        return new InstanceDescription();
+    }
+
+    public void SaveInstanceDescription(InstanceDescription description)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.Transaction = transaction;
+
+        // Sanitize input - remove HTML tags
+        description.Name = System.Text.RegularExpressions.Regex.Replace(description.Name ?? "", "<.*?>", "").Trim();
+        description.Description = System.Text.RegularExpressions.Regex.Replace(description.Description ?? "", "<.*?>", "").Trim();
+        description.Purpose = System.Text.RegularExpressions.Regex.Replace(description.Purpose ?? "", "<.*?>", "").Trim();
+        description.ContactInfo = System.Text.RegularExpressions.Regex.Replace(description.ContactInfo ?? "", "<.*?>", "").Trim();
+
+        if (description.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, IsEnabled)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @IsEnabled);
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE InstanceDescription SET 
+                    Name = @Name, 
+                    Description = @Description, 
+                    Purpose = @Purpose, 
+                    ContactInfo = @ContactInfo,
+                    IsEnabled = @IsEnabled
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", description.Id);
+        }
+
+        command.Parameters.AddWithValue("@Name", description.Name);
+        command.Parameters.AddWithValue("@Description", description.Description);
+        command.Parameters.AddWithValue("@Purpose", description.Purpose);
+        command.Parameters.AddWithValue("@ContactInfo", description.ContactInfo);
+        command.Parameters.AddWithValue("@IsEnabled", description.IsEnabled);
+
+        if (description.Id == 0)
+        {
+            description.Id = Convert.ToInt32(command.ExecuteScalar());
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public void InitializeInstanceDescriptionTable()
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS InstanceDescription (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL DEFAULT '',
+                Description TEXT NOT NULL DEFAULT '',
+                Purpose TEXT NOT NULL DEFAULT '',
+                ContactInfo TEXT NOT NULL DEFAULT '',
+                IsEnabled BOOLEAN NOT NULL DEFAULT 0
+            );
+        ";
+        command.ExecuteNonQuery();
+    }
 }

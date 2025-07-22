@@ -1,0 +1,211 @@
+@page "/settings/instance"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@inject LocalDbService LocalDbService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@layout BadgeFed.Components.Layouts.AdminLayout
+@rendermode InteractiveServer
+
+@inject CurrentUser CurrentUser
+
+@attribute [Authorize(Roles = "admin, manager")]
+
+<div class="container">
+    <div class="columns is-centered">
+        <div class="column is-8">
+            <h1 class="title">Instance Settings</h1>
+            <h2 class="subtitle">Configure your instance description</h2>
+
+            <div class="box">
+                <form @onsubmit="@SaveSettings" @onsubmit:preventDefault="true">
+                    <div class="field">
+                        <label class="label">Enable Instance Description</label>
+                        <div class="control">
+                            <label class="checkbox">
+                                <input type="checkbox" @bind="instanceDescription.IsEnabled" />
+                                Display instance description on homepage
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Instance Name</label>
+                        <div class="control">
+                            <input @bind="instanceDescription.Name" class="input" placeholder="e.g., Community Tech Hub" maxlength="100" />
+                        </div>
+                        <p class="help">The name of your instance (max 100 characters, no HTML allowed)</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Description</label>
+                        <div class="control">
+                            <textarea @bind="instanceDescription.Description" class="textarea" placeholder="Brief description of your instance" rows="3" maxlength="500"></textarea>
+                        </div>
+                        <p class="help">A brief description of your instance (max 500 characters, no HTML allowed)</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Purpose</label>
+                        <div class="control">
+                            <textarea @bind="instanceDescription.Purpose" class="textarea" placeholder="What is the purpose of your instance?" rows="4" maxlength="1000"></textarea>
+                        </div>
+                        <p class="help">Explain the purpose and goals of your instance (max 1000 characters, no HTML allowed)</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Contact Information</label>
+                        <div class="control">
+                            <textarea @bind="instanceDescription.ContactInfo" class="textarea" placeholder="How can people contact you?" rows="3" maxlength="300"></textarea>
+                        </div>
+                        <p class="help">Contact information for your instance (max 300 characters, no HTML allowed)</p>
+                    </div>
+
+                    <div class="field is-grouped">
+                        <div class="control">
+                            <button type="submit" class="button is-primary" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span class="icon"><i class="fas fa-save"></i></span>
+                                    <span>Save Settings</span>
+                                }
+                            </button>
+                        </div>
+                        <div class="control">
+                            <button type="button" class="button is-light" @onclick="ResetForm">
+                                <span class="icon"><i class="fas fa-undo"></i></span>
+                                <span>Reset</span>
+                            </button>
+                        </div>
+                        <div class="control">
+                            <a href="/" class="button is-info is-outlined">
+                                <span class="icon"><i class="fas fa-home"></i></span>
+                                <span>View Homepage</span>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <div class="notification @(isError ? "is-danger" : "is-success")">
+                    <button class="delete" @onclick="ClearMessage"></button>
+                    @message
+                </div>
+            }
+
+            <div class="box mt-5">
+                <h3 class="title is-5">Preview</h3>
+                <p class="subtitle is-6">This is how your instance description will appear on the homepage:</p>
+                
+                @if (instanceDescription?.IsEnabled == true && !string.IsNullOrWhiteSpace(instanceDescription.Name))
+                {
+                    <div class="box has-background-white-bis">
+                        <h2 class="title is-3 has-text-centered mb-4">@instanceDescription.Name</h2>
+                        
+                        @if (!string.IsNullOrWhiteSpace(instanceDescription.Description))
+                        {
+                            <div class="content has-text-centered">
+                                <p class="is-size-5">@instanceDescription.Description</p>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrWhiteSpace(instanceDescription.Purpose))
+                        {
+                            <div class="content mt-4">
+                                <h3 class="title is-5">Our Purpose</h3>
+                                <p>@instanceDescription.Purpose</p>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrWhiteSpace(instanceDescription.ContactInfo))
+                        {
+                            <div class="content mt-4">
+                                <h3 class="title is-5">Contact Information</h3>
+                                <p>@instanceDescription.ContactInfo</p>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="notification is-light">
+                        <p>Instance description is disabled or no name is provided. Enable it and add a name to see the preview.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private InstanceDescription instanceDescription = new();
+    private bool isSaving = false;
+    private string message = "";
+    private bool isError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Initialize the table if it doesn't exist
+            LocalDbService.InitializeInstanceDescriptionTable();
+            
+            // Load existing settings
+            instanceDescription = LocalDbService.GetInstanceDescription();
+        }
+        catch (Exception ex)
+        {
+            message = $"Error loading settings: {ex.Message}";
+            isError = true;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        try
+        {
+            isSaving = true;
+            message = "";
+            
+            LocalDbService.SaveInstanceDescription(instanceDescription);
+            
+            message = "Settings saved successfully!";
+            isError = false;
+            
+            await Task.Delay(100); // Brief delay for UI feedback
+        }
+        catch (Exception ex)
+        {
+            message = $"Error saving settings: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetForm()
+    {
+        instanceDescription = LocalDbService.GetInstanceDescription();
+        message = "";
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        StateHasChanged();
+    }
+}
