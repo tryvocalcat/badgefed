@@ -47,6 +47,17 @@ builder.Services.AddRazorComponents()
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
 
+// Add CORS for embed widget
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("EmbedPolicy", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
 var localDbService = new LocalDbService(dbFileName);
 
@@ -139,6 +150,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseStaticFiles();
+app.UseCors("EmbedPolicy");
 app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();

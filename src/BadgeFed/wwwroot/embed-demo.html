@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BadgeFed Embed Widget Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8fafc;
+        }
+        .demo-section {
+            background: white;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2d3748;
+        }
+        .code-block {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .highlight {
+            background: #fef5e7;
+            border-left: 4px solid #f6ad55;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-section">
+        <h1>🎖️ BadgeFed Embed Widget Demo</h1>
+        <p>This page demonstrates how to embed BadgeFed badges on any website. The widget automatically fetches and displays public badges for any recipient.</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>🚀 Quick Start - Automatic Method</h2>
+        <p>The easiest way to embed badges. Just include the script and add the HTML container:</p>
+        
+        <div class="code-block">
+&lt;!-- Include the BadgeFed widget script --&gt;
+&lt;script src="https://your-badgefed-instance.com/js/widget.js"&gt;&lt;/script&gt;
+
+&lt;!-- Add container with data attributes --&gt;
+&lt;div id="my-badges" 
+     data-badgefed-recipient="https://example.com/users/johndoe"
+     data-badgefed-title="John's Achievements"
+     data-badgefed-limit="6"&gt;
+&lt;/div&gt;
+        </div>
+
+        <div class="highlight">
+            <strong>Note:</strong> Replace <code>https://your-badgefed-instance.com</code> with your actual BadgeFed instance URL and update the recipient URL to match the profile you want to display badges for.
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>⚡ JavaScript Method</h2>
+        <p>For more control over when and how the widget loads:</p>
+        
+        <div class="code-block">
+&lt;!-- Include the script --&gt;
+&lt;script src="https://your-badgefed-instance.com/js/widget.js"&gt;&lt;/script&gt;
+
+&lt;!-- Container --&gt;
+&lt;div id="custom-badges"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+// Initialize when ready
+document.addEventListener('DOMContentLoaded', function() {
+    BadgeFedWidget.render('custom-badges', 'https://example.com/users/johndoe', {
+        title: 'Professional Achievements',
+        limit: 8,
+        showPoweredBy: true
+    });
+});
+&lt;/script&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔧 API Access</h2>
+        <p>Build your own custom badge display using the API endpoints:</p>
+        
+        <div class="code-block">
+// Open Badges JSON-LD format
+GET /api/embed/badges?recipient=https://example.com/users/johndoe&format=openbadges&limit=10
+
+// Simple JSON format  
+GET /api/embed/badges?recipient=https://example.com/users/johndoe&format=simple&limit=10
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🎨 Live Demo</h2>
+        <p>Here's a working example (replace with actual recipient URL to see real badges):</p>
+        
+        <!-- Demo Widget - Replace with actual recipient URL -->
+        <div id="demo-badges" 
+             data-badgefed-recipient="https://example.com/users/demo"
+             data-badgefed-title="Demo Badges"
+             data-badgefed-limit="5">
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📋 Configuration Options</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background: #f8fafc;">
+                <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Option</th>
+                <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Description</th>
+                <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Default</th>
+            </tr>
+            <tr>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;"><code>data-badgefed-recipient</code></td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">Profile URL of the badge recipient (required)</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">-</td>
+            </tr>
+            <tr style="background: #f8fafc;">
+                <td style="padding: 12px; border: 1px solid #e2e8f0;"><code>data-badgefed-title</code></td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">Title displayed above the badges</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">"My Badges"</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;"><code>data-badgefed-limit</code></td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">Maximum number of badges to display</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">10</td>
+            </tr>
+            <tr style="background: #f8fafc;">
+                <td style="padding: 12px; border: 1px solid #e2e8f0;"><code>data-badgefed-powered-by</code></td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">Show "Powered by BadgeFed" footer</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">true</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Include the actual widget script -->
+    <!-- <script src="https://your-badgefed-instance.com/js/widget.js"></script> -->
+    
+    <script>
+        // Placeholder for demo - replace with actual widget script
+        console.log('BadgeFed Widget Demo Page Loaded');
+        console.log('Replace the script src with your actual BadgeFed instance URL');
+    </script>
+</body>
+</html>

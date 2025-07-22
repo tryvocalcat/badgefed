@@ -15,3 +15,29 @@ window.showToast = function()
     var toast = new bootstrap.Toast(toastEl);
     toast.show();
 };
+
+// BadgeFed Embed Modal utilities
+window.badgeFedUtils = {
+    selectText: function(elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.select();
+            element.setSelectionRange(0, 99999); // For mobile devices
+        }
+    },
+    
+    copyToClipboard: function(text) {
+        if (navigator.clipboard) {
+            return navigator.clipboard.writeText(text);
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return Promise.resolve();
+        }
+    }
+};

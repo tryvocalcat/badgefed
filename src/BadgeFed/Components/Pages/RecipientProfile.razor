@@ -3,6 +3,8 @@
 @using BadgeFed.Models
 @using Microsoft.AspNetCore.Components.Web
 @inject LocalDbService LocalDbService
+@inject IJSRuntime JS
+@inject IHttpContextAccessor HttpContextAccessor
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
@@ -33,6 +35,18 @@
                         <span>@badgeRecords.Count Badge@(badgeRecords.Count != 1 ? "s" : "")</span>
                     </span>
                 </div>
+                
+                @if (badgeRecords.Any())
+                {
+                    <div class="has-text-centered mt-4">
+                        <button class="button is-success" @onclick="ShowEmbedModal">
+                            <span class="icon">
+                                <i class="fas fa-code"></i>
+                            </span>
+                            <span>Embed These Badges</span>
+                        </button>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -209,6 +223,171 @@
     }
 </div>
 
+<!-- Embed Modal -->
+<div class="modal @(showEmbedModal ? "is-active" : "")">
+    <div class="modal-background" @onclick="CloseEmbedModal"></div>
+    <div class="modal-card" style="max-width: 800px;">
+        <header class="modal-card-head">
+            <p class="modal-card-title">
+                <span class="icon-text">
+                    <span class="icon">
+                        <i class="fas fa-code"></i>
+                    </span>
+                    <span>Embed @recipientName's Badges</span>
+                </span>
+            </p>
+            <button class="delete" aria-label="close" @onclick="CloseEmbedModal"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <p class="subtitle is-6 mb-4">
+                    Copy and paste this code into your website to display @recipientName's badges automatically.
+                </p>
+                
+                <div class="tabs is-boxed">
+                    <ul>
+                        <li class="@(embedTab == "simple" ? "is-active" : "")" @onclick="() => SetEmbedTabSimple()">
+                            <a>
+                                <span class="icon is-small"><i class="fas fa-magic"></i></span>
+                                <span>Simple HTML</span>
+                            </a>
+                        </li>
+                        <li class="@(embedTab == "javascript" ? "is-active" : "")" @onclick="() => SetEmbedTabJavascript()">
+                            <a>
+                                <span class="icon is-small"><i class="fab fa-js"></i></span>
+                                <span>JavaScript</span>
+                            </a>
+                        </li>
+                        <li class="@(embedTab == "api" ? "is-active" : "")" @onclick="() => SetEmbedTabApi()">
+                            <a>
+                                <span class="icon is-small"><i class="fas fa-database"></i></span>
+                                <span>API Endpoint</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                @if (embedTab == "simple")
+                {
+                    <div class="notification is-info is-light">
+                        <p><strong>Automatic Method:</strong> Just add this HTML to your website and the badges will appear automatically!</p>
+                    </div>
+                    
+                    <div class="field">
+                        <label class="label">HTML Code</label>
+                        <div class="control">
+                            <textarea class="textarea is-family-code" rows="8" readonly @ref="embedCodeTextarea">@GetSimpleEmbedCode()</textarea>
+                        </div>
+                        <p class="help">This will automatically load and display @recipientName's badges when the page loads.</p>
+                    </div>
+                }
+                else if (embedTab == "javascript")
+                {
+                    <div class="notification is-warning is-light">
+                        <p><strong>Advanced Method:</strong> Use JavaScript for more control over when and how badges are displayed.</p>
+                    </div>
+                    
+                    <div class="field">
+                        <label class="label">Step 1: Include the BadgeFed Widget Script</label>
+                        <div class="control">
+                            <textarea class="textarea is-family-code" rows="2" readonly>@GetScriptInclude()</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="field">
+                        <label class="label">Step 2: Add Container and JavaScript</label>
+                        <div class="control">
+                            <textarea class="textarea is-family-code" rows="10" readonly @ref="embedCodeTextarea">@GetJavaScriptEmbedCode()</textarea>
+                        </div>
+                        <p class="help">This gives you full control over the widget initialization and styling.</p>
+                    </div>
+                }
+                else if (embedTab == "api")
+                {
+                    <div class="notification is-primary is-light">
+                        <p><strong>API Access:</strong> Use these endpoints to build your own custom badge display.</p>
+                    </div>
+                    
+                    <div class="field">
+                        <label class="label">JSON-LD Open Badges Format</label>
+                        <div class="control">
+                            <textarea class="textarea is-family-code" rows="3" readonly>@GetOpenBadgesApiUrl()</textarea>
+                        </div>
+                        <p class="help">Returns badges in the official Open Badges JSON-LD format.</p>
+                    </div>
+                    
+                    <div class="field">
+                        <label class="label">Simple JSON Format</label>
+                        <div class="control">
+                            <textarea class="textarea is-family-code" rows="3" readonly @ref="embedCodeTextarea">@GetSimpleApiUrl()</textarea>
+                        </div>
+                        <p class="help">Returns badges in a simplified JSON format for easy display.</p>
+                    </div>
+                    
+                    <div class="content mt-4">
+                        <h6 class="title is-6">Query Parameters:</h6>
+                        <ul>
+                            <li><code>recipient</code> - Required. The profile URL or base64-encoded profile URL</li>
+                            <li><code>limit</code> - Optional. Number of badges to return (default: 10, max: 50)</li>
+                            <li><code>format</code> - Optional. 'openbadges' for JSON-LD or 'simple' for basic JSON</li>
+                        </ul>
+                    </div>
+                }
+
+                <div class="field mt-5">
+                    <div class="control">
+                        <button class="button is-primary" @onclick="CopyEmbedCode">
+                            <span class="icon">
+                                <i class="fas fa-copy"></i>
+                            </span>
+                            <span>Copy to Clipboard</span>
+                        </button>
+                        <button class="button is-light ml-2" @onclick="PreviewEmbedCode">
+                            <span class="icon">
+                                <i class="fas fa-eye"></i>
+                            </span>
+                            <span>Preview Widget</span>
+                        </button>
+                    </div>
+                    @if (embedCodeCopied)
+                    {
+                        <p class="help has-text-success mt-2">
+                            <span class="icon">
+                                <i class="fas fa-check"></i>
+                            </span>
+                            Code copied to clipboard!
+                        </p>
+                    }
+                </div>
+                
+                @if (showPreview)
+                {
+                    <div class="notification is-light mt-4">
+                        <h6 class="title is-6">Live Preview:</h6>
+                        <div class="box" style="background: #f8f9fa;">
+                            <div id="badge-preview-container" 
+                                 data-badgefed-recipient="@decodedRecipientUri"
+                                 data-badgefed-title="@recipientName's Badges"
+                                 data-badgefed-limit="5">
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="content is-small">
+                <p class="has-text-grey">
+                    <span class="icon">
+                        <i class="fas fa-info-circle"></i>
+                    </span>
+                    The widget will automatically update when new badges are issued. All badges shown are public only.
+                </p>
+            </div>
+        </footer>
+    </div>
+</div>
+
 <style>
     .badge-card {
         height: 100%;
@@ -273,6 +452,13 @@
     private string recipientName = string.Empty;
     private List<BadgeRecord> badgeRecords = new();
     private bool isLoading = true;
+    
+    // Embed modal properties
+    private bool showEmbedModal = false;
+    private string embedTab = "simple";
+    private bool embedCodeCopied = false;
+    private bool showPreview = false;
+    private ElementReference embedCodeTextarea;
 
     protected override async Task OnInitializedAsync()
     {
@@ -383,6 +569,183 @@
         catch
         {
             return "Unknown Recipient";
+        }
+    }
+    
+    // Embed functionality methods
+    private void ShowEmbedModal()
+    {
+        showEmbedModal = true;
+        embedTab = "simple";
+        embedCodeCopied = false;
+        showPreview = false;
+        StateHasChanged();
+    }
+    
+    private void CloseEmbedModal()
+    {
+        showEmbedModal = false;
+        embedCodeCopied = false;
+        showPreview = false;
+        StateHasChanged();
+    }
+
+    private void SetEmbedTabApi()
+    {
+        SetEmbedTab("api");
+    }
+
+    private void SetEmbedTabJavascript()
+    {
+        SetEmbedTab("javascript");
+    }
+
+    private void SetEmbedTabSimple()
+    {
+        SetEmbedTab("simple");
+    }
+    
+    private void SetEmbedTab(string tab)
+    {
+        embedTab = tab;
+        embedCodeCopied = false;
+        showPreview = false;
+        StateHasChanged();
+    }
+    
+    private string GetBaseUrl()
+    {
+        var context = HttpContextAccessor.HttpContext;
+        if (context != null)
+        {
+            return $"{context.Request.Scheme}://{context.Request.Host}";
+        }
+        return "https://yourdomain.com"; // Fallback
+    }
+    
+    private string GetSimpleEmbedCode()
+    {
+        var baseUrl = GetBaseUrl();
+        var title = $"{recipientName}'s Badges";
+        
+        return $@"<!-- BadgeFed Widget -->
+<script src=""{baseUrl}/js/widget.js""></script>
+<div id=""my-badgefed-badges"" 
+     data-badgefed-recipient=""{decodedRecipientUri}""
+     data-badgefed-title=""{title}""
+     data-badgefed-limit=""10""
+     data-badgefed-powered-by=""true"">
+</div>";
+    }
+    
+    private string GetScriptInclude()
+    {
+        var baseUrl = GetBaseUrl();
+        return $@"<script src=""{baseUrl}/js/widget.js""></script>";
+    }
+    
+    private string GetJavaScriptEmbedCode()
+    {
+        var baseUrl = GetBaseUrl();
+        var title = $"{recipientName}'s Professional Achievements";
+        
+        return $@"<!-- Container for badges -->
+<div id=""recipient-badges""></div>
+
+<script>
+// Initialize the widget when page loads
+document.addEventListener('DOMContentLoaded', function() {{
+    BadgeFedWidget.render('recipient-badges', '{decodedRecipientUri}', {{
+        title: '{title}',
+        limit: 10,
+        showPoweredBy: true
+    }});
+}});
+</script>";
+    }
+    
+    private string GetOpenBadgesApiUrl()
+    {
+        var baseUrl = GetBaseUrl();
+        var encodedRecipient = Uri.EscapeDataString(decodedRecipientUri);
+        return $@"{baseUrl}/api/embed/badges?recipient={encodedRecipient}&format=openbadges&limit=10";
+    }
+    
+    private string GetSimpleApiUrl()
+    {
+        var baseUrl = GetBaseUrl();
+        var encodedRecipient = Uri.EscapeDataString(decodedRecipientUri);
+        return $@"{baseUrl}/api/embed/badges?recipient={encodedRecipient}&format=simple&limit=10";
+    }
+    
+    private async Task CopyEmbedCode()
+    {
+        try
+        {
+            string codeToCopy = embedTab switch
+            {
+                "simple" => GetSimpleEmbedCode(),
+                "javascript" => GetJavaScriptEmbedCode(),
+                "api" => GetSimpleApiUrl(),
+                _ => GetSimpleEmbedCode()
+            };
+            
+            await embedCodeTextarea.FocusAsync();
+            await Task.Delay(100); // Small delay to ensure focus
+            
+            // Use JavaScript to copy to clipboard
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", codeToCopy);
+            
+            embedCodeCopied = true;
+            StateHasChanged();
+            
+            // Hide success message after 3 seconds
+            await Task.Delay(3000);
+            embedCodeCopied = false;
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Fallback: select the text so user can copy manually
+            await embedCodeTextarea.FocusAsync();
+        }
+    }
+    
+    private async Task PreviewEmbedCode()
+    {
+        showPreview = !showPreview;
+        StateHasChanged();
+        
+        if (showPreview)
+        {
+            // Small delay to ensure the container is rendered
+            await Task.Delay(500);
+            
+            // Initialize the preview widget
+            var baseUrl = GetBaseUrl();
+            var jsCode = $@"
+                if (typeof BadgeFedWidget !== 'undefined') {{
+                    BadgeFedWidget.render('badge-preview-container', '{decodedRecipientUri}', {{
+                        title: '{recipientName}\'s Badges',
+                        limit: 5,
+                        showPoweredBy: true
+                    }});
+                }} else {{
+                    // Load the widget script if not already loaded
+                    const script = document.createElement('script');
+                    script.src = '{baseUrl}/js/widget.js';
+                    script.onload = function() {{
+                        BadgeFedWidget.render('badge-preview-container', '{decodedRecipientUri}', {{
+                            title: '{recipientName}\'s Badges',
+                            limit: 5,
+                            showPoweredBy: true
+                        }});
+                    }};
+                    document.head.appendChild(script);
+                }}
+            ";
+            
+            await JS.InvokeVoidAsync("eval", jsCode);
         }
     }
 }
