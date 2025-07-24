@@ -1,0 +1,447 @@
+@page "/admin/invitations"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject InvitationService InvitationService
+@inject IJSRuntime JSRuntime
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Invitations</a></li>
+        </ul>
+    </nav>
+
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">User Invitations</h1>
+                    <p class="subtitle">Invite users to join your BadgeFed instance</p>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <button class="button is-primary" @onclick="ShowCreateModal">
+                    <span class="icon">
+                        <i class="fas fa-plus"></i>
+                    </span>
+                    <span>Create Invitation</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Filter tabs -->
+    <div class="tabs">
+        <ul>
+            <li class="@(currentFilter == "all" ? "is-active" : "")">
+                <a @onclick="FilterInvitationsAll">All</a>
+            </li>
+            <li class="@(currentFilter == "active" ? "is-active" : "")">
+                <a @onclick="FilterInvitationsActive">Active</a>
+            </li>
+            <li class="@(currentFilter == "used" ? "is-active" : "")">
+                <a @onclick="FilterInvitationsUsed">Used</a>
+            </li>
+            <li class="@(currentFilter == "expired" ? "is-active" : "")">
+                <a @onclick="FilterInvitationsExpired">Expired</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Invitations table -->
+    @if (invitations == null)
+    {
+        <div class="notification is-info">
+            <p>Loading invitations...</p>
+        </div>
+    }
+    else if (!invitations.Any())
+    {
+        <div class="notification is-light">
+            <p>No invitations found. Create your first invitation to get started!</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Expires</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var invitation in invitations)
+                    {
+                        <tr>
+                            <td>@invitation.Email</td>
+                            <td>
+                                <span class="tag @(invitation.Role == "admin" ? "is-danger" : "is-info")">
+                                    @invitation.Role
+                                </span>
+                            </td>
+                            <td>
+                                @if (invitation.IsUsed)
+                                {
+                                    <span class="tag is-success">Used</span>
+                                }
+                                else if (invitation.IsExpired)
+                                {
+                                    <span class="tag is-warning">Expired</span>
+                                }
+                                else if (!invitation.IsActive)
+                                {
+                                    <span class="tag is-light">Inactive</span>
+                                }
+                                else
+                                {
+                                    <span class="tag is-primary">Active</span>
+                                }
+                            </td>
+                            <td>@invitation.CreatedAt.ToString("MMM d, yyyy")</td>
+                            <td>@invitation.ExpiresAt.ToString("MMM d, yyyy")</td>
+                            <td>
+                                <div class="buttons are-small">
+                                    @if (invitation.IsValid)
+                                    {
+                                        <button class="button is-info is-small" @onclick="() => CopyInvitationUrl(invitation)">
+                                            <span class="icon">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                            <span>Copy URL</span>
+                                        </button>
+                                        <button class="button is-link is-small" @onclick="() => ResendInvitation(invitation.Id)">
+                                            <span class="icon">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </span>
+                                            <span>Resend</span>
+                                        </button>
+                                    }
+                                    @if (invitation.IsActive && !invitation.IsUsed)
+                                    {
+                                        <button class="button is-warning is-small" @onclick="() => DeactivateInvitation(invitation.Id)">
+                                            <span class="icon">
+                                                <i class="fas fa-ban"></i>
+                                            </span>
+                                            <span>Deactivate</span>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Create Invitation Modal -->
+<div class="modal @(showCreateModal ? "is-active" : "")">
+    <div class="modal-background" @onclick="HideCreateModal"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Create New Invitation</p>
+            <button class="delete" aria-label="close" @onclick="HideCreateModal"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Email Address</label>
+                <div class="control">
+                    <input @bind="newInvitation.Email" class="input" type="email" placeholder="user@example.com" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Role</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select @bind="newInvitation.Role">
+                            <option value="manager">Manager</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="help">Managers can create issuers and badges. Admins have full system access.</p>
+            </div>
+
+            <div class="field">
+                <label class="label">Expiration</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select @bind="newInvitation.ExpirationDays">
+                            <option value="1">1 day</option>
+                            <option value="3">3 days</option>
+                            <option value="7">1 week</option>
+                            <option value="14">2 weeks</option>
+                            <option value="30">1 month</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Personal Message (Optional)</label>
+                <div class="control">
+                    <textarea @bind="newInvitation.Notes" class="textarea" rows="3" placeholder="Add a personal message to include in the invitation email..."></textarea>
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <label class="checkbox">
+                        <input type="checkbox" @bind="newInvitation.SendEmail" />
+                        Send invitation email automatically
+                    </label>
+                </div>
+                <p class="help">If unchecked, you'll need to share the invitation URL manually.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" @onclick="CreateInvitation" disabled="@isCreating">
+                @if (isCreating)
+                {
+                    <span class="icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span>Creating...</span>
+                }
+                else
+                {
+                    <span>Create Invitation</span>
+                }
+            </button>
+            <button class="button" @onclick="HideCreateModal">Cancel</button>
+        </footer>
+    </div>
+</div>
+
+<style>
+    .buttons.are-small .button {
+        margin-right: 0.25rem;
+    }
+
+    .level-item .title {
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+@code {
+    private List<Invitation>? invitations;
+    private string currentFilter = "all";
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool showCreateModal = false;
+    private bool isCreating = false;
+
+    private CreateInvitationRequest newInvitation = new CreateInvitationRequest();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvitations();
+    }
+
+    private async Task LoadInvitations()
+    {
+        try
+        {
+            string? filter = currentFilter switch
+            {
+                "active" => "isActive = 1 AND datetime(expiresAt) > datetime('now') AND acceptedBy IS NULL",
+                "expired" => "datetime(expiresAt) <= datetime('now')",
+                "used" => "acceptedBy IS NOT NULL",
+                "inactive" => "isActive = 0",
+                _ => null
+            };
+
+            invitations = InvitationService.GetInvitations(filter);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading invitations: {ex.Message}";
+        }
+    }
+
+    private async Task FilterInvitations(string filter)
+    {
+        currentFilter = filter;
+        await LoadInvitations();
+    }
+
+    private async Task FilterInvitationsAll()
+    {
+        currentFilter = "all";
+        await LoadInvitations();
+    }
+
+    private async Task FilterInvitationsActive()
+    {
+        currentFilter = "active";
+        await LoadInvitations();
+    }
+
+    private async Task FilterInvitationsUsed()
+    {
+        currentFilter = "used";
+        await LoadInvitations();
+    }
+
+    private async Task FilterInvitationsExpired()
+    {
+        currentFilter = "expired";
+        await LoadInvitations();
+    }
+
+    private void ShowCreateModal()
+    {
+        newInvitation = new CreateInvitationRequest();
+        showCreateModal = true;
+    }
+
+    private void HideCreateModal()
+    {
+        showCreateModal = false;
+        newInvitation = new CreateInvitationRequest();
+    }
+
+    private async Task CreateInvitation()
+    {
+        if (isCreating) return;
+        
+        isCreating = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var invitation = InvitationService.CreateInvitation(
+                newInvitation.Email,
+                CurrentUser.UserId,
+                newInvitation.Role,
+                newInvitation.ExpirationDays,
+                newInvitation.Notes
+            );
+
+            if (newInvitation.SendEmail)
+            {
+                var emailSent = await InvitationService.SendInvitationEmailAsync(invitation);
+                if (!emailSent)
+                {
+                    successMessage = $"Invitation created successfully for {newInvitation.Email}, but email could not be sent. Please share the invitation URL manually.";
+                }
+                else
+                {
+                    successMessage = $"Invitation created and email sent successfully to {newInvitation.Email}!";
+                }
+            }
+            else
+            {
+                successMessage = $"Invitation created successfully for {newInvitation.Email}. Share the invitation URL manually.";
+            }
+
+            HideCreateModal();
+            await LoadInvitations();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating invitation: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private async Task CopyInvitationUrl(Invitation invitation)
+    {
+        var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
+        var invitationUrl = $"{baseUrl}/admin/login?invitationCode={invitation.Id}";
+        
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", invitationUrl);
+        successMessage = "Invitation URL copied to clipboard!";
+    }
+
+    private async Task ResendInvitation(string invitationId)
+    {
+        try
+        {
+            var invitation = InvitationService.ValidateAndGetInvitation(invitationId);
+            if (invitation == null)
+            {
+                errorMessage = "Invitation not found or invalid.";
+                return;
+            }
+
+            var emailSent = await InvitationService.SendInvitationEmailAsync(invitation);
+            if (emailSent)
+            {
+                successMessage = "Invitation email sent successfully!";
+            }
+            else
+            {
+                errorMessage = "Failed to send invitation email.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error sending invitation: {ex.Message}";
+        }
+    }
+
+    private async Task DeactivateInvitation(string invitationId)
+    {
+        try
+        {
+            InvitationService.DeactivateInvitation(invitationId);
+            successMessage = "Invitation deactivated successfully!";
+            await LoadInvitations();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deactivating invitation: {ex.Message}";
+        }
+    }
+
+    public class CreateInvitationRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = "manager";
+        public int ExpirationDays { get; set; } = 7;
+        public string? Notes { get; set; }
+        public bool SendEmail { get; set; } = true;
+    }
+}

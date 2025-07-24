@@ -33,8 +33,10 @@
                         </p>
                         <div class="buttons is-centered is-flex has-background-primary p-4">
                             <Logout />
+                            <div>
+                                <small>[@CurrentUser.GetRole()]</small>
+                            </div>
                         </div>
-                        @System.Text.Json.JsonSerializer.Serialize(CurrentUser.GetRole(), new System.Text.Json.JsonSerializerOptions { WriteIndented = true })
                     </div>
                 </div>
             </div>

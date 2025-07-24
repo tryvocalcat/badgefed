@@ -55,6 +55,13 @@
                         <span>Manage Grants</span>
                     </button>
                     
+                    <button class="button is-link is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/invitations"))">
+                        <span class="icon">
+                            <i class="fas fa-user-plus"></i>
+                        </span>
+                        <span>User Invitations</span>
+                    </button>
+                    
                     <button class="button is-warning is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/templates"))">
                         <span class="icon">
                             <i class="fas fa-book"></i>

@@ -1339,7 +1339,7 @@ public class ActorStats
                 Image = reader["Image"] == DBNull.Value ? null : reader["Image"].ToString(),
                 ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
-                BadgeType = reader["BadgeType"] == DBNull.Value ? null : reader["BadgeType"].ToString(),
+                BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
             };
         }
@@ -1736,5 +1736,152 @@ public class ActorStats
             );
         ";
         command.ExecuteNonQuery();
+    }
+
+    // Invitation management methods
+    public void UpsertInvitation(Invitation invitation)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO Invitations (id, email, invitedBy, createdAt, expiresAt, acceptedBy, acceptedAt, isActive, role, notes)
+            VALUES (@Id, @Email, @InvitedBy, @CreatedAt, @ExpiresAt, @AcceptedBy, @AcceptedAt, @IsActive, @Role, @Notes)
+            ON CONFLICT(id) DO UPDATE SET
+                email = excluded.email,
+                invitedBy = excluded.invitedBy,
+                expiresAt = excluded.expiresAt,
+                acceptedBy = excluded.acceptedBy,
+                acceptedAt = excluded.acceptedAt,
+                isActive = excluded.isActive,
+                role = excluded.role,
+                notes = excluded.notes;
+        ";
+
+        command.Parameters.AddWithValue("@Id", invitation.Id);
+        command.Parameters.AddWithValue("@Email", invitation.Email);
+        command.Parameters.AddWithValue("@InvitedBy", invitation.InvitedBy);
+        command.Parameters.AddWithValue("@CreatedAt", invitation.CreatedAt);
+        command.Parameters.AddWithValue("@ExpiresAt", invitation.ExpiresAt);
+        command.Parameters.AddWithValue("@AcceptedBy", invitation.AcceptedBy ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@AcceptedAt", invitation.AcceptedAt ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IsActive", invitation.IsActive);
+        command.Parameters.AddWithValue("@Role", invitation.Role);
+        command.Parameters.AddWithValue("@Notes", invitation.Notes ?? (object)DBNull.Value);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public Invitation? GetInvitationById(string id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Invitations WHERE id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new Invitation
+            {
+                Id = reader["id"].ToString()!,
+                Email = reader["email"].ToString()!,
+                InvitedBy = reader["invitedBy"].ToString()!,
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                ExpiresAt = reader.GetDateTime(reader.GetOrdinal("expiresAt")),
+                AcceptedBy = reader["acceptedBy"] == DBNull.Value ? null : reader["acceptedBy"].ToString(),
+                AcceptedAt = reader["acceptedAt"] == DBNull.Value ? null : reader.GetDateTime(reader.GetOrdinal("acceptedAt")),
+                IsActive = reader.GetBoolean(reader.GetOrdinal("isActive")),
+                Role = reader["role"].ToString()!,
+                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString()
+            };
+        }
+
+        return null;
+    }
+
+    public List<Invitation> GetInvitations(string? filter = null)
+    {
+        var invitations = new List<Invitation>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        var query = "SELECT * FROM Invitations";
+        
+        if (!string.IsNullOrEmpty(filter))
+        {
+            query += $" WHERE {filter}";
+        }
+        
+        query += " ORDER BY createdAt DESC";
+        
+        command.CommandText = query;
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            invitations.Add(new Invitation
+            {
+                Id = reader["id"].ToString()!,
+                Email = reader["email"].ToString()!,
+                InvitedBy = reader["invitedBy"].ToString()!,
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                ExpiresAt = reader.GetDateTime(reader.GetOrdinal("expiresAt")),
+                AcceptedBy = reader["acceptedBy"] == DBNull.Value ? null : reader["acceptedBy"].ToString(),
+                AcceptedAt = reader["acceptedAt"] == DBNull.Value ? null : reader.GetDateTime(reader.GetOrdinal("acceptedAt")),
+                IsActive = reader.GetBoolean(reader.GetOrdinal("isActive")),
+                Role = reader["role"].ToString()!,
+                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString()
+            });
+        }
+
+        return invitations;
+    }
+
+    public void AcceptInvitation(string invitationId, string userId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE Invitations 
+            SET acceptedBy = @UserId, acceptedAt = @AcceptedAt 
+            WHERE id = @InvitationId AND acceptedBy IS NULL";
+
+        command.Parameters.AddWithValue("@UserId", userId);
+        command.Parameters.AddWithValue("@AcceptedAt", DateTime.UtcNow);
+        command.Parameters.AddWithValue("@InvitationId", invitationId);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public void DeactivateInvitation(string invitationId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Invitations SET isActive = 0 WHERE id = @InvitationId";
+        command.Parameters.AddWithValue("@InvitationId", invitationId);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public bool IsInvitationValid(string invitationId)
+    {
+        var invitation = GetInvitationById(invitationId);
+        return invitation?.IsValid ?? false;
     }
 }

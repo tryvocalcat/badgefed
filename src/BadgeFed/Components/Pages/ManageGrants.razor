@@ -186,20 +186,23 @@ else
     private void PerformSearch() {
         var filter = new LocalDbService.Filter();
 
+        var whereClauses = new List<string>();
+
         if (!string.IsNullOrEmpty(searchTerm)) {
-            filter.Where = @"
-                (   Title LIKE @Term
-                OR IssuedToSubjectUri LIKE @Term
-                OR IssuedBy LIKE @Term)";
+            whereClauses.Add("(Title LIKE @Term OR IssuedToSubjectUri LIKE @Term OR IssuedBy LIKE @Term)");
             filter.Parameters.Add("Term", $"%{searchTerm}%");
         }
 
         if (!CurrentUser.IsAdmin()) {
-            filter.Where += $" AND OwnerId = @UserId";
+            whereClauses.Add("OwnerId = @UserId");
             filter.Parameters.Add("UserId", CurrentUser.UserId);
         }
 
-        records = LocalDbService.GetBadgeRecords(filter, true)!;      
+        filter.Where = string.Join(" AND ", whereClauses);
+
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(filter));
+        
+        records = LocalDbService.GetBadgeRecords(filter, true)!;
     }
 
     private void ApplyFilters() {
@@ -225,6 +228,7 @@ else
         dateToFilter = null;
         
         PerformSearch();
+        
         filteredRecords = new List<BadgeRecord?>(records);
     }
 
@@ -257,6 +261,7 @@ else
         actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
         PerformSearch();
+
         filteredRecords = new List<BadgeRecord?>(records);
     }
 }

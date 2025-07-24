@@ -82,7 +82,7 @@ builder.Services.AddSingleton<OpenBadgeService>();
 
 builder.Services.AddSingleton<BadgeService>();
 
-builder.Services.AddScoped<OpenBadgeImportService>();
+builder.Services.AddScoped<InvitationService>();
 
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
@@ -267,6 +267,12 @@ public static class MastodonOAuthExtensions {
                         a.Id == username) ?? false;
 
                     Console.WriteLine($"Is admin: {username} {isAdmin}");
+                    
+                    // Check for invitation code
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
+                        ? context.Properties.Items["invitationCode"] 
+                        : null;
+
                     if (isAdmin)
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
@@ -280,6 +286,33 @@ public static class MastodonOAuthExtensions {
                         Console.WriteLine($"User ID: {userId}");
 
                         var registeredUser = localDbService.GetUserById(userId);
+                        
+                        // Handle invitation if provided
+                        if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                        {
+                            var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                            var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+                            
+                            if (invitation != null)
+                            {
+                                // Create new user from invitation
+                                registeredUser = new User
+                                {
+                                    Id = userId,
+                                    Email = invitation.Email,
+                                    GivenName = username ?? "User",
+                                    Surname = "",
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "Mastodon",
+                                    Role = invitation.Role,
+                                    IsActive = true
+                                };
+                                
+                                invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                            }
+                        }
+
                         var role = registeredUser != null ? registeredUser.Role : "user";
 
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
@@ -349,7 +382,12 @@ public static class LinkedInOAuthExtensions
 
                     Console.WriteLine($"Is admin: {isAdmin}");
 
-                    var role = "User";
+                    var role = "user";
+
+                    // Check for invitation code
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
+                        ? context.Properties.Items["invitationCode"] 
+                        : null;
 
                     if (isAdmin)
                     {
@@ -360,13 +398,38 @@ public static class LinkedInOAuthExtensions
                         var registeredUserId = "LinkedIn_" + userEmail;
                         var registeredUser = localDbService.GetUserById(registeredUserId);
 
-                        if (registeredUser == null)
+                        // Handle invitation if provided
+                        if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                        {
+                            var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                            var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+                            
+                            if (invitation != null)
+                            {
+                                // Create new user from invitation
+                                registeredUser = new User
+                                {
+                                    Id = registeredUserId,
+                                    Email = userEmail ?? invitation.Email,
+                                    GivenName = name ?? "User",
+                                    Surname = "",
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "LinkedIn",
+                                    Role = invitation.Role,
+                                    IsActive = true
+                                };
+                                
+                                invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role}");
+                            }
+                        }
+                        else if (registeredUser == null)
                         {
                             registeredUser = new User
                             {
                                 Id = registeredUserId,
-                                Email = userEmail,
-                                GivenName = name,
+                                Email = userEmail ?? string.Empty,
+                                GivenName = name ?? "User",
                                 Surname = string.Empty,
                                 CreatedAt = DateTime.UtcNow,
                                 Provider = "LinkedIn",

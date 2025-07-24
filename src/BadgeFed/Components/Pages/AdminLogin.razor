@@ -276,12 +276,44 @@
 
     private async Task SignInWithMastodon()
     {
-        NavigationManager.NavigateTo("admin/login/mastodon?returnUrl=/admin/");
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/mastodon?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
     }
     
     private async Task SignInWithLinkedIn()
     {
-        NavigationManager.NavigateTo("admin/login/linkedin?returnUrl=/admin/");
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/linkedin?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private async Task<string?> GetInvitationCodeFromUrl()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("invitationCode", out var invitationCode))
+        {
+            return invitationCode.ToString();
+        }
+        
+        // Try to get from session storage as fallback
+        try
+        {
+            var storedCode = await ProtectedSessionStore.GetAsync<string>("invitationCode");
+            return storedCode.Success ? storedCode.Value : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task OpenApp()

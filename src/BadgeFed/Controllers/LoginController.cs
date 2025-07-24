@@ -7,7 +7,7 @@ namespace BadgeFed.Controllers
     {
         [HttpGet]
         [Route("/admin/auth/mastodon")]
-        public IActionResult LoginWithMastodon(string returnUrl = "/admin")
+        public IActionResult LoginWithMastodon(string returnUrl = "/admin", string? invitationCode = null)
         {
             var hostname = User.FindFirst("urn:mastodon:hostname")?.Value;
             if (string.IsNullOrEmpty(hostname))
@@ -16,20 +16,36 @@ namespace BadgeFed.Controllers
                 hostname = config.Server;
             }
             
-            return Challenge(new AuthenticationProperties
+            var properties = new AuthenticationProperties
             {
                 RedirectUri = returnUrl
-            }, hostname);
+            };
+            
+            // Pass invitation code through authentication properties
+            if (!string.IsNullOrEmpty(invitationCode))
+            {
+                properties.Items["invitationCode"] = invitationCode;
+            }
+            
+            return Challenge(properties, hostname);
         }
 
         [HttpGet]
         [Route("/admin/login/linkedin")]
-        public IActionResult LoginWithLinkedIn(string returnUrl = "/admin")
+        public IActionResult LoginWithLinkedIn(string returnUrl = "/admin", string? invitationCode = null)
         {
-            return Challenge(new AuthenticationProperties
+            var properties = new AuthenticationProperties
             {
                 RedirectUri = returnUrl
-            }, "LinkedIn");
+            };
+            
+            // Pass invitation code through authentication properties
+            if (!string.IsNullOrEmpty(invitationCode))
+            {
+                properties.Items["invitationCode"] = invitationCode;
+            }
+            
+            return Challenge(properties, "LinkedIn");
         }
 
         [HttpGet]

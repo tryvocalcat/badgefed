@@ -107,3 +107,7 @@
     opacity: 1;
     transition: opacity 300ms ease-in;
 }
+
+.level-item .title {
+    margin-bottom: 1.5rem;
+}

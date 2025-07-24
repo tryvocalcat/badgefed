@@ -1,0 +1,79 @@
+@page "/invitation/{invitationCode}"
+@using BadgeFed.Services
+@inject InvitationService InvitationService
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <section class="section">
+        <div class="columns is-centered">
+            <div class="column is-6">
+                <div class="box">
+                    @if (invitation == null)
+                    {
+                        <div class="has-text-centered">
+                            <span class="icon is-large has-text-danger">
+                                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                            </span>
+                            <h1 class="title">Invalid Invitation</h1>
+                            <p class="subtitle">This invitation is invalid, expired, or has already been used.</p>
+                            <a href="/" class="button is-primary">Go to Homepage</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="has-text-centered">
+                            <span class="icon is-large has-text-success">
+                                <i class="fas fa-envelope-open fa-3x"></i>
+                            </span>
+                            <h1 class="title">You're Invited!</h1>
+                            <p class="subtitle">Join BadgeFed and start creating digital badges</p>
+                            
+                            <div class="content">
+                                <p>You've been invited to join our BadgeFed instance as a <strong>@invitation.Role</strong>.</p>
+                                
+                                @if (!string.IsNullOrEmpty(invitation.Notes))
+                                {
+                                    <div class="notification is-light">
+                                        <p><strong>Personal message:</strong></p>
+                                        <p><em>@invitation.Notes</em></p>
+                                    </div>
+                                }
+                                
+                                <p>To accept this invitation, please sign in with one of the available options below:</p>
+                            </div>
+                            
+                            <div class="buttons is-centered">
+                                <a href="/admin/login?invitationCode=@InvitationCode" class="button is-primary is-large">
+                                    <span class="icon">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                    </span>
+                                    <span>Accept Invitation & Sign In</span>
+                                </a>
+                            </div>
+                            
+                            <div class="content">
+                                <p class="is-size-7 has-text-grey">
+                                    This invitation expires on @invitation.ExpiresAt.ToString("MMMM d, yyyy 'at' h:mm tt UTC")
+                                </p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter] public string InvitationCode { get; set; } = string.Empty;
+    
+    private Invitation? invitation;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(InvitationCode))
+        {
+            invitation = InvitationService.ValidateAndGetInvitation(InvitationCode);
+        }
+    }
+}
