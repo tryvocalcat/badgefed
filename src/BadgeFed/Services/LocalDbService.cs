@@ -1884,4 +1884,173 @@ public class ActorStats
         var invitation = GetInvitationById(invitationId);
         return invitation?.IsValid ?? false;
     }
+
+    // DiscoveredServer methods
+    public void UpsertDiscoveredServer(DiscoveredServer server)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        if (server.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO DiscoveredServers (name, url, description, categories, admin, actor, isFollowed, followedAt, createdAt, updatedAt)
+                VALUES (@Name, @Url, @Description, @Categories, @Admin, @Actor, @IsFollowed, @FollowedAt, @CreatedAt, @UpdatedAt)
+                ON CONFLICT(url) DO UPDATE SET
+                    name = @Name,
+                    description = @Description,
+                    categories = @Categories,
+                    admin = @Admin,
+                    actor = @Actor,
+                    isFollowed = @IsFollowed,
+                    followedAt = @FollowedAt,
+                    updatedAt = @UpdatedAt;
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE DiscoveredServers SET 
+                    name = @Name, 
+                    url = @Url, 
+                    description = @Description, 
+                    categories = @Categories,
+                    admin = @Admin,
+                    actor = @Actor,
+                    isFollowed = @IsFollowed,
+                    followedAt = @FollowedAt,
+                    updatedAt = @UpdatedAt
+                WHERE id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", server.Id);
+        }
+
+        command.Parameters.AddWithValue("@Name", server.Name);
+        command.Parameters.AddWithValue("@Url", server.Url);
+        command.Parameters.AddWithValue("@Description", server.Description);
+        command.Parameters.AddWithValue("@Categories", server.Categories);
+        command.Parameters.AddWithValue("@Admin", server.Admin);
+        command.Parameters.AddWithValue("@Actor", server.Actor);
+        command.Parameters.AddWithValue("@IsFollowed", server.IsFollowed);
+        command.Parameters.AddWithValue("@FollowedAt", (object?)server.FollowedAt ?? DBNull.Value);
+        command.Parameters.AddWithValue("@CreatedAt", server.CreatedAt);
+        command.Parameters.AddWithValue("@UpdatedAt", server.UpdatedAt);
+
+        if (server.Id == 0)
+        {
+            var result = command.ExecuteScalar();
+            if (result != null && long.TryParse(result.ToString(), out long newId))
+            {
+                server.Id = (int)newId;
+            }
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public Actor? GetMainActor()
+    {
+        return GetActorByFilter("IsMain = 1");
+    }
+    
+    public List<DiscoveredServer> GetAllDiscoveredServers()
+    {
+        var servers = new List<DiscoveredServer>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM DiscoveredServers ORDER BY name";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            servers.Add(new DiscoveredServer
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Url = reader.GetString(reader.GetOrdinal("url")),
+                Description = reader.GetString(reader.GetOrdinal("description")),
+                Categories = reader.GetString(reader.GetOrdinal("categories")),
+                Admin = reader.GetString(reader.GetOrdinal("admin")),
+                Actor = reader.GetString(reader.GetOrdinal("actor")),
+                IsFollowed = reader.GetBoolean(reader.GetOrdinal("isFollowed")),
+                FollowedAt = reader.IsDBNull(reader.GetOrdinal("followedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("followedAt")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updatedAt"))
+            });
+        }
+
+        return servers;
+    }
+
+    public DiscoveredServer? GetDiscoveredServerByUrl(string url)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM DiscoveredServers WHERE url = @Url";
+        command.Parameters.AddWithValue("@Url", url);
+        
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new DiscoveredServer
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Url = reader.GetString(reader.GetOrdinal("url")),
+                Description = reader.GetString(reader.GetOrdinal("description")),
+                Categories = reader.GetString(reader.GetOrdinal("categories")),
+                Admin = reader.GetString(reader.GetOrdinal("admin")),
+                Actor = reader.GetString(reader.GetOrdinal("actor")),
+                IsFollowed = reader.GetBoolean(reader.GetOrdinal("isFollowed")),
+                FollowedAt = reader.IsDBNull(reader.GetOrdinal("followedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("followedAt")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updatedAt"))
+            };
+        }
+        
+        return null;
+    }
+
+    public DiscoveredServer? GetDiscoveredServerById(int id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM DiscoveredServers WHERE id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+        
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new DiscoveredServer
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Url = reader.GetString(reader.GetOrdinal("url")),
+                Description = reader.GetString(reader.GetOrdinal("description")),
+                Categories = reader.GetString(reader.GetOrdinal("categories")),
+                Admin = reader.GetString(reader.GetOrdinal("admin")),
+                Actor = reader.GetString(reader.GetOrdinal("actor")),
+                IsFollowed = reader.GetBoolean(reader.GetOrdinal("isFollowed")),
+                FollowedAt = reader.IsDBNull(reader.GetOrdinal("followedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("followedAt")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updatedAt"))
+            };
+        }
+        
+        return null;
+    }
 }

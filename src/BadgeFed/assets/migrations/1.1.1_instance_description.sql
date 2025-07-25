@@ -1,5 +1,5 @@
 
-CREATE TABLE InstanceDescription (
+CREATE TABLE IF NOT EXISTS InstanceDescription (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     Name TEXT NOT NULL DEFAULT '',
     Description TEXT NOT NULL DEFAULT '',

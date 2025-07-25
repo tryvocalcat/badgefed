@@ -65,7 +65,7 @@ namespace ActivityPubDotNet.Core
                 string header = $"keyId=\"{this._keyId}\",headers=\"(request-target) host date\",signature=\"{signature}\",algorithm=\"rsa-sha256\"";
 
                 // Create HTTP client
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = true }))
                 {
                     // Set request headers
                     client.DefaultRequestHeaders.Add("Host", url.Host);
