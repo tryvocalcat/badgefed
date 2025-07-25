@@ -86,6 +86,7 @@ builder.Services.AddScoped<InvitationService>();
 
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
+var googleConfig = builder.Configuration.GetSection("GoogleConfig").Get<GoogleConfig>();
 var mastodonConfig = builder.Configuration.GetSection("MastodonConfig").Get<MastodonConfig>();
 
 var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -114,6 +115,17 @@ if (linkedInConfig != null)
             o.ClientId = linkedInConfig.ClientId;
             o.ClientSecret = linkedInConfig.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
+            o.SaveTokens = true;
+         }, localDbService);
+}
+
+if (googleConfig != null)
+{
+    auth.AddGoogle(adminConfig, googleConfig, o =>
+        {
+            o.ClientId = googleConfig.ClientId;
+            o.ClientSecret = googleConfig.ClientSecret;
+            o.CallbackPath = "/signin-google";
             o.SaveTokens = true;
          }, localDbService);
 }
@@ -468,6 +480,153 @@ public static class LinkedInOAuthExtensions
     }
 }
 
+public static class GoogleOAuthExtensions
+{
+    public static AuthenticationBuilder AddGoogle(
+        this AuthenticationBuilder builder,
+        AdminConfig adminConfig,
+        GoogleConfig config,
+        Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
+        LocalDbService localDbService)
+    {
+        return builder.AddOAuth("Google", "Google", o =>
+        {
+            o.AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+            o.TokenEndpoint = "https://oauth2.googleapis.com/token";
+            o.UserInformationEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo";
+            o.ClientId = config.ClientId;
+            o.ClientSecret = config.ClientSecret;
+            o.CallbackPath = "/signin-google";
+            o.Scope.Add("openid");
+            o.Scope.Add("email");
+            o.Scope.Add("profile");
+            o.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+            o.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+            o.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+            o.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
+            o.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
+            o.ClaimActions.MapJsonKey("urn:google:profile", "link");
+            o.ClaimActions.MapJsonKey("urn:google:image", "picture");
+            o.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
+            {
+                OnCreatingTicket = async context =>
+                {
+                    Console.WriteLine($"Google access token: {context.AccessToken}");
+                    var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                    var response = await context.Backchannel.SendAsync(request);
+                    response.EnsureSuccessStatusCode(); // Ensure we got a successful response
+
+                    using var userJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    context.RunClaimActions(userJson.RootElement);
+
+                    Console.WriteLine(JsonSerializer.Serialize(userJson.RootElement));
+
+                    // Extract email and name directly from userJson.RootElement
+                    var userEmail = userJson.RootElement.GetProperty("email").GetString();
+                    var name = userJson.RootElement.GetProperty("name").GetString();
+                    var givenName = userJson.RootElement.TryGetProperty("given_name", out var gnElement) ? gnElement.GetString() : "";
+                    var familyName = userJson.RootElement.TryGetProperty("family_name", out var fnElement) ? fnElement.GetString() : "";
+
+                    Console.WriteLine($"Google user: {name} {userEmail}");
+
+                    // Check if this user is in the admin list
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a => 
+                        a.Type.Equals("Google", StringComparison.OrdinalIgnoreCase) && 
+                        a.Id == userEmail) ?? false;
+
+                    Console.WriteLine($"Is admin: {isAdmin}");
+
+                    var role = "user";
+
+                    // Check for invitation code
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
+                        ? context.Properties.Items["invitationCode"] 
+                        : null;
+
+                    if (isAdmin)
+                    {
+                        role = "admin";
+                    }
+                    else
+                    {
+                        var registeredUserId = "Google_" + userEmail;
+                        var registeredUser = localDbService.GetUserById(registeredUserId);
+
+                        // Handle invitation if provided
+                        if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                        {
+                            var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                            var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+                            
+                            if (invitation != null)
+                            {
+                                // Create new user from invitation
+                                registeredUser = new User
+                                {
+                                    Id = registeredUserId,
+                                    Email = userEmail ?? invitation.Email,
+                                    GivenName = givenName ?? name ?? "User",
+                                    Surname = familyName ?? "",
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "Google",
+                                    Role = invitation.Role,
+                                    IsActive = true
+                                };
+                                
+                                invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role}");
+                            }
+                        }
+                        else if (registeredUser == null)
+                        {
+                            registeredUser = new User
+                            {
+                                Id = registeredUserId,
+                                Email = userEmail ?? string.Empty,
+                                GivenName = givenName ?? name ?? "User",
+                                Surname = familyName ?? string.Empty,
+                                CreatedAt = DateTime.UtcNow,
+                                Provider = "Google",
+                                Role = "user",
+                                IsActive = false
+                            };
+
+                            localDbService.UpsertUser(registeredUser);
+                        }
+
+                        role = registeredUser != null ? registeredUser.Role : "user";
+                    }
+
+                    var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
+
+                    Console.WriteLine($"User {name} {userName} {userEmail} is an {role}");
+
+                    context.Principal.AddIdentity(new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.Name, name ?? userName),
+                            new Claim(ClaimTypes.Role, role),
+                            new Claim(ClaimTypes.NameIdentifier, userName),
+                            new Claim(ClaimTypes.Email, userEmail ?? string.Empty),
+                            new Claim(ClaimTypes.GivenName, givenName ?? ""),
+                            new Claim(ClaimTypes.Surname, familyName ?? ""),
+                            new Claim("urn:google:profile", userJson.RootElement.TryGetProperty("link", out var linkElement) ? linkElement.GetString() ?? "" : ""),
+                            new Claim("urn:google:image", userJson.RootElement.TryGetProperty("picture", out var pictureElement) ? pictureElement.GetString() ?? "" : ""),
+                        ], "Google"));
+                },
+                OnRemoteFailure = ctx =>
+                {
+                    Console.WriteLine($"Remote failure: {ctx.Failure}");
+                    ctx.HandleResponse();
+                    ctx.Response.Redirect("/admin/denied");
+                    return Task.CompletedTask;
+                }
+            };
+            configureOptions(o);
+        });
+    }
+}
+
 // Helper classes for config
 public class AdminConfig
 {
@@ -481,6 +640,12 @@ public class AdminUser
 }
 
 public class LinkedInConfig
+{
+    public string ClientId { get; set; }
+    public string ClientSecret { get; set; }
+}
+
+public class GoogleConfig
 {
     public string ClientId { get; set; }
     public string ClientSecret { get; set; }
