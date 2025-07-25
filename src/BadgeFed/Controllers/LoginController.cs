@@ -49,6 +49,24 @@ namespace BadgeFed.Controllers
         }
 
         [HttpGet]
+        [Route("/admin/login/google")]
+        public IActionResult LoginWithGoogle(string returnUrl = "/admin", string? invitationCode = null)
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = returnUrl
+            };
+            
+            // Pass invitation code through authentication properties
+            if (!string.IsNullOrEmpty(invitationCode))
+            {
+                properties.Items["invitationCode"] = invitationCode;
+            }
+            
+            return Challenge(properties, "Google");
+        }
+
+        [HttpGet]
         [Route("/admin/auth/logout")]
         public async Task<IActionResult> Logout()
         {

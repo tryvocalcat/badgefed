@@ -42,7 +42,7 @@
                         }
                         @if (IsLinkedInConfigured)
                         {
-                            <div class="field">
+                            <div class="field mb-3">
                                 <div class="control">
                                     <button class="button is-fullwidth is-info"
                                             @onclick="SignInWithLinkedIn">
@@ -50,6 +50,20 @@
                                             <i class="fab fa-linkedin"></i>
                                         </span>
                                         <span>Sign In with LinkedIn</span>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        @if (IsGoogleConfigured)
+                        {
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button is-fullwidth is-danger"
+                                            @onclick="SignInWithGoogle">
+                                        <span class="icon">
+                                            <i class="fab fa-google"></i>
+                                        </span>
+                                        <span>Sign In with Google</span>
                                     </button>
                                 </div>
                             </div>
@@ -194,6 +208,7 @@
 
     private bool IsMastodonConfigured;
     private bool IsLinkedInConfigured;
+    private bool IsGoogleConfigured;
     
     protected override async Task OnInitializedAsync()
     {
@@ -214,6 +229,11 @@
             var linkedInSection = Configuration.GetSection("LinkedInConfig");
             IsLinkedInConfigured = !string.IsNullOrEmpty(linkedInSection["ClientId"]) &&
                                    !string.IsNullOrEmpty(linkedInSection["ClientSecret"]);
+
+            // Check if GoogleConfig is present
+            var googleSection = Configuration.GetSection("GoogleConfig");
+            IsGoogleConfigured = !string.IsNullOrEmpty(googleSection["ClientId"]) &&
+                                 !string.IsNullOrEmpty(googleSection["ClientSecret"]);
 
             if (User != null)
             {
@@ -289,6 +309,17 @@
     {
         var invitationCode = await GetInvitationCodeFromUrl();
         var url = $"admin/login/linkedin?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private async Task SignInWithGoogle()
+    {
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/google?returnUrl=/admin/";
         if (!string.IsNullOrEmpty(invitationCode))
         {
             url += $"&invitationCode={invitationCode}";
