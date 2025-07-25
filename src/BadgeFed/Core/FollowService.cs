@@ -79,6 +79,20 @@ namespace ActivityPubDotNet.Core
 
             var actor = _localDbService.GetActorByFilter($"Uri = \"{message.Object}\"")!;
 
+            if (actor == null)
+            {
+                // https://badges.vocalcat.com/view/actor/badges.vocalcat.com/admin to https://badges.vocalcat.com/actors/badges.vocalcat.com/admin
+                var newUri = message.Object!.ToString().Replace("/view/actor/", "/actors/");
+                
+                actor = _localDbService.GetActorByFilter($"Uri = \"{newUri}\"")!;
+
+                if (actor == null)
+                {
+                    Logger?.LogWarning($"Actor not found for URI: {newUri} or {message.Object}");
+                    return;
+                }
+            }
+
             var follower = new Follower()
             {
                 FollowerUri = message.Actor!,

@@ -67,6 +67,7 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
 builder.Services.AddScoped<CreateNoteService>();
+builder.Services.AddScoped<ServerDiscoveryService>();
 
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);

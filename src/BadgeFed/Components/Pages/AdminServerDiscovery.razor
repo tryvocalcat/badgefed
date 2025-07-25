@@ -1,0 +1,456 @@
+@page "/admin/servers"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager NavigationManager
+@inject ServerDiscoveryService ServerDiscoveryService
+@inject LocalDbService LocalDbService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Server Discovery</a></li>
+        </ul>
+    </nav>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">Server Discovery</h1>
+                    <p class="subtitle">Discover and follow other BadgeFed servers</p>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <div class="field is-grouped">
+                    <div class="control">
+                        <button class="button is-primary" @onclick="RefreshServers" disabled="@isLoading">
+                            <span class="icon">
+                                <i class="fas @(isLoading ? "fa-spinner fa-spin" : "fa-sync-alt")"></i>
+                            </span>
+                            <span>@(isLoading ? "Refreshing..." : "Refresh List")</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button class="button is-success" @onclick="FollowAllServers" disabled="@(isLoading || !availableServers.Any())">
+                            <span class="icon">
+                                <i class="fas fa-users"></i>
+                            </span>
+                            <span>Follow All</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Statistics Cards -->
+    <div class="columns">
+        <div class="column is-3">
+            <div class="box has-text-centered">
+                <p class="title is-3 has-text-primary">@discoveredServers.Count</p>
+                <p class="subtitle is-6">Total Servers</p>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="box has-text-centered">
+                <p class="title is-3 has-text-success">@followedCount</p>
+                <p class="subtitle is-6">Followed</p>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="box has-text-centered">
+                <p class="title is-3 has-text-warning">@availableServers.Count</p>
+                <p class="subtitle is-6">Available</p>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="box has-text-centered">
+                <p class="title is-3 has-text-info">@categories.Count</p>
+                <p class="subtitle is-6">Categories</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="box">
+        <div class="field is-grouped">
+            <div class="control">
+                <div class="select">
+                    <select @onchange="OnCategoryFilterChanged">
+                        <option value="">All Categories</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category" selected="@(selectedCategory == category)">@category</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="control">
+                <div class="select">
+                    <select @onchange="OnStatusFilterChanged">
+                        <option value="all" selected="@(statusFilter == "all")">All Servers</option>
+                        <option value="followed" selected="@(statusFilter == "followed")">Followed Only</option>
+                        <option value="available" selected="@(statusFilter == "available")">Available Only</option>
+                    </select>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(selectedCategory))
+            {
+                <div class="control">
+                    <button class="button is-success" @onclick="FollowCategoryServers" disabled="@isLoading">
+                        <span class="icon">
+                            <i class="fas fa-users"></i>
+                        </span>
+                        <span>Follow All @selectedCategory</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Servers Table -->
+    <div class="box">
+        @if (isLoading && !discoveredServers.Any())
+        {
+            <div class="has-text-centered">
+                <p class="title is-4">
+                    <span class="icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    Loading servers...
+                </p>
+            </div>
+        }
+        else if (!filteredServers.Any())
+        {
+            <div class="has-text-centered">
+                <p class="title is-4">No servers found</p>
+                <p class="subtitle">Try refreshing the list or changing your filters.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Server</th>
+                            <th>Categories</th>
+                            <th>Admin</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var server in filteredServers)
+                        {
+                            <tr>
+                                <td>
+                                    <div>
+                                        <p class="has-text-weight-bold">
+                                            <a href="@server.Url" target="_blank" class="has-text-link">
+                                                @server.Name
+                                                <span class="icon is-small">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </span>
+                                            </a>
+                                        </p>
+                                        <p class="is-size-7 has-text-grey">@server.Description</p>
+                                        <p class="is-size-7 has-text-grey-light">@server.Url</p>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="tags">
+                                        @foreach (var category in server.GetCategories())
+                                        {
+                                            <span class="tag is-light">@category</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="has-text-weight-semibold">@server.Admin</span>
+                                </td>
+                                <td>
+                                    @if (server.IsFollowed)
+                                    {
+                                        <span class="tag is-success">
+                                            <span class="icon">
+                                                <i class="fas fa-check"></i>
+                                            </span>
+                                            <span>Followed</span>
+                                        </span>
+                                        @if (server.FollowedAt.HasValue)
+                                        {
+                                            <p class="is-size-7 has-text-grey">@server.FollowedAt.Value.ToString("MMM d, yyyy")</p>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="tag is-warning">
+                                            <span class="icon">
+                                                <i class="fas fa-clock"></i>
+                                            </span>
+                                            <span>Available</span>
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!server.IsFollowed)
+                                    {
+                                        <button class="button is-small is-primary" @onclick="() => FollowServer(server.Id)" disabled="@isLoading">
+                                            <span class="icon">
+                                                <i class="fas fa-user-plus"></i>
+                                            </span>
+                                            <span>Follow</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="has-text-success">
+                                            <i class="fas fa-check-circle"></i>
+                                            Following
+                                        </span>
+                                    }
+                                    <a href="@server.Actor" target="_blank" class="button is-small is-light ml-2">
+                                        <span class="icon">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </span>
+                                        <span>View Actor</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<DiscoveredServer> discoveredServers = new();
+    private List<DiscoveredServer> filteredServers = new();
+    private List<DiscoveredServer> availableServers = new();
+    private List<string> categories = new();
+    private string selectedCategory = string.Empty;
+    private string statusFilter = "all";
+    private bool isLoading = false;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private int followedCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServers();
+    }
+
+    private async Task LoadServers()
+    {
+        try
+        {
+            discoveredServers = ServerDiscoveryService.GetAllDiscoveredServers();
+            categories = ServerDiscoveryService.GetAllCategories();
+            UpdateFilteredServers();
+            UpdateStatistics();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading servers: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshServers()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var updatedServers = await ServerDiscoveryService.FetchAndUpdateServersAsync();
+            discoveredServers = ServerDiscoveryService.GetAllDiscoveredServers();
+            categories = ServerDiscoveryService.GetAllCategories();
+            UpdateFilteredServers();
+            UpdateStatistics();
+            successMessage = $"Successfully refreshed {updatedServers.Count} servers from GitHub";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error refreshing servers: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task FollowServer(int serverId)
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var currentActor = LocalDbService.GetMainActor();
+            if (currentActor == null)
+            {
+                errorMessage = "No current actor found. Please ensure you're logged in properly.";
+                return;
+            }
+
+            var success = await ServerDiscoveryService.FollowServerAsync(serverId, (int)currentActor.Id);
+            if (success)
+            {
+                var server = discoveredServers.FirstOrDefault(s => s.Id == serverId);
+                if (server != null)
+                {
+                    server.IsFollowed = true;
+                    server.FollowedAt = DateTime.UtcNow;
+                    successMessage = $"Successfully followed {server.Name}";
+                }
+                UpdateFilteredServers();
+                UpdateStatistics();
+            }
+            else
+            {
+                errorMessage = "Failed to follow server. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error following server: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task FollowAllServers()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var currentActor = LocalDbService.GetMainActor();
+            if (currentActor == null)
+            {
+                errorMessage = "No current actor found. Please ensure you're logged in properly.";
+                return;
+            }
+
+            var followedCount = await ServerDiscoveryService.FollowAllServersAsync((int)currentActor.Id);
+            await LoadServers();
+            successMessage = $"Successfully followed {followedCount} servers";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error following servers: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task FollowCategoryServers()
+    {
+        if (string.IsNullOrEmpty(selectedCategory))
+            return;
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var currentActor = LocalDbService.GetMainActor();
+            if (currentActor == null)
+            {
+                errorMessage = "No current actor found. Please ensure you're logged in properly.";
+                return;
+            }
+
+            var followedCount = await ServerDiscoveryService.FollowAllServersAsync((int)currentActor.Id, selectedCategory);
+            await LoadServers();
+            successMessage = $"Successfully followed {followedCount} servers in {selectedCategory} category";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error following category servers: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnCategoryFilterChanged(ChangeEventArgs e)
+    {
+        selectedCategory = e.Value?.ToString() ?? string.Empty;
+        UpdateFilteredServers();
+    }
+
+    private void OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString() ?? "all";
+        UpdateFilteredServers();
+    }
+
+    private void UpdateFilteredServers()
+    {
+        filteredServers = discoveredServers.ToList();
+
+        // Apply category filter
+        if (!string.IsNullOrEmpty(selectedCategory))
+        {
+            filteredServers = filteredServers.Where(s => s.GetCategories().Contains(selectedCategory, StringComparer.OrdinalIgnoreCase)).ToList();
+        }
+
+        // Apply status filter
+        filteredServers = statusFilter switch
+        {
+            "followed" => filteredServers.Where(s => s.IsFollowed).ToList(),
+            "available" => filteredServers.Where(s => !s.IsFollowed).ToList(),
+            _ => filteredServers
+        };
+
+        filteredServers = filteredServers.ToList();
+    }
+
+    private void UpdateStatistics()
+    {
+        followedCount = discoveredServers.Count(s => s.IsFollowed);
+        availableServers = discoveredServers.Where(s => !s.IsFollowed).ToList();
+    }
+}
