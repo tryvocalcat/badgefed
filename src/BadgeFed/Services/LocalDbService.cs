@@ -354,8 +354,8 @@ public class LocalDbService
         if (actor.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId)
-                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId);
+                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId, Theme)
+                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId, @Theme);
                 SELECT last_insert_rowid();
             ";
         }
@@ -381,7 +381,8 @@ public class LocalDbService
                     Username = @Username,
                     LinkedInOrganizationId = @LinkedInOrganizationId,
                     IsMain = @IsMain,
-                    OwnerId = @OwnerId
+                    OwnerId = @OwnerId,
+                    Theme = @Theme
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", actor.Id);
@@ -399,6 +400,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@LinkedInOrganizationId", actor.LinkedInOrganizationId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@IsMain", actor.IsMain);
         command.Parameters.AddWithValue("@OwnerId", actor.OwnerId ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Theme", actor.Theme ?? "default");
 
         if (actor.Id == 0)
         {
@@ -454,7 +456,8 @@ public class LocalDbService
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
-                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
             });
         }
 
@@ -545,7 +548,8 @@ public class LocalDbService
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
-                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
             };
         }
 
@@ -580,7 +584,8 @@ public class LocalDbService
                 PrivateKeyPem = reader["PrivateKeyPem"] == DBNull.Value ? null : reader["PrivateKeyPem"].ToString(),
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
-                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain"))
+                IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
             };
         }
 

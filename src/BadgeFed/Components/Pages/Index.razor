@@ -233,7 +233,16 @@
                             <article class="media">
                                 <div class="media-left">
                                     <figure class="image is-64x64">
-                                        <img class="is-rounded" src="@actor.AvatarPath" alt="@actor.FullName">
+                                        @if (!string.IsNullOrEmpty(actor.AvatarPath))
+                                        {
+                                            <img class="issuer-avatar" src="@actor.AvatarPath" alt="@actor.FullName" />
+                                        }
+                                        else
+                                        {
+                                            <div class="issuer-avatar has-background-light" style="display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 64px; height: 64px;">
+                                                <span class="icon is-large" style="color: #4f46e5;"><i class="fas fa-users fa-2x"></i></span>
+                                            </div>
+                                        }
                                     </figure>
                                 </div>
                                 <div class="media-content">

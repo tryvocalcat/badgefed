@@ -38,6 +38,8 @@ public class Actor
 
     public string? PrivateKeyPem { get; set; }
 
+    public string? Theme { get; set; } = "default";
+
     public string? PublicKeyPemClean { 
         get {
             // replace all \\n in PublicKeyPem for \n

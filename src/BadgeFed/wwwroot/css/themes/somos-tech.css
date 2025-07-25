@@ -1,0 +1,322 @@
+/* SOMOS.tech Cyberpunk Theme - Hacker Aesthetic with Neon Green */
+
+/* Global dark background */
+
+.navbar {
+    background: linear-gradient(135deg, rgb(5, 19, 35) 0%, #1a1a1a 100%);
+    box-shadow: 0 0 20px #00ff9166;
+    border-bottom: 2px solid #00FF91;
+    min-height: 4.5rem;
+}
+
+body {
+    background: #0a0a0a !important;
+    color: #00FF91 !important;
+    font-family: 'Courier New', 'Consolas', 'Monaco', monospace !important;
+}
+
+.issuer-header {
+    background: linear-gradient(135deg, #0a0a0a 0%, #111111 25%, #0a0a0a 50%, #1a1a1a 75%, #0a0a0a 100%);
+    color: #00FF91;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    border-radius: 25px;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #00FF91;
+    box-shadow: 0 0 30px rgba(0, 255, 145, 0.3);
+}
+
+.issuer-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 255, 145, 0.1) 0%, transparent 70%);
+    animation: matrixShimmer 6s infinite linear;
+    pointer-events: none;
+}
+
+@keyframes matrixShimmer {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Matrix-style digital rain effect */
+.issuer-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ctext x='50%25' y='50%25' font-family='monospace' font-size='12' fill='%2300FF91' fill-opacity='0.1' text-anchor='middle' dominant-baseline='central'%3E1%3C/text%3E%3C/svg%3E") repeat;
+    z-index: 1;
+    animation: digitalRain 10s infinite linear;
+}
+
+@keyframes digitalRain {
+    0% { transform: translateY(-20px); }
+    100% { transform: translateY(20px); }
+}
+
+.issuer-avatar {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 5px solid #00FF91;
+    box-shadow: 0 0 30px rgba(0, 255, 145, 0.6);
+    object-fit: cover;
+    position: relative;
+    z-index: 2;
+    filter: contrast(1.2) brightness(1.1);
+}
+
+.issuer-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+}
+
+.stat-card {
+    background: linear-gradient(145deg, rgba(0, 255, 145, 0.15), rgba(0, 212, 170, 0.05));
+    padding: 1.5rem 2rem;
+    border-radius: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(0, 255, 145, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 255, 145, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 145, 0.3), transparent);
+    transition: left 0.6s;
+}
+
+.stat-card:hover::before {
+    left: 100%;
+}
+
+.stat-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(0, 255, 145, 0.4);
+    border-color: #00FF91;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #00FF91;
+    text-shadow: 0 0 10px rgba(0, 255, 145, 0.5);
+    font-family: 'Courier New', monospace;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #00D4AA;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0.5rem;
+}
+
+.badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+@media (min-width: 768px) {
+    .badge-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+.badge-card {
+    background: linear-gradient(145deg, #0a0a0a 0%, #1a1a1a 100%);
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 255, 145, 0.2);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 100%;
+    border: 2px solid rgba(0, 255, 145, 0.3);
+    position: relative;
+}
+
+.badge-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 145, 0.4), transparent);
+    transition: left 0.5s;
+}
+
+.badge-card:hover::before {
+    left: 100%;
+}
+
+.badge-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 20px 50px rgba(0, 255, 145, 0.4);
+    border-color: #00FF91;
+}
+
+.badge-image {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: #0f0f0f;
+    padding: 1rem;
+    filter: brightness(1.2) contrast(1.1);
+}
+
+.badge-content {
+    padding: 1.5rem;
+    color: #00FF91;
+}
+
+.follower-card {
+    background: linear-gradient(145deg, #0a0a0a 0%, #111111 100%);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 6px 20px rgba(0, 255, 145, 0.2);
+    transition: all 0.3s ease;
+    border: 2px solid rgba(0, 255, 145, 0.2);
+    position: relative;
+    overflow: hidden;
+    color: #00FF91;
+}
+
+.follower-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #00FF91, #00D4AA, #00FFFF, #00D4AA, #00FF91);
+}
+
+.follower-card:hover {
+    transform: translateX(5px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(0, 255, 145, 0.3);
+    border-color: #00FF91;
+}
+
+.social-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-link {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(0, 255, 145, 0.2), rgba(0, 212, 170, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(0, 255, 145, 0.4);
+    position: relative;
+    overflow: hidden;
+    color: #00FF91;
+}
+
+.social-link::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(0, 255, 145, 0.5), transparent);
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.social-link:hover::before {
+    width: 100%;
+    height: 100%;
+}
+
+.social-link:hover {
+    transform: scale(1.15) rotate(5deg);
+    border-color: #00FF91;
+    box-shadow: 0 0 20px rgba(0, 255, 145, 0.6);
+}
+
+/* Terminal-style text effects */
+h1, h2, h3, h4, h5, h6 {
+    color: #00FF91 !important;
+    text-shadow: 0 0 10px rgba(0, 255, 145, 0.5);
+    font-family: 'Courier New', monospace !important;
+}
+
+/* Links with hacker styling */
+a {
+    color: #00D4AA !important;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    color: #00FF91 !important;
+    text-shadow: 0 0 5px rgba(0, 255, 145, 0.7);
+}
+
+/* Button styling */
+.btn {
+    background: linear-gradient(45deg, rgba(0, 255, 145, 0.2), rgba(0, 212, 170, 0.2));
+    border: 2px solid #00FF91;
+    color: #00FF91 !important;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background: linear-gradient(45deg, rgba(0, 255, 145, 0.4), rgba(0, 212, 170, 0.4));
+    box-shadow: 0 0 20px rgba(0, 255, 145, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #00FF91, #00D4AA);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #00D4AA, #00FF91);
+}

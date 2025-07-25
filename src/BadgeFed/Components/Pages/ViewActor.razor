@@ -3,6 +3,14 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
 @inject LocalDbService DbService
+@inject IWebHostEnvironment Environment
+
+@if (!string.IsNullOrEmpty(GetThemeCssPath()))
+{
+    <link rel="stylesheet" href="@GetThemeCssPath()" />
+}
+else
+{
 
 <style>
     .issuer-header {
@@ -104,6 +112,7 @@
         background: rgba(255, 255, 255, 0.2);
     }
 </style>
+}
 
 @if (isLoading)
 {
@@ -136,7 +145,7 @@ else
                     }
                     else
                     {
-                        <div class="issuer-avatar has-background-grey-lighter">
+                        <div class="issuer-avatar has-background-grey-lighter" style="display: flex; align-items: center; justify-content: center;">
                             <span class="icon is-large"><i class="fas fa-users fa-3x"></i></span>
                         </div>
                     }
@@ -288,5 +297,20 @@ else
         }
         
         isLoading = false;
+    }
+
+    private string GetThemeCssPath()
+    {
+        if (actor?.Theme == null) return string.Empty;
+        
+        var themePath = $"/css/themes/{actor.Theme}.css";
+        var physicalPath = Path.Combine(Environment.WebRootPath, "css", "themes", $"{actor.Theme}.css");
+        
+        if (File.Exists(physicalPath))
+        {
+            return themePath;
+        }
+        
+        return string.Empty;
     }
 }

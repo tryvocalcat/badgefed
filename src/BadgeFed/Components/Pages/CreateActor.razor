@@ -160,6 +160,27 @@
                 </div>
             </div>
 
+            <div class="column is-6">
+                <div class="field">
+                    <label class="field-label" for="theme">Profile Theme</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <InputSelect id="theme" @bind-Value="Model!.Theme">
+                                <option value="default">Default - Modern Gradient</option>
+                                <option value="ocean">Ocean - Blue & Teal</option>
+                                <option value="forest">Forest - Green & Earth</option>
+                                <option value="sunset">Sunset - Orange & Purple</option>
+                                @foreach (var customTheme in GetCustomThemes())
+                                {
+                                    <option value="@customTheme.Key">@customTheme.Value</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <p class="help">Choose a visual theme for your profile page</p>
+                </div>
+            </div>
+
             @if (string.IsNullOrEmpty(ActorId))
             {
                 <div class="column is-6">
@@ -478,5 +499,32 @@
             issuerValidationMessage = $"⚠️ Could not validate url. {ex.Message}";
             return;
         }
+    }
+
+    private Dictionary<string, string> GetCustomThemes()
+    {
+        var customThemes = new Dictionary<string, string>();
+        var themesPath = Path.Combine(Environment.WebRootPath, "css", "themes");
+        
+        if (Directory.Exists(themesPath))
+        {
+            var cssFiles = Directory.GetFiles(themesPath, "*.css")
+                .Where(f => !Path.GetFileNameWithoutExtension(f).Equals("default", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("ocean", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("forest", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("sunset", StringComparison.OrdinalIgnoreCase));
+            
+            foreach (var file in cssFiles)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                var displayName = fileName.Replace("-", " ").Replace("_", " ");
+                // Capitalize first letter of each word
+                displayName = string.Join(" ", displayName.Split(' ').Select(word => 
+                    char.ToUpper(word[0]) + word.Substring(1).ToLower()));
+                customThemes.Add(fileName, $"{displayName} (Custom)");
+            }
+        }
+        
+        return customThemes;
     }
 }
