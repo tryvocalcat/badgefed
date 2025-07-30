@@ -47,6 +47,9 @@ builder.Services.AddRazorComponents()
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
 
+// Register the landing page cache service as a singleton
+builder.Services.AddSingleton<LandingPageCacheService>();
+
 // Add CORS for embed widget
 builder.Services.AddCors(options =>
 {
@@ -171,7 +174,7 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
+    
 app.MapControllers();
 
 var loginSchemas = new List<string>();

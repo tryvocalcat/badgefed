@@ -18,6 +18,15 @@ namespace BadgeFed.Models
         [MaxLength(300)]
         public string ContactInfo { get; set; } = "";
         
+        [MaxLength(255)]
+        public string Domain { get; set; } = "";
+        
+        public string CustomLandingPageHtml { get; set; } = "";
+        
         public bool IsEnabled { get; set; } = false;
+        
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }
