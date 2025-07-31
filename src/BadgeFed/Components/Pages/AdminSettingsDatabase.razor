@@ -29,7 +29,7 @@
     {
         <div class="notification is-success">
             <button class="delete" @onclick="() => successMessage = string.Empty"></button>
-            @successMessage
+            @((MarkupString)successMessage)
         </div>
     }
 
@@ -111,7 +111,7 @@
         </h2>
         
         <div class="content">
-            <p>Download a backup of your entire database or execute custom SQL queries.</p>
+            <p>Download a backup of your entire database or import a database backup.</p>
         </div>
 
         <div class="field is-grouped">
@@ -123,6 +123,77 @@
                     <span>Download Database Backup</span>
                 </button>
             </div>
+        </div>
+
+        <!-- Import Database Backup Section -->
+        <div class="mt-5">
+            <h3 class="subtitle is-5">Import Database Backup</h3>
+            
+            <div class="notification is-danger is-light">
+                <p><strong>⚠️ DANGER - DESTRUCTIVE OPERATION ⚠️</strong></p>
+                <p><strong>This operation will completely replace your current database and CANNOT be undone!</strong></p>
+                <p>A backup of your current database will be created automatically before the import, but this operation is still extremely risky.</p>
+                <p>Only proceed if you are absolutely certain you want to replace your entire database.</p>
+            </div>
+
+            @if (isImporting)
+            {
+                <div class="notification is-info">
+                    <p><strong>Import in progress...</strong></p>
+                    <p>@importStatus</p>
+                    <progress class="progress is-primary" max="100">@importProgress%</progress>
+                </div>
+            }
+            else
+            {
+                <div class="field">
+                    <label class="label">Select Database Backup File (.db)</label>
+                    <div class="control">
+                        <div class="file has-name">
+                            <label class="file-label">
+                                <InputFile OnChange="OnBackupFileSelected" accept=".db" class="file-input" />
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                        Choose database backup…
+                                    </span>
+                                </span>
+                                <span class="file-name">
+                                    @(selectedBackupFile?.Name ?? "No file selected")
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(backupUploadError))
+                    {
+                        <p class="help is-danger">@backupUploadError</p>
+                    }
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input type="checkbox" @bind="confirmDestructiveOperation">
+                            I understand this will completely replace my current database and cannot be undone
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <button class="button is-danger" 
+                                @onclick="ImportDatabaseBackup" 
+                                disabled="@(selectedBackupFile == null || !confirmDestructiveOperation)">
+                            <span class="icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                            <span>Import Database Backup (DESTRUCTIVE)</span>
+                        </button>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
@@ -357,6 +428,14 @@
     private string SqlQuery { get; set; } = string.Empty;
     private string SqlResult { get; set; } = string.Empty;
 
+    // Database import properties
+    private IBrowserFile? selectedBackupFile;
+    private string backupUploadError = string.Empty;
+    private bool confirmDestructiveOperation = false;
+    private bool isImporting = false;
+    private string importStatus = string.Empty;
+    private int importProgress = 0;
+
     protected override async Task OnInitializedAsync()
     {
         await RefreshMigrationStatus();
@@ -405,6 +484,155 @@
         catch (Exception ex)
         {
             errorMessage = $"Error loading migration status: {ex.Message}";
+        }
+    }
+
+    private void OnBackupFileSelected(InputFileChangeEventArgs e)
+    {
+        backupUploadError = string.Empty;
+        var file = e.File;
+        
+        if (file != null)
+        {
+            if (Path.GetExtension(file.Name).ToLower() != ".db")
+            {
+                backupUploadError = "Only .db files are allowed.";
+                selectedBackupFile = null;
+            }
+            else if (file.Size > 100 * 1024 * 1024) // 100MB limit
+            {
+                backupUploadError = "File size must be less than 100MB.";
+                selectedBackupFile = null;
+            }
+            else
+            {
+                selectedBackupFile = file;
+            }
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task ImportDatabaseBackup()
+    {
+        if (selectedBackupFile == null || !confirmDestructiveOperation)
+            return;
+
+        isImporting = true;
+        importProgress = 0;
+        importStatus = "Starting import process...";
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Step 1: Create automatic backup of current database
+            importStatus = "Creating automatic backup of current database...";
+            importProgress = 10;
+            await InvokeAsync(StateHasChanged);
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var currentDbPath = LocalDbService.DbPath;
+            var backupDir = "wwwroot/db/";
+            var autoBackupPath = $"{backupDir}auto_backup_before_import_{timestamp}.db";
+
+            // Ensure backup directory exists
+            Directory.CreateDirectory(backupDir);
+
+            // Create backup of current database
+            if (File.Exists(currentDbPath))
+            {
+                File.Copy(currentDbPath, autoBackupPath, true);
+            }
+
+            importStatus = $"Current database backed up to: auto_backup_before_import_{timestamp}.db";
+            importProgress = 30;
+            await InvokeAsync(StateHasChanged);
+
+            // Step 2: Save uploaded file to temporary location
+            importStatus = "Processing uploaded backup file...";
+            importProgress = 50;
+            await InvokeAsync(StateHasChanged);
+
+            var tempUploadPath = Path.GetTempFileName();
+            
+            try
+            {
+                using (var stream = selectedBackupFile.OpenReadStream(100 * 1024 * 1024)) // 100MB max
+                using (var fs = File.Create(tempUploadPath))
+                {
+                    await stream.CopyToAsync(fs);
+                }
+
+                importStatus = "Validating backup file...";
+                importProgress = 70;
+                await InvokeAsync(StateHasChanged);
+
+                // Step 3: Basic validation - try to open the database file
+                try
+                {
+                    using (var testConnection = new System.Data.SQLite.SQLiteConnection($"Data Source={tempUploadPath};Version=3;"))
+                    {
+                        testConnection.Open();
+                        // Try a simple query to validate it's a proper SQLite database
+                        using (var cmd = testConnection.CreateCommand())
+                        {
+                            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1;";
+                            cmd.ExecuteScalar();
+                        }
+                        testConnection.Close();
+                    }
+                }
+                catch (Exception validationEx)
+                {
+                    throw new Exception($"Invalid database file: {validationEx.Message}");
+                }
+
+                // Step 4: Replace the current database
+                importStatus = "Replacing current database with backup...";
+                importProgress = 90;
+                await InvokeAsync(StateHasChanged);
+
+                // Ensure any existing connections are closed
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                
+                // Replace the database file
+                File.Copy(tempUploadPath, currentDbPath, true);
+
+                importStatus = "Database import completed successfully!";
+                importProgress = 100;
+                await InvokeAsync(StateHasChanged);
+
+                // Reset form
+                selectedBackupFile = null;
+                confirmDestructiveOperation = false;
+
+                successMessage = $"Database import completed successfully!<br>" +
+                               $"Previous database backed up to: <strong>auto_backup_before_import_{timestamp}.db</strong><br>" +
+                               $"<strong>Please refresh the page to see the imported data.</strong>";
+
+                // Refresh status
+                await Task.Delay(1000); // Give a moment for the success message
+                await RefreshMigrationStatus();
+            }
+            finally
+            {
+                // Clean up temporary file
+                if (File.Exists(tempUploadPath))
+                {
+                    try { File.Delete(tempUploadPath); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error importing database backup: {ex.Message}";
+            importStatus = "Import failed!";
+        }
+        finally
+        {
+            isImporting = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
