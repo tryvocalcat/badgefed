@@ -6,14 +6,14 @@ namespace BadgeFed.Services
 {
     public class ServerDiscoveryService
     {
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
         private readonly HttpClient _httpClient;
         private readonly ILogger<ServerDiscoveryService> _logger;
 
         private readonly FollowService _followService;
         private const string SERVERS_JSON_URL = "https://raw.githubusercontent.com/tryvocalcat/badgefed/main/servers.json";
 
-        public ServerDiscoveryService(LocalDbService localDbService, FollowService followService, HttpClient httpClient, ILogger<ServerDiscoveryService> logger)
+        public ServerDiscoveryService(LocalScopedDb localDbService, FollowService followService, HttpClient httpClient, ILogger<ServerDiscoveryService> logger)
         {
             _localDbService = localDbService;
             _followService = followService;

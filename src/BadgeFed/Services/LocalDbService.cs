@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Data.SQLite;
@@ -12,24 +13,16 @@ public class LocalDbService
 
     public readonly string DbPath;
 
-    public static LocalDbService GetInstance(string dbName)
-    {
-        string currentDirectory = Directory.GetCurrentDirectory();
-        string filePath = Path.Combine(currentDirectory, $"{dbName.ToLowerInvariant()}.db");
-        return new LocalDbService(filePath);
-    }
-
     public LocalDbService(string dbPath)
     {
+        Console.WriteLine($"Initializing LocalDbService with path: {dbPath}");
+
+        dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
+
         this.DbPath = dbPath;
         this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
-    }
-
-    public static LocalDbService GetGlobalDatabase()
-    {
-        return GetInstance("_global.db");
     }
 
     public SQLiteConnection GetConnection()
@@ -1644,22 +1637,13 @@ public class ActorStats
         return records;
     }
 
-    public InstanceDescription GetInstanceDescription(string domain = null)
+    public InstanceDescription GetInstanceDescription()
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        
-        if (!string.IsNullOrEmpty(domain))
-        {
-            command.CommandText = "SELECT * FROM InstanceDescription WHERE Domain = @Domain LIMIT 1";
-            command.Parameters.AddWithValue("@Domain", domain);
-        }
-        else
-        {
-            command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
-        }
+        command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
 
         using var reader = command.ExecuteReader();
         if (reader.Read())
@@ -1671,81 +1655,11 @@ public class ActorStats
                 Description = reader["Description"] as string ?? "",
                 Purpose = reader["Purpose"] as string ?? "",
                 ContactInfo = reader["ContactInfo"] as string ?? "",
-                Domain = reader["Domain"] as string ?? "",
-                CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
-                IsEnabled = Convert.ToBoolean(reader["IsEnabled"]),
-                CreatedAt = reader["CreatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["CreatedAt"].ToString()) 
-                    : DateTime.UtcNow,
-                UpdatedAt = reader["UpdatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["UpdatedAt"].ToString()) 
-                    : DateTime.UtcNow
+                IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled"))
             };
-        }
-        
-        if (string.IsNullOrEmpty(domain))
-        {
-            // No primary domain found, try to get any instance description
-            command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
-            using var fallbackReader = command.ExecuteReader();
-            if (fallbackReader.Read())
-            {
-                return new InstanceDescription
-                {
-                    Id = fallbackReader.GetInt32(fallbackReader.GetOrdinal("Id")),
-                    Name = fallbackReader["Name"] as string ?? "",
-                    Description = fallbackReader["Description"] as string ?? "",
-                    Purpose = fallbackReader["Purpose"] as string ?? "",
-                    ContactInfo = fallbackReader["ContactInfo"] as string ?? "",
-                    Domain = fallbackReader["Domain"] as string ?? "",
-                    CustomLandingPageHtml = fallbackReader["CustomLandingPageHtml"] as string ?? "",
-                    IsEnabled = Convert.ToBoolean(fallbackReader["IsEnabled"]),
-                    CreatedAt = fallbackReader["CreatedAt"] != DBNull.Value 
-                        ? DateTime.Parse(fallbackReader["CreatedAt"].ToString()) 
-                        : DateTime.UtcNow,
-                    UpdatedAt = fallbackReader["UpdatedAt"] != DBNull.Value 
-                        ? DateTime.Parse(fallbackReader["UpdatedAt"].ToString()) 
-                        : DateTime.UtcNow
-                };
-            }
         }
 
         return new InstanceDescription();
-    }
-    
-    public List<InstanceDescription> GetAllInstanceDescriptions()
-    {
-        var instances = new List<InstanceDescription>();
-        
-        using var connection = GetConnection();
-        connection.Open();
-
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM InstanceDescription ORDER BY Domain ASC";
-
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            instances.Add(new InstanceDescription
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Name = reader["Name"] as string ?? "",
-                Description = reader["Description"] as string ?? "",
-                Purpose = reader["Purpose"] as string ?? "",
-                ContactInfo = reader["ContactInfo"] as string ?? "",
-                Domain = reader["Domain"] as string ?? "",
-                CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
-                IsEnabled = Convert.ToBoolean(reader["IsEnabled"]),
-                CreatedAt = reader["CreatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["CreatedAt"].ToString()) 
-                    : DateTime.UtcNow,
-                UpdatedAt = reader["UpdatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["UpdatedAt"].ToString()) 
-                    : DateTime.UtcNow
-            });
-        }
-        
-        return instances;
     }
 
     public void SaveInstanceDescription(InstanceDescription description)
@@ -1757,29 +1671,17 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.Transaction = transaction;
 
-        // Sanitize input - remove HTML tags from fields that shouldn't contain HTML
+        // Sanitize input - remove HTML tags
         description.Name = System.Text.RegularExpressions.Regex.Replace(description.Name ?? "", "<.*?>", "").Trim();
         description.Description = System.Text.RegularExpressions.Regex.Replace(description.Description ?? "", "<.*?>", "").Trim();
         description.Purpose = System.Text.RegularExpressions.Regex.Replace(description.Purpose ?? "", "<.*?>", "").Trim();
         description.ContactInfo = System.Text.RegularExpressions.Regex.Replace(description.ContactInfo ?? "", "<.*?>", "").Trim();
-        description.Domain = System.Text.RegularExpressions.Regex.Replace(description.Domain ?? "", "<.*?>", "").Trim();
-        
-        // Update the timestamp
-        description.UpdatedAt = DateTime.UtcNow;
-        
 
         if (description.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO InstanceDescription (
-                    Name, Description, Purpose, ContactInfo, Domain, 
-                    CustomLandingPageHtml, IsEnabled, 
-                    CreatedAt, UpdatedAt)
-                VALUES (
-                    @Name, @Description, @Purpose, @ContactInfo, @Domain,
-                    @CustomLandingPageHtml, @IsEnabled,
-                    @CreatedAt, @UpdatedAt
-                );
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, IsEnabled)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @IsEnabled);
                 SELECT last_insert_rowid();
             ";
         }
@@ -1791,10 +1693,7 @@ public class ActorStats
                     Description = @Description, 
                     Purpose = @Purpose, 
                     ContactInfo = @ContactInfo,
-                    Domain = @Domain,
-                    CustomLandingPageHtml = @CustomLandingPageHtml,
-                    IsEnabled = @IsEnabled,
-                    UpdatedAt = @UpdatedAt
+                    IsEnabled = @IsEnabled
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", description.Id);
@@ -1804,15 +1703,7 @@ public class ActorStats
         command.Parameters.AddWithValue("@Description", description.Description);
         command.Parameters.AddWithValue("@Purpose", description.Purpose);
         command.Parameters.AddWithValue("@ContactInfo", description.ContactInfo);
-        command.Parameters.AddWithValue("@Domain", description.Domain);
-        command.Parameters.AddWithValue("@CustomLandingPageHtml", description.CustomLandingPageHtml);
         command.Parameters.AddWithValue("@IsEnabled", description.IsEnabled);
-        command.Parameters.AddWithValue("@UpdatedAt", description.UpdatedAt.ToString("o"));
-        
-        if (description.Id == 0)
-        {
-            command.Parameters.AddWithValue("@CreatedAt", description.CreatedAt.ToString("o"));
-        }
 
         if (description.Id == 0)
         {
@@ -1831,24 +1722,6 @@ public class ActorStats
         using var connection = GetConnection();
         connection.Open();
 
-        // Check if the Domain column exists
-        bool domainColumnExists = false;
-        using (var checkCommand = connection.CreateCommand())
-        {
-            checkCommand.CommandText = "PRAGMA table_info(InstanceDescription)";
-            using var reader = checkCommand.ExecuteReader();
-            while (reader.Read())
-            {
-                string columnName = reader["name"].ToString();
-                if (columnName == "Domain")
-                {
-                    domainColumnExists = true;
-                    break;
-                }
-            }
-        }
-
-        // Create the table if it doesn't exist
         var command = connection.CreateCommand();
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS InstanceDescription (
@@ -1857,37 +1730,10 @@ public class ActorStats
                 Description TEXT NOT NULL DEFAULT '',
                 Purpose TEXT NOT NULL DEFAULT '',
                 ContactInfo TEXT NOT NULL DEFAULT '',
-                Domain TEXT NOT NULL DEFAULT '',
-                CustomLandingPageHtml TEXT NOT NULL DEFAULT '',
-                IsEnabled BOOLEAN NOT NULL DEFAULT 0,
-                CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                IsEnabled BOOLEAN NOT NULL DEFAULT 0
             );
         ";
         command.ExecuteNonQuery();
-        
-        // If the table exists but doesn't have the new columns, alter the table to add them
-        if (!domainColumnExists)
-        {
-            try
-            {
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN Domain TEXT NOT NULL DEFAULT ''";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN CustomLandingPageHtml TEXT NOT NULL DEFAULT ''";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP";
-                command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating InstanceDescription table: {ex.Message}");
-            }
-        }
     }
 
     // Invitation management methods
@@ -2204,149 +2050,5 @@ public class ActorStats
         }
         
         return null;
-    }
-
-    public void InitializeDomainLandingPageTable()
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS DomainLandingPages (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Domain TEXT NOT NULL UNIQUE,
-                HtmlContent TEXT NOT NULL,
-                IsEnabled INTEGER NOT NULL DEFAULT 1,
-                CreatedAt TEXT NOT NULL,
-                UpdatedAt TEXT NOT NULL
-            )";
-        command.ExecuteNonQuery();
-    }
-
-    public void SaveDomainLandingPage(DomainLandingPage landingPage)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        // Check if domain already exists
-        var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT Id FROM DomainLandingPages WHERE Domain = @Domain";
-        checkCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-        
-        var existingId = checkCommand.ExecuteScalar();
-        landingPage.UpdatedAt = DateTime.UtcNow;
-        
-        if (existingId != null)
-        {
-            // Update existing record
-            var updateCommand = connection.CreateCommand();
-            updateCommand.CommandText = @"
-                UPDATE DomainLandingPages 
-                SET HtmlContent = @HtmlContent, 
-                    IsEnabled = @IsEnabled, 
-                    UpdatedAt = @UpdatedAt
-                WHERE Domain = @Domain";
-            updateCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-            updateCommand.Parameters.AddWithValue("@HtmlContent", landingPage.HtmlContent);
-            updateCommand.Parameters.AddWithValue("@IsEnabled", landingPage.IsEnabled ? 1 : 0);
-            updateCommand.Parameters.AddWithValue("@UpdatedAt", landingPage.UpdatedAt.ToString("o"));
-            updateCommand.ExecuteNonQuery();
-        }
-        else
-        {
-            // Insert new record
-            var insertCommand = connection.CreateCommand();
-            insertCommand.CommandText = @"
-                INSERT INTO DomainLandingPages 
-                    (Domain, HtmlContent, IsEnabled, CreatedAt, UpdatedAt) 
-                VALUES 
-                    (@Domain, @HtmlContent, @IsEnabled, @CreatedAt, @UpdatedAt)";
-            insertCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-            insertCommand.Parameters.AddWithValue("@HtmlContent", landingPage.HtmlContent);
-            insertCommand.Parameters.AddWithValue("@IsEnabled", landingPage.IsEnabled ? 1 : 0);
-            insertCommand.Parameters.AddWithValue("@CreatedAt", landingPage.CreatedAt.ToString("o"));
-            insertCommand.Parameters.AddWithValue("@UpdatedAt", landingPage.UpdatedAt.ToString("o"));
-            insertCommand.ExecuteNonQuery();
-        }
-    }
-
-    public DomainLandingPage GetDomainLandingPage(string domain)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM DomainLandingPages WHERE Domain = @Domain AND IsEnabled = 1";
-        command.Parameters.AddWithValue("@Domain", domain);
-        
-        using var reader = command.ExecuteReader();
-        if (reader.Read())
-        {
-            return new DomainLandingPage
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Domain = reader.GetString(reader.GetOrdinal("Domain")),
-                HtmlContent = reader.GetString(reader.GetOrdinal("HtmlContent")),
-                IsEnabled = reader.GetInt32(reader.GetOrdinal("IsEnabled")) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
-                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
-            };
-        }
-        
-        return null;
-    }
-
-    public List<DomainLandingPage> GetAllDomainLandingPages()
-    {
-        var landingPages = new List<DomainLandingPage>();
-        
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM DomainLandingPages ORDER BY Domain";
-        
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            landingPages.Add(new DomainLandingPage
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Domain = reader.GetString(reader.GetOrdinal("Domain")),
-                HtmlContent = reader.GetString(reader.GetOrdinal("HtmlContent")),
-                IsEnabled = reader.GetInt32(reader.GetOrdinal("IsEnabled")) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
-                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
-            });
-        }
-        
-        return landingPages;
-    }
-
-    public void DeleteDomainLandingPage(string domain)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM DomainLandingPages WHERE Domain = @Domain";
-        command.Parameters.AddWithValue("@Domain", domain);
-        command.ExecuteNonQuery();
-    }
-
-    public void DeleteInstanceDescription(int id)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-
-        var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "DELETE FROM InstanceDescription WHERE Id = @Id";
-        command.Parameters.AddWithValue("@Id", id);
-        command.ExecuteNonQuery();
-
-        transaction.Commit();
     }
 }

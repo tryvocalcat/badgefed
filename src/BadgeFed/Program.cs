@@ -61,11 +61,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-var dbFileName = Environment.GetEnvironmentVariable("SQLITE_DB_FILENAME") ?? "badgefed.db";
-var localDbService = new LocalDbService(dbFileName);
 
-builder.Services.AddSingleton<LocalDbService>(localDbService);
+var localDbFactory = new LocalDbFactory();
 
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddSingleton<LocalDbFactory>(localDbFactory);
+builder.Services.AddScoped<LocalScopedDb>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
@@ -77,14 +79,14 @@ builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
 builder.Services.AddScoped<DatabaseMigrationService>();
 
-builder.Services.AddSingleton<BadgeProcessor>();
-builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<BadgeProcessor>();
+
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddHttpClient();
 
-builder.Services.AddSingleton<OpenBadgeService>();
+builder.Services.AddScoped<OpenBadgeService>();
 
-builder.Services.AddSingleton<BadgeService>();
+builder.Services.AddScoped<BadgeService>();
 
 builder.Services.AddScoped<InvitationService>();
 
@@ -109,7 +111,7 @@ if (mastodonConfig != null)
         o.ClientId = mastodonConfig.ClientId;
         o.ClientSecret = mastodonConfig.ClientSecret;
         o.SaveTokens = true;
-     }, localDbService);
+     }, localDbFactory);
 }
 
 if (linkedInConfig != null)
@@ -120,7 +122,7 @@ if (linkedInConfig != null)
             o.ClientSecret = linkedInConfig.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
             o.SaveTokens = true;
-         }, localDbService);
+         }, localDbFactory);
 }
 
 if (googleConfig != null)
@@ -131,11 +133,11 @@ if (googleConfig != null)
             o.ClientSecret = googleConfig.ClientSecret;
             o.CallbackPath = "/signin-google";
             o.SaveTokens = true;
-         }, localDbService);
+         }, localDbFactory);
 }
 
-builder.Services.AddHostedService<JobExecutor>();
-builder.Services.AddScoped<JobProcessor>();
+//builder.Services.AddHostedService<JobExecutor>();
+//builder.Services.AddScoped<JobProcessor>();
 
 // Configure EmailSettings from appsettings.json
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -191,35 +193,40 @@ app.Run();
 async Task SetupDefaultActor(IServiceProvider services)
 {
     using var scope = services.CreateScope();
-    var localDbService = scope.ServiceProvider.GetRequiredService<LocalDbService>();
     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-    // Check if the default actor exists
+    // Get all domains from configuration
+    var domains = configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "example.com" };
     var defaultUsername = "admin";
-    var defaultDomain = configuration.GetSection("BadgesDomains").Get<string[]>()?.FirstOrDefault() ?? "example.com";
 
-    var existingActor = localDbService.GetActorByFilter($"Username = \"{defaultUsername}\" AND Domain = \"{defaultDomain}\"");
-    if (existingActor == null)
+    foreach (var domain in domains)
     {
-        // Generate public/private key pair
-        var keyPair = await CryptoService.GenerateKeyPairAsync();
-
-        // Create the default actor
-        var defaultActor = new Actor
+        Console.WriteLine($"Setting up default actor for domain: {domain}");
+        // domain could be localhost:5000 we need to take just the hostname portion of it
+        var localDbService = new LocalScopedDb(domain);
+        var existingActor = localDbService.GetActorByFilter($"Username = \"{defaultUsername}\" AND Domain = \"{domain}\"");
+        if (existingActor == null)
         {
-            FullName = "Default Admin",
-            Username = defaultUsername,
-            Domain = defaultDomain,
-            Summary = "This is the default admin actor.",
-            PublicKeyPem = keyPair.PublicKeyPem,
-            PrivateKeyPem = keyPair.PrivateKeyPem,
-            InformationUri = $"https://{defaultDomain}/about",
-            AvatarPath = "img/defaultavatar.png",
-            IsMain = true
-        };
+            // Generate public/private key pair
+            var keyPair = await CryptoService.GenerateKeyPairAsync();
 
-        localDbService.UpsertActor(defaultActor);
-        Console.WriteLine($"Default actor created with username '{defaultUsername}' and domain '{defaultDomain}'.");
+            // Create the default actor
+            var defaultActor = new Actor
+            {
+                FullName = "Default Admin",
+                Username = defaultUsername,
+                Domain = domain,
+                Summary = "This is the default admin actor.",
+                PublicKeyPem = keyPair.PublicKeyPem,
+                PrivateKeyPem = keyPair.PrivateKeyPem,
+                InformationUri = $"https://{domain}/about",
+                AvatarPath = "img/defaultavatar.png",
+                IsMain = true
+            };
+
+            localDbService.UpsertActor(defaultActor);
+            Console.WriteLine($"Default actor created with username '{defaultUsername}' and domain '{domain}'.");
+        }
     }
 }
 
@@ -233,7 +240,7 @@ public static class MastodonOAuthExtensions {
         AdminConfig adminConfig, 
         MastodonConfig mastodonConfig, 
         Action<OAuthOptions> configureOptions,
-        LocalDbService localDbService)
+        LocalDbFactory localDbFactory)
     {
         var hostname = mastodonConfig.Server;
         _hosts.Add(hostname);
@@ -255,7 +262,7 @@ public static class MastodonOAuthExtensions {
             o.Events = new OAuthEvents {
                 OnCreatingTicket = async context =>
                 {
-
+                    var localDbService = localDbFactory.GetInstance(context.HttpContext);
                     var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
                     request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -356,7 +363,7 @@ public static class LinkedInOAuthExtensions
         AdminConfig adminConfig,
         LinkedInConfig config,
         Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
-        LocalDbService localDbService)
+        LocalDbFactory localDbFactory)
     {
         return builder.AddOAuth("LinkedIn", "LinkedIn", o =>
         {
@@ -374,6 +381,8 @@ public static class LinkedInOAuthExtensions
             {
                 OnCreatingTicket = async context =>
                 {
+                    var localDbService = localDbFactory.GetInstance(context.HttpContext);
+
                     Console.WriteLine($"LinkedIn access token: {context.AccessToken}");
                     var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
@@ -491,7 +500,7 @@ public static class GoogleOAuthExtensions
         AdminConfig adminConfig,
         GoogleConfig config,
         Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
-        LocalDbService localDbService)
+        LocalDbFactory localDbFactory)
     {
         return builder.AddOAuth("Google", "Google", o =>
         {
@@ -515,6 +524,7 @@ public static class GoogleOAuthExtensions
             {
                 OnCreatingTicket = async context =>
                 {
+                    var localDbService = localDbFactory.GetInstance(context.HttpContext);
                     Console.WriteLine($"Google access token: {context.AccessToken}");
                     var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);

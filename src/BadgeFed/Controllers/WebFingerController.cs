@@ -9,9 +9,9 @@ namespace BadgeFed.Controllers
     {
         private readonly IConfiguration _configuration;
 
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
 
-        public WebFingerController(IConfiguration configuration, LocalDbService localDbService)
+        public WebFingerController(IConfiguration configuration, LocalScopedDb localDbService)
         {
             _configuration = configuration;
             _localDbService = localDbService;

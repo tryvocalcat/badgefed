@@ -8,14 +8,12 @@ namespace ActivityPubDotNet.Core
     public class ExternalBadgeService
     {
         public ILogger? Logger { get; set; }
-        private readonly LocalDbService _localDbService;
-        private readonly OpenBadgeImportService _openBadgeImportService;
+        private readonly LocalDbFactory _localDbFactory;
         private readonly BadgeProcessor _badgeProcessor;
 
-        public ExternalBadgeService(LocalDbService localDbService, BadgeProcessor badgeProcessor)
+        public ExternalBadgeService(LocalDbFactory localDbFactory, BadgeProcessor badgeProcessor)
         {
-            _localDbService = localDbService;
-            _openBadgeImportService = new OpenBadgeImportService(localDbService);
+            _localDbFactory = localDbFactory;
             _badgeProcessor = badgeProcessor;
         }
 
@@ -50,6 +48,9 @@ namespace ActivityPubDotNet.Core
             };
 
             try {
+                var db = _localDbFactory.GetInstance(new Uri(objectNote.Id));
+                var _openBadgeImportService = new OpenBadgeImportService(db);
+
                 // Try to deserialize as ActivityPub badge first
                 var serializedGrant = JsonSerializer.Serialize(grant, options);
 
@@ -113,7 +114,16 @@ namespace ActivityPubDotNet.Core
 
         private async Task<BadgeRecord?> ProcessActivityPubBadge(BadgeRecord badgeRecord, string noteId)
         {
-            var existingLocal = _localDbService.GetGrantByNoteId(badgeRecord.NoteId);
+            // Extract domain from noteId to get the appropriate LocalDbService
+            Uri noteUri;
+            if (!Uri.TryCreate(badgeRecord.NoteId, UriKind.Absolute, out noteUri))
+            {
+                Logger?.LogError($"Invalid note URI format: {badgeRecord.NoteId}");
+                return null;
+            }
+            
+            var localDbService = _localDbFactory.GetInstance(noteUri);
+            var existingLocal = localDbService.GetGrantByNoteId(badgeRecord.NoteId);
 
             if (existingLocal != null)
             {
@@ -123,7 +133,7 @@ namespace ActivityPubDotNet.Core
 
             badgeRecord.IsExternal = true;
             Logger?.LogInformation($"Creating new ActivityPub badge record in local database");
-            _localDbService.CreateBadgeRecord(badgeRecord);
+            localDbService.CreateBadgeRecord(badgeRecord);
 
             return badgeRecord;
         }

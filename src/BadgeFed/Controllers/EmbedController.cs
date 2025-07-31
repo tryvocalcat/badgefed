@@ -12,11 +12,11 @@ namespace BadgeFed.Controllers
     [EnableCors("EmbedPolicy")]
     public class EmbedController : ControllerBase
     {
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
         private readonly OpenBadgeService _openBadgeService;
         private readonly ILogger<EmbedController> _logger;
 
-        public EmbedController(LocalDbService localDbService, OpenBadgeService openBadgeService, ILogger<EmbedController> logger)
+        public EmbedController(LocalScopedDb localDbService, OpenBadgeService openBadgeService, ILogger<EmbedController> logger)
         {
             _localDbService = localDbService;
             _openBadgeService = openBadgeService;

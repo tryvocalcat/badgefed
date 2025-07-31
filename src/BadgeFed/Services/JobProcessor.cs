@@ -5,12 +5,12 @@ namespace BadgeFed.Services;
 
 public class JobProcessor
 {
-    private readonly LocalDbService _dbService;
+    private readonly LocalScopedDb _dbService;
     private readonly BadgeProcessor _badgeProcessor;
 
     public ILogger? Logger = null;
 
-    public JobProcessor(LocalDbService dbService, BadgeProcessor badgeProcessor)
+    public JobProcessor(LocalScopedDb dbService, BadgeProcessor badgeProcessor)
     {
         _dbService = dbService;
         _badgeProcessor = badgeProcessor;

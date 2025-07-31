@@ -8,11 +8,11 @@ namespace BadgeFed.Controllers
     [Route("grant")]
     public class BadgeController : ControllerBase
     {
-        private LocalDbService _localDbService;
+        private LocalScopedDb _localDbService;
         
         private BadgeService _badgeService { get; }
 
-        public BadgeController(LocalDbService localDbService, BadgeService badgeService)
+        public BadgeController(LocalScopedDb localDbService, BadgeService badgeService)
         {
             _localDbService = localDbService;
             _badgeService = badgeService;

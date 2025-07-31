@@ -2,7 +2,7 @@
 
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
-@inject LocalDbService DbService
+@inject LocalScopedDb DbService
 @inject IWebHostEnvironment Environment
 
 @if (!string.IsNullOrEmpty(GetThemeCssPath()))

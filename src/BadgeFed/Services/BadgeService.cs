@@ -7,11 +7,11 @@ namespace BadgeFed.Services;
 
 public class BadgeService
 {
-    private readonly LocalDbService _dbService;
+    private readonly LocalScopedDb _dbService;
 
     private readonly OpenBadgeService _openBadgeService;
 
-    public BadgeService(LocalDbService dbService, OpenBadgeService openBadgeService)
+    public BadgeService(LocalScopedDb dbService, OpenBadgeService openBadgeService)
     {
         _dbService = dbService;
         _openBadgeService = openBadgeService;

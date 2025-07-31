@@ -12,13 +12,13 @@ namespace ActivityPubDotNet.Core
 
         private readonly ExternalBadgeService _externalBadgeService;
 
-        private readonly LocalDbService _localDbService;
+        private readonly LocalDbFactory _localDbFactory;
 
-        public CreateNoteService(RepliesService repliesService, ExternalBadgeService externalBadgeService, LocalDbService localDbService)
+        public CreateNoteService(RepliesService repliesService, ExternalBadgeService externalBadgeService, LocalDbFactory localDbFactory)
         {
             _externalBadgeService = externalBadgeService;
             _repliesService = repliesService;
-            _localDbService = localDbService;
+            _localDbFactory = localDbFactory;
         }
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -52,7 +52,17 @@ namespace ActivityPubDotNet.Core
                 // We need to fetch the original note from the URL
                 // For this, we'll need an actor to make the signed request
                 // Let's get the main actor to make the request
-                var mainActor = _localDbService.GetActorByFilter("IsMain = 1");
+                
+                // Get the domain from the URL
+                Uri originalNoteUri;
+                if (!Uri.TryCreate(originalNoteUrl, UriKind.Absolute, out originalNoteUri))
+                {
+                    Logger?.LogError($"Invalid note URI format: {originalNoteUrl}");
+                    return CreateNoteResult.Error("Invalid note URI format");
+                }
+                
+                var localDbService = _localDbFactory.GetInstance(originalNoteUri);
+                var mainActor = localDbService.GetMainActor();
 
                 if (mainActor == null)
                 {

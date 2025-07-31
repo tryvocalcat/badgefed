@@ -1,15 +1,14 @@
 ﻿@page "/"
 @using BadgeFed.Models
 @inject HttpClient Http
-@inject LocalDbService LocalDbService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject LandingPageCacheService LandingPageCache
-@inject IConfiguration Configuration
 @layout BadgeFed.Components.Layouts.LandingLayout
+@inject LocalDbFactory LocalDbFactory
 
-@if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+@if (!string.IsNullOrEmpty(CustomLandingPageHtmlContent))
 {
-    @((MarkupString)InstanceDescriptionData.CustomLandingPageHtml)
+    @((MarkupString)CustomLandingPageHtmlContent)
 }
 else
 {
@@ -389,52 +388,44 @@ else
     private List<Actor> Actors { get; set; }
     private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
     private InstanceDescription InstanceDescriptionData { get; set; }
-    private DomainLandingPage CustomLandingPage { get; set; }
+    private string CustomLandingPageHtmlContent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         // Get current domain from request
         var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Host;
 
-        Console.WriteLine($"Request Host: {requestHost}");
+        var db = LocalDbFactory.GetInstance(HttpContextAccessor.HttpContext);
+
         if (!string.IsNullOrEmpty(requestHost))
         {
-            // Initialize tables
-            LocalDbService.InitializeInstanceDescriptionTable();
-            
-            // Try to get domain-specific instance description
-            InstanceDescriptionData = LocalDbService.GetInstanceDescription(requestHost);
-            
-            // If we found a domain-specific instance with custom HTML, use it
-            if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+            // Check if we have a custom landing page for this domain in the cache
+            if (!LandingPageCache.TryGetValue(requestHost, out var cachedHtml))
             {
-                // Check if we have it in cache first
-                if (!LandingPageCache.TryGetValue(requestHost, out var cachedHtml))
+                // Try to load custom landing page for this domain from the database
+                InstanceDescriptionData = db.GetInstanceDescription();
+                
+                // If we found a custom page, add it to the cache for future requests
+                if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
                 {
-                    // Add to cache for future requests
                     LandingPageCache.Set(requestHost, InstanceDescriptionData.CustomLandingPageHtml);
-                }
-                else
-                {
-                    // Use cached version if it exists
-                    InstanceDescriptionData.CustomLandingPageHtml = cachedHtml;
+                    CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
                 }
             }
-        }
-        else
-        {
-            // Initialize table and load primary instance description
-            LocalDbService.InitializeInstanceDescriptionTable();
-            InstanceDescriptionData = LocalDbService.GetInstanceDescription();
+            else
+            {
+                // Use the cached version
+                CustomLandingPageHtmlContent = cachedHtml;
+            }
         }
         
-        // Load default content if no custom landing page HTML is available
-        if (string.IsNullOrEmpty(InstanceDescriptionData?.CustomLandingPageHtml))
+        // Only load default content if no custom landing page is available
+        if (string.IsNullOrEmpty(CustomLandingPageHtmlContent))
         {
             try
             {
-                Actors = LocalDbService.GetActors("Featured = TRUE AND IsMain = FALSE");
-                FollowedIssuers = LocalDbService.GetAllFollowedIssuers(true);
+                Actors = db.GetActors("Featured = TRUE AND IsMain = FALSE");
+                FollowedIssuers = db.GetAllFollowedIssuers(true);
                 
                 HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
             }
@@ -444,5 +435,4 @@ else
             }
         }
     }
-
 }

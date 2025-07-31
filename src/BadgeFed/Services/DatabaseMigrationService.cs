@@ -20,6 +20,13 @@ public class DatabaseMigrationService
     private readonly LocalDbService _dbService;
     private readonly string _migrationsPath;
 
+    public DatabaseMigrationService(LocalScopedDb localDbScoped)
+    {
+        _dbService = localDbScoped as LocalDbService 
+            ?? throw new ArgumentException("Invalid LocalDbScoped instance provided. Expected LocalDbService.");
+        _migrationsPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "migrations");
+    }
+
     public DatabaseMigrationService(LocalDbService dbService)
     {
         _dbService = dbService;

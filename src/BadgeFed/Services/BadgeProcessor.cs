@@ -6,10 +6,10 @@ namespace BadgeFed.Services;
 
 public class BadgeProcessor
 {
-    private readonly LocalDbService _localDbService;
+    private readonly LocalScopedDb _localDbService;
     private readonly BadgeService _badgeService;
 
-    public BadgeProcessor(LocalDbService localDbService, BadgeService badgeService)
+    public BadgeProcessor(LocalScopedDb localDbService, BadgeService badgeService)
     {
         _localDbService = localDbService;
         _badgeService = badgeService;
@@ -176,7 +176,7 @@ public class BadgeProcessor
         try
         {
             // Find the main actor (typically the server's default actor)
-            var mainActor = _localDbService.GetActorByFilter("IsMain = 1");
+            var mainActor = _localDbService.GetMainActor();
 
             if (mainActor == null)
             {

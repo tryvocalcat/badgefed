@@ -9,9 +9,9 @@ namespace BadgeFed.Controllers
     public class ActorController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
 
-        public ActorController(IConfiguration configuration, LocalDbService localDbService)
+        public ActorController(IConfiguration configuration, LocalScopedDb localDbService)
         {
             _configuration = configuration;
             _localDbService = localDbService;

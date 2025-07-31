@@ -9,11 +9,11 @@ namespace ActivityPubDotNet.Core
     {
         public ILogger? Logger { get; set; }
 
-        private readonly LocalDbService _localDbService;
+        private readonly LocalDbFactory localDbFactory;
 
-        public FollowService(LocalDbService localDbService)
+        public FollowService(LocalDbFactory localDbFactory)
         {
-            _localDbService = localDbService;
+            this.localDbFactory = localDbFactory;
         }
 
         public async Task AcceptFollowRequest(InboxMessage message)
@@ -77,14 +77,15 @@ namespace ActivityPubDotNet.Core
         {
             Logger?.LogInformation($"Follow request from: {message.Actor} to {message.Object}");
 
-            var actor = _localDbService.GetActorByFilter($"Uri = \"{message.Object}\"")!;
+            var db = localDbFactory.GetInstance(new Uri(message.Object?.ToString() ?? string.Empty));
+            var actor = db.GetActorByFilter($"Uri = \"{message.Object}\"")!;
 
             if (actor == null)
             {
                 // https://badges.vocalcat.com/view/actor/badges.vocalcat.com/admin to https://badges.vocalcat.com/actors/badges.vocalcat.com/admin
                 var newUri = message.Object!.ToString().Replace("/view/actor/", "/actors/");
                 
-                actor = _localDbService.GetActorByFilter($"Uri = \"{newUri}\"")!;
+                actor = db.GetActorByFilter($"Uri = \"{newUri}\"")!;
 
                 if (actor == null)
                 {
@@ -103,7 +104,7 @@ namespace ActivityPubDotNet.Core
                 }
             };
 
-            _localDbService.UpsertFollower(follower);
+            db.UpsertFollower(follower);
         }
 
         public Task Unfollow(InboxMessage message)
@@ -129,7 +130,8 @@ namespace ActivityPubDotNet.Core
                     var document = JsonSerializer.Serialize(acceptRequest, options);
                     _logger.LogInformation($"Sending accept request to {follower.Inbox} - {document}");
 
-                    var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+                    var db = localDbFactory.GetInstance(new Uri(target));
+                    var actor = db.GetActorByFilter($"Uri = \"{target}\"")!;
                     var actorHelper = new ActorHelper(actor.PrivateKeyPem!, actor.KeyId, Logger);
 
                     await actorHelper.SendSignedRequest(document, new Uri(actor.Inbox));
@@ -143,7 +145,8 @@ namespace ActivityPubDotNet.Core
             // Target is the account to be followed
             var target = message.Object!.ToString();
 
-            var actor = _localDbService.GetActorByFilter($"Uri = \"{target}\"")!;
+            var db = localDbFactory.GetInstance(new Uri(target));
+            var actor = db.GetActorByFilter($"Uri = \"{target}\"")!;
 
             var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
 

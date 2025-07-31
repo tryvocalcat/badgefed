@@ -5,9 +5,9 @@ namespace BadgeFed.Services
 {
     public class OpenBadgeService
     {
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
 
-        public OpenBadgeService(LocalDbService localDbService)
+        public OpenBadgeService(LocalScopedDb localDbService)
         {
             _localDbService = localDbService;
         }

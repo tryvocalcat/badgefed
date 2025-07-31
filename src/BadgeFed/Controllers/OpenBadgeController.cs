@@ -9,10 +9,10 @@ namespace BadgeFed.Controllers
     [Route("openbadge")]
     public class OpenBadgeController : ControllerBase
     {
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
         private readonly OpenBadgeService _openBadgeService;
 
-        public OpenBadgeController(LocalDbService localDbService, OpenBadgeService openBadgeService)
+        public OpenBadgeController(LocalScopedDb localDbService, OpenBadgeService openBadgeService)
         {
             _localDbService = localDbService;
             _openBadgeService = openBadgeService;
