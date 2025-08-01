@@ -30,5 +30,13 @@
         "categories": ["Community", "Gaming", "Social", "Entertainment"],
         "admin": "Fediverse Games",
         "actor": "https://badges.fediverse.games/actors/badges.fediverse.games/admin"
+    },
+    {
+        "name": "FediCon Badge Server",
+        "url": "https://badges.fedicon.ca",
+        "description": "The official badge server for FediCon (the Fediverse Conference in Canada).",
+        "categories": ["Event", "Community", "Fediverse", "Conference"],
+        "admin": "FediCon Organizers",
+        "actor": "https://badges.fedicon.ca/actors/badges.fedicon.ca/admin"
     }
 ]
