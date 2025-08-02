@@ -260,6 +260,16 @@
             </div>
         </div>
 
+        @if (selectedStaticPageFile != null && WillOverwriteExistingFile())
+        {
+            <div class="notification is-warning is-light">
+                <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
+                <strong>Warning:</strong> A file named "@selectedStaticPageFile.Name" already exists and will be overwritten.
+            </div>
+        }
+
         @if (!string.IsNullOrEmpty(staticPageUploadMessage))
         {
             <div class="notification is-success is-light">
@@ -321,6 +331,156 @@
             </div>
         }
     </div>
+
+    <!-- Image Management -->
+    <div class="box">
+        <h3 class="title is-4">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-image"></i>
+                </span>
+                <span>Image Management</span>
+            </span>
+        </h3>
+        
+        <div class="content">
+            <p>Upload image files (PNG, JPG) for use in your content. These files are saved in <code>wwwroot/img/</code> and can be referenced in your HTML content.</p>
+        </div>
+
+        <!-- Image Upload Form -->
+        <div class="field">
+            <label class="label">Upload Image File</label>
+            <div class="control">
+                <div class="file has-name">
+                    <label class="file-label">
+                        <InputFile OnChange="OnImageFileSelected" accept=".png,.jpg,.jpeg" class="file-input" />
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">Choose image file…</span>
+                        </span>
+                        <span class="file-name">@(selectedImageFile?.Name ?? "No file selected")</span>
+                    </label>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(imageUploadError))
+            {
+                <p class="help is-danger">@imageUploadError</p>
+            }
+        </div>
+
+        @if (selectedImageFile != null)
+        {
+            <div class="field">
+                <label class="label">Image Title</label>
+                <div class="control">
+                    <input @bind="newImageTitle" class="input" placeholder="Enter a descriptive title for this image" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Image Description</label>
+                <div class="control">
+                    <input @bind="newImageDescription" class="input" placeholder="Brief description of this image" />
+                </div>
+            </div>
+        }
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="UploadImage" disabled="@(selectedImageFile == null)">
+                    <span class="icon">
+                        <i class="fas fa-upload"></i>
+                    </span>
+                    <span>Upload Image</span>
+                </button>
+            </div>
+        </div>
+
+        @if (selectedImageFile != null && WillOverwriteExistingImage())
+        {
+            <div class="notification is-warning is-light">
+                <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
+                <strong>Warning:</strong> An image named "@selectedImageFile.Name" already exists and will be overwritten.
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(imageUploadMessage))
+        {
+            <div class="notification is-success is-light">
+                @imageUploadMessage
+            </div>
+        }
+
+        <!-- Images List -->
+        <h4 class="title is-5 mt-5">Uploaded Images</h4>
+        @if (uploadedImages.Any())
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Title</th>
+                            <th>Filename</th>
+                            <th>Description</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var image in uploadedImages)
+                        {
+                            <tr>
+                                <td>
+                                    <figure class="image is-48x48">
+                                        <img src="/img/@image.Filename" alt="@image.Title" style="object-fit: cover;" />
+                                    </figure>
+                                </td>
+                                <td><strong>@image.Title</strong></td>
+                                <td><code>@image.Filename</code></td>
+                                <td>@image.Description</td>
+                                <td>@FormatFileSize(image.FileSize)</td>
+                                <td>@image.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <a href="/img/@image.Filename" target="_blank" class="button is-small is-info">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </span>
+                                            <span>View</span>
+                                        </a>
+                                        <button class="button is-small is-primary" @onclick="() => CopyImageUrl(image)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                            <span>Copy URL</span>
+                                        </button>
+                                        <button class="button is-small is-danger" @onclick="() => DeleteImage(image)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-trash"></i>
+                                            </span>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="notification is-info is-light">
+                <p>No images uploaded yet. Upload an image file to get started.</p>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
@@ -337,6 +497,14 @@
     private string newPageTitle = "";
     private string newPageDescription = "";
 
+    // Image upload
+    private IBrowserFile? selectedImageFile;
+    private string imageUploadError = "";
+    private string imageUploadMessage = "";
+    private string newImageTitle = "";
+    private string newImageDescription = "";
+    private List<UploadedImage> uploadedImages = new();
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -347,6 +515,7 @@
             // Load existing settings
             instanceDescription = LocalDbService.GetInstanceDescription();
             staticPages = LocalDbService.GetAllStaticPages();
+            LoadUploadedImages();
         }
         catch (Exception ex)
         {
@@ -437,15 +606,11 @@
             var pagesDir = Path.Combine(Environment.WebRootPath, "pages");
             Directory.CreateDirectory(pagesDir);
 
-            // Generate safe filename
+            // Use the original filename
             var fileName = selectedStaticPageFile.Name;
-            var safeName = Path.GetFileNameWithoutExtension(fileName) + 
-                          DateTime.Now.ToString("_yyyyMMdd_HHmmss") + 
-                          Path.GetExtension(fileName);
-            
-            var filePath = Path.Combine(pagesDir, safeName);
+            var filePath = Path.Combine(pagesDir, fileName);
 
-            // Save file to disk
+            // Save file to disk (this will overwrite if exists)
             using (var stream = selectedStaticPageFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
             using (var fs = File.Create(filePath))
             {
@@ -455,7 +620,7 @@
             // Save to database
             var staticPage = new StaticPage
             {
-                Filename = safeName,
+                Filename = fileName,
                 Title = !string.IsNullOrWhiteSpace(newPageTitle) ? newPageTitle : Path.GetFileNameWithoutExtension(fileName),
                 Description = newPageDescription ?? "",
                 FileSize = selectedStaticPageFile.Size,
@@ -468,7 +633,7 @@
             // Refresh the list
             staticPages = LocalDbService.GetAllStaticPages();
 
-            staticPageUploadMessage = $"Static page '{staticPage.Title}' uploaded successfully as {safeName}";
+            staticPageUploadMessage = $"Static page '{staticPage.Title}' uploaded successfully as {fileName}";
             selectedStaticPageFile = null;
             newPageTitle = "";
             newPageDescription = "";
@@ -533,5 +698,175 @@
             size = size / 1024;
         }
         return $"{size:0.##} {sizes[order]}";
+    }
+
+    private bool WillOverwriteExistingFile()
+    {
+        if (selectedStaticPageFile == null) return false;
+        
+        var pagesDir = Path.Combine(Environment.WebRootPath, "pages");
+        var filePath = Path.Combine(pagesDir, selectedStaticPageFile.Name);
+        return File.Exists(filePath);
+    }
+
+    // Image management methods
+    private void OnImageFileSelected(InputFileChangeEventArgs e)
+    {
+        imageUploadMessage = "";
+        imageUploadError = "";
+        var file = e.File;
+        
+        if (file != null)
+        {
+            var extension = Path.GetExtension(file.Name).ToLower();
+            if (extension != ".png" && extension != ".jpg" && extension != ".jpeg")
+            {
+                imageUploadError = "Only image files (.png, .jpg, .jpeg) are allowed.";
+                selectedImageFile = null;
+            }
+            else if (file.Size > 10 * 1024 * 1024) // 10MB limit
+            {
+                imageUploadError = "File size must be less than 10MB.";
+                selectedImageFile = null;
+            }
+            else
+            {
+                selectedImageFile = file;
+                newImageTitle = Path.GetFileNameWithoutExtension(file.Name);
+                newImageDescription = "";
+            }
+        }
+    }
+
+    private async Task UploadImage()
+    {
+        if (selectedImageFile == null)
+        {
+            imageUploadError = "No file selected.";
+            return;
+        }
+
+        try
+        {
+            // Create img directory if it doesn't exist
+            var imgDir = Path.Combine(Environment.WebRootPath, "img");
+            Directory.CreateDirectory(imgDir);
+
+            // Use the original filename
+            var fileName = selectedImageFile.Name;
+            var filePath = Path.Combine(imgDir, fileName);
+
+            // Save file to disk (this will overwrite if exists)
+            using (var stream = selectedImageFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
+            using (var fs = File.Create(filePath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Refresh the list
+            LoadUploadedImages();
+
+            imageUploadMessage = $"Image '{newImageTitle}' uploaded successfully as {fileName}";
+            selectedImageFile = null;
+            newImageTitle = "";
+            newImageDescription = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            imageUploadError = $"Error uploading image: {ex.Message}";
+        }
+    }
+
+    private bool WillOverwriteExistingImage()
+    {
+        if (selectedImageFile == null) return false;
+        
+        var imgDir = Path.Combine(Environment.WebRootPath, "img");
+        var filePath = Path.Combine(imgDir, selectedImageFile.Name);
+        return File.Exists(filePath);
+    }
+
+    private async Task CopyImageUrl(UploadedImage image)
+    {
+        var url = $"/img/{image.Filename}";
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+        imageUploadMessage = $"URL copied to clipboard: {url}";
+        StateHasChanged();
+    }
+
+    private async Task DeleteImage(UploadedImage image)
+    {
+        try
+        {
+            // Delete file from disk
+            var filePath = Path.Combine(Environment.WebRootPath, "img", image.Filename);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            // Refresh the list
+            LoadUploadedImages();
+
+            successMessage = $"Image '{image.Title}' deleted successfully.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting image: {ex.Message}";
+        }
+    }
+
+    private void LoadUploadedImages()
+    {
+        try
+        {
+            uploadedImages.Clear();
+            var imgDir = Path.Combine(Environment.WebRootPath, "img");
+            
+            if (Directory.Exists(imgDir))
+            {
+                var imageFiles = Directory.GetFiles(imgDir, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f => IsImageFile(f))
+                    .ToList();
+
+                foreach (var filePath in imageFiles)
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    var fileName = fileInfo.Name;
+                    
+                    uploadedImages.Add(new UploadedImage
+                    {
+                        Filename = fileName,
+                        Title = Path.GetFileNameWithoutExtension(fileName),
+                        Description = "",
+                        FileSize = fileInfo.Length,
+                        CreatedAt = fileInfo.CreationTime
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the page load
+            Console.WriteLine($"Error loading images: {ex.Message}");
+        }
+    }
+
+    private bool IsImageFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLower();
+        return extension == ".png" || extension == ".jpg" || extension == ".jpeg";
+    }
+
+    // Helper class for uploaded images
+    public class UploadedImage
+    {
+        public string Filename { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public long FileSize { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
