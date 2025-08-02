@@ -27,7 +27,7 @@ public class ActivityPubNote
     public List<object> Attachment { get; set; } = new List<object>();
 
     [JsonPropertyName("vocalcat:badgeAssertion")]
-    public BadgeRecord BadgeMetadata { get; set; }
+    public BadgeRecord? BadgeMetadata { get; set; }
 
     [JsonPropertyName("openbadges:assertion")]
     public object OpenBadge { get; set; }

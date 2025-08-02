@@ -121,14 +121,26 @@ namespace BadgeFed.Services
                 }
 
                 // Use the existing FollowService to follow the server's actor
-                var result = await _followService.FollowIssuer(actor, server.Actor);
+                var followedActor = await _followService.FollowIssuer(actor, server.Actor);
                 
-                if (result != null)
+                if (followedActor != null)
                 {
                     // Update the server as followed
                     server.IsFollowed = true;
                     server.FollowedAt = DateTime.UtcNow;
+
                     UpsertDiscoveredServer(server);
+
+                    var issuer = new FollowedIssuer
+                    {
+                        Name = followedActor.Name, 
+                        Url = server.Actor,
+                        Inbox = followedActor.Inbox,
+                        Outbox = followedActor.Outbox,
+                        ActorId = actorId,
+                    };
+
+                    _localDbService.UpsertFollowedIssuer(issuer);
                     
                     _logger.LogInformation($"Successfully followed server {server.Name}");
                     return true;

@@ -19,6 +19,6 @@ public class LocalScopedDb : LocalDbService
                 : httpContextAccessor.HttpContext?.Request?.Host.Value + ".db"
           )
     {
-        Console.WriteLine($"Using LocalScopedDb with path: {this.DbPath} for httpContext: {httpContextAccessor.HttpContext?.Request?.Host.Value}");
+        //Console.WriteLine($"Using LocalScopedDb with path: {this.DbPath} for httpContext: {httpContextAccessor.HttpContext?.Request?.Host.Value}");
     }
 }

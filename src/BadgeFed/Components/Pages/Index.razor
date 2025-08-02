@@ -4,7 +4,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject LandingPageCacheService LandingPageCache
 @layout BadgeFed.Components.Layouts.LandingLayout
-@inject LocalDbFactory LocalDbFactory
+@inject LocalScopedDb LocalDbService
 
 @if (!string.IsNullOrEmpty(CustomLandingPageHtmlContent))
 {
@@ -392,47 +392,66 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Get current domain from request
-        var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Host;
+        var db = LocalDbService;
 
-        var db = LocalDbFactory.GetInstance(HttpContextAccessor.HttpContext);
+        var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Value;
 
         if (!string.IsNullOrEmpty(requestHost))
         {
-            // Check if we have a custom landing page for this domain in the cache
-            if (!LandingPageCache.TryGetValue(requestHost, out var cachedHtml))
+            // Load instance description to check landing page configuration
+            InstanceDescriptionData = db.GetInstanceDescription();
+
+            // Handle different landing page types
+            if (InstanceDescriptionData != null)
             {
-                // Try to load custom landing page for this domain from the database
-                InstanceDescriptionData = db.GetInstanceDescription();
-                
-                // If we found a custom page, add it to the cache for future requests
-                if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+                switch (InstanceDescriptionData.LandingPageType)
                 {
-                    LandingPageCache.Set(requestHost, InstanceDescriptionData.CustomLandingPageHtml);
-                    CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
+                    case "custom_html":
+                        if (!string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+                        {
+                            // Check cache first
+                          /*  if (false && !LandingPageCache.TryGetValue($"{requestHost}_custom", out var cachedHtml))
+                            {
+                                LandingPageCache.Set($"{requestHost}_custom", InstanceDescriptionData.CustomLandingPageHtml);
+                                CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
+                            }
+                            else
+                            {
+                            */  //  CustomLandingPageHtmlContent = cachedHtml;
+                            //}
+                            CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
+                            return; // Exit early, don't load default content
+                        }
+                        break;
+                        
+                    case "static_page":
+                        if (!string.IsNullOrEmpty(InstanceDescriptionData.StaticPageFilename))
+                        {
+                            // Redirect to the static page
+                            var staticPageUrl = $"/pages/{InstanceDescriptionData.StaticPageFilename}";
+                            HttpContextAccessor.HttpContext?.Response.Redirect(staticPageUrl);
+                            return;
+                        }
+                        break;
+                        
+                    default: // "default" or any other value
+                        // Continue with normal flow below
+                        break;
                 }
-            }
-            else
-            {
-                // Use the cached version
-                CustomLandingPageHtmlContent = cachedHtml;
             }
         }
         
-        // Only load default content if no custom landing page is available
-        if (string.IsNullOrEmpty(CustomLandingPageHtmlContent))
+        // Load default content for default landing page type
+        try
         {
-            try
-            {
-                Actors = db.GetActors("Featured = TRUE AND IsMain = FALSE");
-                FollowedIssuers = db.GetAllFollowedIssuers(true);
-                
-                HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading data: {ex.Message}");
-            }
+            Actors = db.GetActors("Featured = TRUE AND IsMain = FALSE");
+            FollowedIssuers = db.GetAllFollowedIssuers(true);
+            
+            HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
         }
     }
 }

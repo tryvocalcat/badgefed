@@ -66,6 +66,9 @@ namespace BadgeFed.Models
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
 
+        [System.Text.Json.Serialization.JsonIgnore]
+        public DateTime? BoostedOn { get; set; }
+
         public string Hashtags { get; set; } = "";
 
         [System.Text.Json.Serialization.JsonIgnore]

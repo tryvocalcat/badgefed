@@ -8,14 +8,11 @@ namespace ActivityPubDotNet.Core
     {
         public ILogger? Logger { get; set; }
 
-        private readonly LocalDbFactory _localDbFactory;
-
-        public RepliesService(LocalDbFactory localDbFactory)
+        public RepliesService()
         {
-            _localDbFactory = localDbFactory;
         }
 
-        public Task ProcessReply(ActivityPubNote objectNote)
+        public Task ProcessReply(ActivityPubNote objectNote, LocalDbService localDbService)
         {
             if (objectNote!.InReplyTo == null)
             {
@@ -35,7 +32,6 @@ namespace ActivityPubDotNet.Core
                     return Task.CompletedTask;
                 }
 
-                var localDbService = _localDbFactory.GetInstance(noteUri);
                 var grant = localDbService.GetGrantByNoteId(noteId);
 
                 if (grant == null)

@@ -10,12 +10,20 @@ namespace BadgeFed.Services;
 public class LocalDbService
 {
     private readonly string connectionString;
+    private readonly ILogger<LocalDbService>? _logger;
 
     public readonly string DbPath;
 
-    public LocalDbService(string dbPath)
+    public LocalDbService(string dbPath, ILogger<LocalDbService>? logger = null)
     {
-        Console.WriteLine($"Initializing LocalDbService with path: {dbPath}");
+        _logger = logger;
+        
+        if (string.IsNullOrEmpty(dbPath))
+        {
+            Log(LogLevel.Warning, "DB PATH CANNOT BE EMPTY");
+            dbPath = "default.db";
+        }
+      //  Log(LogLevel.Information, "Initializing LocalDbService with path: {dbPath}", dbPath);
 
         dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
 
@@ -23,6 +31,38 @@ public class LocalDbService
         this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
+    }
+
+    private void Log(LogLevel level, string message, params object[] args)
+    {
+        var structuredArgs = new List<object> { DbPath };
+        structuredArgs.AddRange(args);
+        
+        var messageWithDbPath = "[DbPath: {DbPath}] " + message;
+        
+        if (_logger != null)
+        {
+            _logger.Log(level, messageWithDbPath, structuredArgs.ToArray());
+        }
+        else
+        {
+            // Fallback to Console when logger is not available
+            var formattedMessage = messageWithDbPath;
+            for (int i = 0; i < structuredArgs.Count; i++)
+            {
+                formattedMessage = formattedMessage.Replace($"{{{GetParameterName(i)}}}", structuredArgs[i]?.ToString() ?? "null");
+            }
+            Console.WriteLine($"[{level}] {formattedMessage}");
+        }
+    }
+
+    private string GetParameterName(int index)
+    {
+        return index switch
+        {
+            0 => "DbPath",
+            _ => $"Param{index}"
+        };
     }
 
     public SQLiteConnection GetConnection()
@@ -45,7 +85,7 @@ public class LocalDbService
             command.ExecuteNonQuery();
             connection.Close();
 
-            Console.WriteLine($"Database created at {DbPath}");
+            Log(LogLevel.Information, "Database created at {DatabasePath}", DbPath);
         }
 
         // Apply any pending migrations
@@ -61,22 +101,22 @@ public class LocalDbService
             
             if (pendingMigrations.Any())
             {
-                Console.WriteLine($"Found {pendingMigrations.Count} pending migrations. Applying...");
+                Log(LogLevel.Information, "Found {MigrationCount} pending migrations. Applying...", pendingMigrations.Count);
                 
                 foreach (var migration in pendingMigrations)
                 {
-                    Console.WriteLine($"Applying migration: {migration.Version} - {migration.Name}");
+                    Log(LogLevel.Information, "Applying migration: {Version} - {Name}", migration.Version, migration.Name);
                     var task = migrationService.ApplyMigration(migration);
                     task.Wait(); // Wait for async operation to complete
-                    Console.WriteLine($"Successfully applied migration: {migration.Version}");
+                    Log(LogLevel.Information, "Successfully applied migration: {Version}", migration.Version);
                 }
                 
-                Console.WriteLine("All pending migrations applied successfully.");
+                Log(LogLevel.Information, "All pending migrations applied successfully.");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error applying migrations: {ex.Message}");
+            Log(LogLevel.Error, "Error applying migrations: {ErrorMessage}", ex.Message);
             // Don't throw here to avoid breaking database initialization
         }
     }
@@ -713,7 +753,7 @@ public class LocalDbService
             command.Parameters.AddWithValue("@Id", badge.Id);
         }
 
-        Console.WriteLine($"Saving badge: {badge.Image}");
+        Log(LogLevel.Debug, "Saving badge: {BadgeImage}", badge.Image);
 
         command.Parameters.AddWithValue("@Title", badge.Title);
         command.Parameters.AddWithValue("@Description", badge.Description ?? (object)DBNull.Value);
@@ -806,9 +846,9 @@ public class LocalDbService
             } 
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading badge: {ex.Message}");
-                Console.WriteLine($"Badge data: {ex}");
-                Console.WriteLine($"Badge data: {JsonSerializer.Serialize(reader)}");
+                Log(LogLevel.Error, "Error reading badge: {ErrorMessage}", ex.Message);
+                Log(LogLevel.Debug, "Badge error details: {Exception}", ex);
+                Log(LogLevel.Debug, "Badge reader data: {ReaderData}", JsonSerializer.Serialize(reader));
             }
             
         }
@@ -1186,7 +1226,7 @@ public class ActorStats
         command.CommandText = @"
             SELECT id FROM BadgeRecord WHERE
                 (AcceptKey = '' OR AcceptKey IS NULL) 
-            AND AcceptedOn IS NOT NULL 
+            AND AcceptedOn IS NOT NULL AND IsExternal = FALSE 
             AND (FingerPrint = '' OR FingerPrint IS NULL) ORDER BY IssuedOn ASC LIMIT 1";
 
         using var reader = command.ExecuteReader();
@@ -1259,6 +1299,28 @@ public class ActorStats
 
         command.ExecuteNonQuery();
         transaction.Commit();
+    }
+
+    public void MarkBadgeRecordAsBoosted(long badgeRecordId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE BadgeRecord SET 
+                BoostedOn = @BoostedOn
+            WHERE Id = @Id;
+        ";
+
+        command.Parameters.AddWithValue("@Id", badgeRecordId);
+        command.Parameters.AddWithValue("@BoostedOn", DateTime.UtcNow);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+
+        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers");
     }
 
     public void CreateBadgeRecord(BadgeRecord record)
@@ -1380,6 +1442,7 @@ public class ActorStats
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1394,6 +1457,7 @@ public class ActorStats
 
     public BadgeRecord? GetGrantByNoteId(string noteId)
     {
+        Log(LogLevel.Debug, "GetGrantByNoteId: {NoteId}", noteId);
         BadgeRecord? badgeRecord = null;
 
         using var connection = GetConnection();
@@ -1421,13 +1485,17 @@ public class ActorStats
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                 IsExternal = reader["IsExternal"] == DBNull.Value ? false : reader.GetBoolean(reader.GetOrdinal("IsExternal")),
             };
+
+            break;
         }
+
         return badgeRecord;
     }
 
@@ -1453,6 +1521,7 @@ public class ActorStats
         command.CommandText = @"SELECT * FROM BadgeRecord 
                  WHERE (FingerPrint IS NULL OR FingerPrint = '')
                  AND (AcceptKey IS NULL OR AcceptKey = '')
+                 AND IsExternal = FALSE 
                  AND AcceptedOn IS NOT NULL " +
                  (whereClause.Count > 0 ? " AND " + string.Join(" AND ", whereClause) : "");
 
@@ -1475,6 +1544,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1504,7 +1574,10 @@ public class ActorStats
         command.CommandText = "SELECT * FROM BadgeRecord" + 
             (whereClause.Count > 0 ? " WHERE " + string.Join(" AND ", whereClause) : "");
 
-        Console.WriteLine($"{command.CommandText} - Id = {id}");
+        if (id.HasValue)
+        {
+            Log(LogLevel.Debug, "{CommandText} - Id = {Id}", command.CommandText, id);
+        }
 
         using var reader = command.ExecuteReader();
 
@@ -1525,6 +1598,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1626,6 +1700,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = badge,
@@ -1655,7 +1730,10 @@ public class ActorStats
                 Description = reader["Description"] as string ?? "",
                 Purpose = reader["Purpose"] as string ?? "",
                 ContactInfo = reader["ContactInfo"] as string ?? "",
-                IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled"))
+                CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
+                IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled")),
+                LandingPageType = reader["LandingPageType"] as string ?? "default",
+                StaticPageFilename = reader["StaticPageFilename"] as string ?? ""
             };
         }
 
@@ -1680,8 +1758,8 @@ public class ActorStats
         if (description.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, IsEnabled)
-                VALUES (@Name, @Description, @Purpose, @ContactInfo, @IsEnabled);
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename);
                 SELECT last_insert_rowid();
             ";
         }
@@ -1693,7 +1771,10 @@ public class ActorStats
                     Description = @Description, 
                     Purpose = @Purpose, 
                     ContactInfo = @ContactInfo,
-                    IsEnabled = @IsEnabled
+                    CustomLandingPageHtml = @CustomLandingPageHtml,
+                    IsEnabled = @IsEnabled,
+                    LandingPageType = @LandingPageType,
+                    StaticPageFilename = @StaticPageFilename
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", description.Id);
@@ -1703,7 +1784,10 @@ public class ActorStats
         command.Parameters.AddWithValue("@Description", description.Description);
         command.Parameters.AddWithValue("@Purpose", description.Purpose);
         command.Parameters.AddWithValue("@ContactInfo", description.ContactInfo);
+        command.Parameters.AddWithValue("@CustomLandingPageHtml", description.CustomLandingPageHtml);
         command.Parameters.AddWithValue("@IsEnabled", description.IsEnabled);
+        command.Parameters.AddWithValue("@LandingPageType", description.LandingPageType);
+        command.Parameters.AddWithValue("@StaticPageFilename", description.StaticPageFilename);
 
         if (description.Id == 0)
         {
@@ -2050,5 +2134,127 @@ public class ActorStats
         }
         
         return null;
+    }
+
+    // Static Pages management methods
+    public void UpsertStaticPage(StaticPage page)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        if (page.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO StaticPages (Filename, Title, Description, FileSize, CreatedAt, UpdatedAt)
+                VALUES (@Filename, @Title, @Description, @FileSize, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT(Filename) DO UPDATE SET
+                    Title = @Title,
+                    Description = @Description,
+                    FileSize = @FileSize,
+                    UpdatedAt = CURRENT_TIMESTAMP;
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE StaticPages SET 
+                    Title = @Title, 
+                    Description = @Description, 
+                    FileSize = @FileSize,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", page.Id);
+        }
+
+        command.Parameters.AddWithValue("@Filename", page.Filename);
+        command.Parameters.AddWithValue("@Title", page.Title);
+        command.Parameters.AddWithValue("@Description", page.Description);
+        command.Parameters.AddWithValue("@FileSize", page.FileSize);
+
+        if (page.Id == 0)
+        {
+            var result = command.ExecuteScalar();
+            if (result != null && long.TryParse(result.ToString(), out long newId))
+            {
+                page.Id = (int)newId;
+            }
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public List<StaticPage> GetAllStaticPages()
+    {
+        var pages = new List<StaticPage>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM StaticPages ORDER BY CreatedAt DESC";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            pages.Add(new StaticPage
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Filename = reader.GetString(reader.GetOrdinal("Filename")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.GetString(reader.GetOrdinal("Description")),
+                FileSize = reader.GetInt64(reader.GetOrdinal("FileSize")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            });
+        }
+
+        return pages;
+    }
+
+    public StaticPage? GetStaticPageByFilename(string filename)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM StaticPages WHERE Filename = @Filename";
+        command.Parameters.AddWithValue("@Filename", filename);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new StaticPage
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Filename = reader.GetString(reader.GetOrdinal("Filename")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.GetString(reader.GetOrdinal("Description")),
+                FileSize = reader.GetInt64(reader.GetOrdinal("FileSize")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+        }
+
+        return null;
+    }
+
+    public void DeleteStaticPage(int id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM StaticPages WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
     }
 }

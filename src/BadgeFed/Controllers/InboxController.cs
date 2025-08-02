@@ -14,17 +14,21 @@ namespace BadgeFed.Controllers
         private readonly FollowService _followService;
         private readonly CreateNoteService _createNoteService;
         private readonly BadgeProcessor _badgeProcessor;
+
+        private readonly LocalScopedDb _db;
        
         public InboxController(
             ILogger<InboxController> logger,
             FollowService followService,
             CreateNoteService createNoteService,
-            BadgeProcessor badgeProcessor)
+            BadgeProcessor badgeProcessor,
+            LocalScopedDb db)
         {
             _logger = logger;
             _followService = followService;
             _createNoteService = createNoteService;
             _badgeProcessor = badgeProcessor;
+            _db = db;
         }
 
         [HttpPost]
@@ -57,7 +61,7 @@ namespace BadgeFed.Controllers
                 if (message.IsFollow())
                 {
                     _logger?.LogInformation($"Follow action for actor: {message.Actor}");
-                    await _followService.AcceptFollowRequest(message);
+                    await _followService.AcceptFollowRequest(message, _db);
                 }
                 else if (message.IsUndoFollow())
                 {
@@ -67,7 +71,7 @@ namespace BadgeFed.Controllers
                 else if (message.IsCreateActivity())
                 {
                     _logger?.LogInformation($"Create action for actor: {message.Actor}");
-                    var result = await _createNoteService.ProcessMessage(message);
+                    var result = await _createNoteService.ProcessMessage(message, _db);
                     _logger?.LogInformation($"Create action result: {result.Type}");
 
                     switch (result.Type)
@@ -104,7 +108,8 @@ namespace BadgeFed.Controllers
                 else if (message.IsAnnounce())
                 {
                     _logger?.LogInformation($"Announce action for actor: {message.Actor}");
-                    var result = await _createNoteService.ProcessAnnounce(message);
+                    var mainActor = _db.GetMainActor();
+                    var result = await _createNoteService.ProcessAnnounce(message, mainActor, _db);
                     _logger?.LogInformation($"Announce action result: {result.Type}");
 
                     switch (result.Type)

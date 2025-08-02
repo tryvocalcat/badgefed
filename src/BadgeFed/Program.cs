@@ -136,8 +136,8 @@ if (googleConfig != null)
          }, localDbFactory);
 }
 
-//builder.Services.AddHostedService<JobExecutor>();
-//builder.Services.AddScoped<JobProcessor>();
+builder.Services.AddHostedService<JobExecutor>();
+builder.Services.AddScoped<JobProcessor>();
 
 // Configure EmailSettings from appsettings.json
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));

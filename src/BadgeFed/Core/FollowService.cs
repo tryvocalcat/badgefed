@@ -9,19 +9,16 @@ namespace ActivityPubDotNet.Core
     {
         public ILogger? Logger { get; set; }
 
-        private readonly LocalDbFactory localDbFactory;
-
-        public FollowService(LocalDbFactory localDbFactory)
+        public FollowService()
         {
-            this.localDbFactory = localDbFactory;
         }
 
-        public async Task AcceptFollowRequest(InboxMessage message)
+        public async Task AcceptFollowRequest(InboxMessage message, LocalScopedDb db)
         {
             Logger?.LogInformation($"Follow action from actor: {message.Actor}");
             
-            await CreateFollower(message);
-            await SendAcceptedFollowRequest(message);
+            await CreateFollower(message, db);
+            await SendAcceptedFollowRequest(message, db);
         }
         
         public async Task<ActivityPubActor?> FollowIssuer(Actor fromIssuer, string issuerToFollowUri)
@@ -73,11 +70,10 @@ namespace ActivityPubDotNet.Core
             }
         }
 
-        public async Task CreateFollower(InboxMessage message)
+        public async Task CreateFollower(InboxMessage message, LocalScopedDb db)
         {
             Logger?.LogInformation($"Follow request from: {message.Actor} to {message.Object}");
 
-            var db = localDbFactory.GetInstance(new Uri(message.Object?.ToString() ?? string.Empty));
             var actor = db.GetActorByFilter($"Uri = \"{message.Object}\"")!;
 
             if (actor == null)
@@ -140,12 +136,11 @@ namespace ActivityPubDotNet.Core
             return Task.CompletedTask;
         }
 
-        public async Task<AcceptRequest> SendAcceptedFollowRequest(InboxMessage message)
+        public async Task<AcceptRequest> SendAcceptedFollowRequest(InboxMessage message, LocalScopedDb db)
         {
             // Target is the account to be followed
             var target = message.Object!.ToString();
 
-            var db = localDbFactory.GetInstance(new Uri(target));
             var actor = db.GetActorByFilter($"Uri = \"{target}\"")!;
 
             var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);

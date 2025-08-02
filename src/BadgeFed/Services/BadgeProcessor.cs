@@ -39,6 +39,8 @@ public class BadgeProcessor
 
     public async Task<BadgeRecord?> NotifyGrantAcceptLink(long recordId)
     {
+        Console.WriteLine($"NotifyGrantAcceptLink {recordId}");
+
         var record = GetBadgeRecord(recordId);
 
         if (record == null)
@@ -51,8 +53,7 @@ public class BadgeProcessor
         try {
             await NotifyNote(note, record);
         } catch (Exception e) {
-            Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
-            Console.WriteLine(e.Message);
+            Console.WriteLine($"ERROR Failed to send note to {record.IssuedToSubjectUri} - {e.Message}");
         }
         
          _localDbService.NotifyGrant(record.Id);
@@ -62,6 +63,8 @@ public class BadgeProcessor
 
     public async Task<BadgeRecord?> NotifyProcessedGrant(long recordId)
     {
+        Console.WriteLine($"NotifyProcessedGrant {recordId}");
+
         var record = GetBadgeRecord(recordId);
 
         if (record == null)
@@ -74,8 +77,7 @@ public class BadgeProcessor
         try {
             await NotifyNote(note, record);
         } catch (Exception e) {
-            Console.WriteLine($"Failed to send note to {record.IssuedToSubjectUri}");
-            Console.WriteLine(e.Message);
+            Console.WriteLine($"ERROR Failed to send note to {record.IssuedToSubjectUri} - {e.Message}");
         }
 
         return record;
@@ -148,7 +150,17 @@ public class BadgeProcessor
 
         var record = records.FirstOrDefault()!;
        
+        Console.WriteLine($"Processing badge record: {System.Text.Json.JsonSerializer.Serialize(record)}");
+
         var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
+
+        Console.WriteLine($"Badge definition: {System.Text.Json.JsonSerializer.Serialize(badge)}");
+
+        if (badge == null)
+        {
+            Console.WriteLine($"WARNING: Badge definition not found for ID: {record.Badge.Id}");
+            return null;
+        }
 
         var actor = _localDbService.GetActorById(badge.IssuedBy);
 
@@ -172,6 +184,17 @@ public class BadgeProcessor
     }
 
     public async Task AnnounceGrantByMainActor(BadgeRecord record)
+    {
+        Console.WriteLine($"Is record boosted? {record.Id} -> {record.BoostedOn}");
+
+        if (record.BoostedOn == null)
+        {
+           await _AnnounceGrantByMainActor(record);
+            _localDbService.MarkBadgeRecordAsBoosted(record.Id);
+        }
+    }
+
+    private async Task _AnnounceGrantByMainActor(BadgeRecord record)
     {
         try
         {
@@ -217,7 +240,7 @@ public class BadgeProcessor
 
             var serializedAnnouncement = JsonSerializer.Serialize(announceActivity, options);
 
-            Console.WriteLine($"Boosting badge grant: {originalNoteId}");
+            Console.WriteLine($"Boosting badge grant: {originalNoteId} by {mainActor.Uri}");
 
             await NotifyFollowersOfNote(serializedAnnouncement, mainActor);
         }
@@ -229,6 +252,7 @@ public class BadgeProcessor
 
     private async Task NotifyFollowersOfNote(string serializedActivityPubObject, Actor actor)
     {
+        Console.WriteLine($"NotifyFollowersOfNote {actor.Id}");
         var followers = _localDbService.GetFollowersByActorId(actor.Id);
 
         var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
@@ -245,7 +269,7 @@ public class BadgeProcessor
                 var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
 
                 Console.WriteLine($"Follower: {follower.FollowerUri}");
-                Console.WriteLine($"Inbox: {System.Text.Json.JsonSerializer.Serialize(fediverseInfo)}");
+                // Console.WriteLine($"Inbox: {System.Text.Json.JsonSerializer.Serialize(fediverseInfo)}");
 
                 var endpointUri = fediverseInfo.Endpoints?.SharedInbox ?? fediverseInfo.Inbox;
 
@@ -263,10 +287,11 @@ public class BadgeProcessor
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Failed to send note to {follower.FollowerUri}");
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"ERROR Failed to send note to {follower.FollowerUri} - {e.Message}");
             }
         }
+        
+
     }
 
     public async Task<BadgeRecord?> BroadcastGrant(long recordId)
@@ -304,6 +329,7 @@ public class BadgeProcessor
 
         await AnnounceGrantByMainActor(record);
 
+        // Mark the badge record as boosted after all notifications are complete
         return record;
     }
 }

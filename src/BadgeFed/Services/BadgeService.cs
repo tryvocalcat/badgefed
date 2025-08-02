@@ -90,10 +90,18 @@ public class BadgeService
     {
         var note = NotesService.GetBadgeNote(record);
 
-        var openbadge = _openBadgeService.GetOpenBadgeObject(record);
+        try
+        {
+            var openbadge = _openBadgeService.GetOpenBadgeObject(record);
 
+            note.Attachment.Add(openbadge); // this is ActivityPub + OpenBadge
+        } catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR: Creating OpenBadge object: {ex.Message}");
+        }
+        
         note.BadgeMetadata = record;
-        note.Attachment.Add(openbadge); // this is ActivityPub + OpenBadge
+        note.Attachment.Add(record); // this is the BadgeRecord itself
 
         return note;
     }
