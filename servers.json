@@ -38,5 +38,14 @@
         "categories": ["Event", "Community", "Fediverse", "Conference"],
         "admin": "FediCon Organizers",
         "actor": "https://badges.fedicon.ca/actors/badges.fedicon.ca/admin"
+    },
+    {
+        "name": "Community Credentials",
+        "url": "https://communitycredentials.org/",
+        "description": "Empowering organizations with verifiable credentials to recognize achievements and contributions.",
+        "categories": ["Organization", "OpenBadges", "Commercial", "Nonprofits"],
+        "admin": "Community Credentials",
+        "actor": "https://communitycredentials.org/view/actor/communitycredentials.org/issuer"
     }
 ]
+
