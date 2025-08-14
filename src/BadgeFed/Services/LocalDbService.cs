@@ -2257,4 +2257,146 @@ public class ActorStats
 
         command.ExecuteNonQuery();
     }
+
+    // Registration methods
+    public async Task<int> CreateRegistrationAsync(Registration registration)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO Registrations (FormData, Email, Name, IpAddress, UserAgent, SubmittedAt, IsReviewed, IsApproved)
+            VALUES (@FormData, @Email, @Name, @IpAddress, @UserAgent, @SubmittedAt, @IsReviewed, @IsApproved);
+            SELECT last_insert_rowid();";
+
+        command.Parameters.AddWithValue("@FormData", registration.FormData);
+        command.Parameters.AddWithValue("@Email", registration.Email ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Name", registration.Name ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IpAddress", registration.IpAddress);
+        command.Parameters.AddWithValue("@UserAgent", registration.UserAgent);
+        command.Parameters.AddWithValue("@SubmittedAt", registration.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+        command.Parameters.AddWithValue("@IsReviewed", registration.IsReviewed);
+        command.Parameters.AddWithValue("@IsApproved", registration.IsApproved);
+
+        var result = await command.ExecuteScalarAsync();
+        return Convert.ToInt32(result);
+    }
+
+    public async Task<List<Registration>> GetRegistrationsAsync(bool? reviewed = null, bool? approved = null)
+    {
+        var registrations = new List<Registration>();
+
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        var sql = "SELECT * FROM Registrations";
+        var conditions = new List<string>();
+
+        if (reviewed.HasValue)
+        {
+            conditions.Add("IsReviewed = @IsReviewed");
+        }
+
+        if (approved.HasValue)
+        {
+            conditions.Add("IsApproved = @IsApproved");
+        }
+
+        if (conditions.Any())
+        {
+            sql += " WHERE " + string.Join(" AND ", conditions);
+        }
+
+        sql += " ORDER BY SubmittedAt DESC";
+
+        command.CommandText = sql;
+
+        if (reviewed.HasValue)
+        {
+            command.Parameters.AddWithValue("@IsReviewed", reviewed.Value);
+        }
+
+        if (approved.HasValue)
+        {
+            command.Parameters.AddWithValue("@IsApproved", approved.Value);
+        }
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            registrations.Add(new Registration
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                FormData = reader.GetString(reader.GetOrdinal("FormData")),
+                Email = reader.IsDBNull(reader.GetOrdinal("Email")) ? null : reader.GetString(reader.GetOrdinal("Email")),
+                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? null : reader.GetString(reader.GetOrdinal("Name")),
+                IpAddress = reader.GetString(reader.GetOrdinal("IpAddress")),
+                UserAgent = reader.GetString(reader.GetOrdinal("UserAgent")),
+                SubmittedAt = reader.GetDateTime(reader.GetOrdinal("SubmittedAt")),
+                IsReviewed = reader.GetBoolean(reader.GetOrdinal("IsReviewed")),
+                IsApproved = reader.GetBoolean(reader.GetOrdinal("IsApproved")),
+                ReviewNotes = reader.IsDBNull(reader.GetOrdinal("ReviewNotes")) ? null : reader.GetString(reader.GetOrdinal("ReviewNotes")),
+                ReviewedAt = reader.IsDBNull(reader.GetOrdinal("ReviewedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("ReviewedAt")),
+                ReviewedBy = reader.IsDBNull(reader.GetOrdinal("ReviewedBy")) ? null : reader.GetString(reader.GetOrdinal("ReviewedBy"))
+            });
+        }
+
+        return registrations;
+    }
+
+    public async Task<Registration?> GetRegistrationByIdAsync(int id)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Registrations WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            return new Registration
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                FormData = reader.GetString(reader.GetOrdinal("FormData")),
+                Email = reader.IsDBNull(reader.GetOrdinal("Email")) ? null : reader.GetString(reader.GetOrdinal("Email")),
+                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? null : reader.GetString(reader.GetOrdinal("Name")),
+                IpAddress = reader.GetString(reader.GetOrdinal("IpAddress")),
+                UserAgent = reader.GetString(reader.GetOrdinal("UserAgent")),
+                SubmittedAt = reader.GetDateTime(reader.GetOrdinal("SubmittedAt")),
+                IsReviewed = reader.GetBoolean(reader.GetOrdinal("IsReviewed")),
+                IsApproved = reader.GetBoolean(reader.GetOrdinal("IsApproved")),
+                ReviewNotes = reader.IsDBNull(reader.GetOrdinal("ReviewNotes")) ? null : reader.GetString(reader.GetOrdinal("ReviewNotes")),
+                ReviewedAt = reader.IsDBNull(reader.GetOrdinal("ReviewedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("ReviewedAt")),
+                ReviewedBy = reader.IsDBNull(reader.GetOrdinal("ReviewedBy")) ? null : reader.GetString(reader.GetOrdinal("ReviewedBy"))
+            };
+        }
+
+        return null;
+    }
+
+    public async Task<bool> ReviewRegistrationAsync(int id, bool approved, string? notes = null, string? reviewedBy = null)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE Registrations 
+            SET IsReviewed = 1, IsApproved = @IsApproved, ReviewNotes = @ReviewNotes, 
+                ReviewedAt = @ReviewedAt, ReviewedBy = @ReviewedBy
+            WHERE Id = @Id";
+
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@IsApproved", approved);
+        command.Parameters.AddWithValue("@ReviewNotes", notes ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ReviewedAt", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+        command.Parameters.AddWithValue("@ReviewedBy", reviewedBy ?? (object)DBNull.Value);
+
+        var rowsAffected = await command.ExecuteNonQueryAsync();
+        return rowsAffected > 0;
+    }
 }

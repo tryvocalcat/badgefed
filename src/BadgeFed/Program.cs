@@ -90,6 +90,8 @@ builder.Services.AddScoped<BadgeService>();
 
 builder.Services.AddScoped<InvitationService>();
 
+builder.Services.AddScoped<RegistrationService>();
+
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
 var googleConfig = builder.Configuration.GetSection("GoogleConfig").Get<GoogleConfig>();

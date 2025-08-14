@@ -44,7 +44,7 @@ namespace BadgeFed.Controllers
                 Following = $"{baseUrlId}/following",
                 Followers = $"{baseUrlId}/followers",
                 Inbox = $"https://{domain}/inbox",
-                Outbox = $"https://{domain}/outbox",
+                Outbox = $"{baseUrlId}/outbox",
                 PreferredUsername = actorName,
                 Name = actor.FullName,
                 Summary = actor.Summary,

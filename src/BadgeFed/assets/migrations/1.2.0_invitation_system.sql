@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS Invitations (
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     expiresAt DATETIME NOT NULL,
     acceptedBy TEXT NULL,
-    acceptedAt DATETIME NULL,
+    acceptedAt DATETIME NULL,   
     isActive BOOLEAN DEFAULT TRUE,
     role TEXT NOT NULL DEFAULT 'manager',
     notes TEXT NULL,

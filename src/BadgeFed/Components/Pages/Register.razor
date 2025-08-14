@@ -1,25 +1,306 @@
 @page "/register"
+@inject RegistrationService RegistrationService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
-<div class="coming-soon">
-    <div class="content">
-        <h1 class="title">Join BadgeFed</h1>
-        <p class="subtitle">
-            The decentralized badge platform for communities
-        </p>
+<div class="container">
+    <section class="section">
+        <div class="columns is-centered">
+            <div class="column is-12">
+                <div class="box">
+                    @if (isSubmitted && submission?.IsValid == true)
+                    {
+                        <div class="notification is-success">
+                            <h2 class="title is-4">Registration Submitted Successfully!</h2>
+                            <p>Thank you for your registration. We'll review your application and get back to you soon.</p>
+                            <a href="/" class="button is-primary mt-4">Return to Homepage</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="content has-text-centered mb-5">
+                            <h1 class="title is-3 has-text-primary">@formConfig.Title</h1>
+                            <p class="subtitle is-5 has-text-grey-dark">@formConfig.Description</p>
+                        </div>
 
-        <div class="invite-box text-center">
-            <h2 class="invite-title">Beta Coming Soon</h2>
-            <p>
-            BadgeFed is currently in private beta. Access is granted by invitation only.
-            We'll be opening up more invitations soon!
-            </p>
+                        @if (submission?.ValidationErrors.Any() == true)
+                        {
+                            <div class="notification is-danger">
+                                <h3 class="title is-5">Please correct the following errors:</h3>
+                                <ul>
+                                    @foreach (var error in submission.ValidationErrors)
+                                    {
+                                        <li>@error</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                        <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+                            @foreach (var field in formConfig.Fields)
+                            {
+                                <div class="field">
+                                    <label class="label">
+                                        @field.Label
+                                        @if (field.Required)
+                                        {
+                                            <span class="has-text-danger">*</span>
+                                        }
+                                    </label>
+                                    
+                                    <div class="control">
+                                        @switch (field.Type)
+                                        {
+                                            case "text":
+                                            case "email":
+                                                <input class="input @(IsFieldInError(field.Name) ? "is-danger" : "")" 
+                                                       type="@field.Type" 
+                                                       name="@field.Name"
+                                                       placeholder="@(field.Placeholder ?? "")"
+                                                       value="@GetFieldValue(field.Name)"
+                                                       maxlength="@field.MaxLength"
+                                                       @onchange="@(e => SetFieldValue(field.Name, e.Value?.ToString()))" />
+                                                break;
+
+                                            case "url":
+                                                <input class="input @(IsFieldInError(field.Name) ? "is-danger" : "")" 
+                                                       type="url" 
+                                                       name="@field.Name"
+                                                       placeholder="@(field.Placeholder ?? "https://example.com")"
+                                                       value="@GetFieldValue(field.Name)"
+                                                       maxlength="@field.MaxLength"
+                                                       @onchange="@(e => SetFieldValue(field.Name, e.Value?.ToString()))" />
+                                                break;
+
+                                            case "textarea":
+                                                <textarea class="textarea @(IsFieldInError(field.Name) ? "is-danger" : "")" 
+                                                          name="@field.Name"
+                                                          placeholder="@(field.Placeholder ?? "")"
+                                                          maxlength="@field.MaxLength"
+                                                          rows="@(field.Rows ?? 3)"
+                                                          @onchange="@(e => SetFieldValue(field.Name, e.Value?.ToString()))">@GetFieldValue(field.Name)</textarea>
+                                                break;
+
+                                            case "checkbox":
+                                                <label class="checkbox">
+                                                    <input type="checkbox" 
+                                                           name="@field.Name"
+                                                           checked="@(GetFieldValue(field.Name) == "true")"
+                                                           @onchange="@(e => SetFieldValue(field.Name, ((bool?)e.Value)?.ToString().ToLowerInvariant()))" />
+                                                    @field.Label
+                                                </label>
+                                                break;
+
+                                            case "checkboxGroup":
+                                                @if (field.Options != null)
+                                                {
+                                                    <div class="field is-grouped is-grouped-multiline">
+                                                        @foreach (var option in field.Options)
+                                                        {
+                                                            <div class="control">
+                                                                <label class="checkbox">
+                                                                    <input type="checkbox" 
+                                                                           name="@field.Name"
+                                                                           value="@option.Value"
+                                                                           checked="@(IsOptionSelected(field.Name, option.Value))"
+                                                                           @onchange="@(e => HandleCheckboxGroupChange(field.Name, option.Value, (bool?)e.Value ?? false))" />
+                                                                    @option.Label
+                                                                </label>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                break;
+
+                                            case "select":
+                                                <div class="select is-fullwidth @(IsFieldInError(field.Name) ? "is-danger" : "")">
+                                                    <select name="@field.Name"
+                                                            value="@GetFieldValue(field.Name)"
+                                                            @onchange="@(e => SetFieldValue(field.Name, e.Value?.ToString()))">
+                                                        <option value="">Please select...</option>
+                                                        @if (field.Options != null)
+                                                        {
+                                                            @foreach (var option in field.Options)
+                                                            {
+                                                                <option value="@option.Value">@option.Label</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </div>
+                                                break;
+                                        }
+                                    </div>
+                                    
+                                    @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                    {
+                                        <p class="help">@field.HelpText</p>
+                                    }
+                                </div>
+                            }
+
+                            <div class="field is-grouped">
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-large" disabled="@isSubmitting">
+                                        @if (isSubmitting)
+                                        {
+                                            <span class="icon">
+                                                <i class="fas fa-spinner fa-pulse"></i>
+                                            </span>
+                                            <span>Submitting...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@formConfig.SubmitButtonText</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
         </div>
-        
-    <div class="follow-updates mt-4">
-        <p>
-            Meanwhile, follow our updates at 
-            <a href="https://badgefed.vocalcat.com" target="_blank" rel="noopener">badgefed.vocalcat.com</a>
-        </p>
-    </div>
-    </div>
+    </section>
 </div>
+
+@code {
+    private FormConfiguration formConfig = new();
+    private Dictionary<string, object> formData = new();
+    private FormSubmission? submission;
+    private bool isSubmitting = false;
+    private bool isSubmitted = false;
+
+    protected override void OnInitialized()
+    {
+        formConfig = RegistrationService.GetFormConfiguration();
+        
+        // Initialize form data with default values
+        foreach (var field in formConfig.Fields)
+        {
+            if (!string.IsNullOrWhiteSpace(field.DefaultValue))
+            {
+                formData[field.Name] = field.DefaultValue;
+            }
+            else
+            {
+                formData[field.Name] = field.Type switch
+                {
+                    "checkbox" => "false",
+                    "checkboxGroup" => "",
+                    _ => ""
+                };
+            }
+        }
+    }
+
+    private string GetFieldValue(string fieldName)
+    {
+        return formData.ContainsKey(fieldName) ? formData[fieldName]?.ToString() ?? "" : "";
+    }
+
+    private void SetFieldValue(string fieldName, string? value)
+    {
+        formData[fieldName] = value ?? "";
+    }
+
+    private bool IsFieldInError(string fieldName)
+    {
+        return submission?.ValidationErrors.Any(e => e.Contains(GetFieldLabel(fieldName))) == true;
+    }
+
+    private string GetFieldLabel(string fieldName)
+    {
+        return formConfig.Fields.FirstOrDefault(f => f.Name == fieldName)?.Label ?? fieldName;
+    }
+
+    private bool IsOptionSelected(string fieldName, string optionValue)
+    {
+        var fieldValue = GetFieldValue(fieldName);
+        if (string.IsNullOrEmpty(fieldValue))
+            return false;
+        
+        var selectedValues = fieldValue.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        return selectedValues.Contains(optionValue);
+    }
+
+    private void HandleCheckboxGroupChange(string fieldName, string optionValue, bool isChecked)
+    {
+        var currentValue = GetFieldValue(fieldName);
+        var selectedValues = string.IsNullOrEmpty(currentValue) 
+            ? new List<string>() 
+            : currentValue.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        if (isChecked && !selectedValues.Contains(optionValue))
+        {
+            selectedValues.Add(optionValue);
+        }
+        else if (!isChecked && selectedValues.Contains(optionValue))
+        {
+            selectedValues.Remove(optionValue);
+        }
+
+        SetFieldValue(fieldName, string.Join(",", selectedValues));
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (isSubmitting) return;
+
+        isSubmitting = true;
+        submission = RegistrationService.ValidateSubmission(formData, formConfig);
+
+        if (submission.IsValid)
+        {
+            try
+            {
+                // Get client information
+                var ipAddress = await JSRuntime.InvokeAsync<string>("eval", "location.hostname");
+                var userAgent = await JSRuntime.InvokeAsync<string>("eval", "navigator.userAgent");
+
+                await RegistrationService.SaveRegistrationAsync(submission, ipAddress, userAgent);
+                isSubmitted = true;
+            }
+            catch (Exception ex)
+            {
+                submission.ValidationErrors.Add("An error occurred while submitting your registration. Please try again.");
+                Console.WriteLine($"Registration submission error: {ex.Message}");
+            }
+        }
+
+        isSubmitting = false;
+        StateHasChanged();
+    }
+}
+
+<style>
+    .field {
+        margin-bottom: 1.5rem;
+    }
+    
+    .checkbox input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+    
+    .help {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .is-danger {
+        border-color: #f56565 !important;
+    }
+    
+    .textarea {
+        resize: vertical;
+        min-height: 120px;
+    }
+    
+    .field.is-grouped.is-grouped-multiline .control {
+        margin-bottom: 0.5rem;
+    }
+    
+    .field.is-grouped.is-grouped-multiline .control:not(:last-child) {
+        margin-right: 1rem;
+    }
+</style>

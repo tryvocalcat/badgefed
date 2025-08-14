@@ -387,7 +387,7 @@ else
 @code {
     private List<Actor> Actors { get; set; }
     private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
-    private InstanceDescription InstanceDescriptionData { get; set; }
+    private InstanceDescription? InstanceDescriptionData { get; set; } = null;
     private string CustomLandingPageHtmlContent { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -398,8 +398,14 @@ else
 
         if (!string.IsNullOrEmpty(requestHost))
         {
-            // Load instance description to check landing page configuration
-            InstanceDescriptionData = db.GetInstanceDescription();
+            try {
+                // Load instance description to check landing page configuration
+                InstanceDescriptionData = db.GetInstanceDescription();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading instance description: {ex.Message}");
+            }
 
             // Handle different landing page types
             if (InstanceDescriptionData != null)
