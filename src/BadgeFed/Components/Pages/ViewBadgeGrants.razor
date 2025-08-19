@@ -1,0 +1,236 @@
+@page "/view/badge/{badgeId}/grants"
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavManager
+@inject LocalScopedDb DbService
+@inject IWebHostEnvironment Environment
+
+
+@if (!string.IsNullOrEmpty(GetThemeCssPath()))
+{
+    <link rel="stylesheet" href="@GetThemeCssPath()" />
+}
+
+@if (isLoading)
+{
+        <div class="container has-text-centered">
+            <div class="loader is-loading"></div>
+            <p class="is-size-5 mt-3">Loading badge grants...</p>
+        </div>
+}
+else if (badge == null)
+{
+        <div class="container">
+            <div class="notification is-warning">
+                <p class="has-text-centered">Badge not found.</p>
+            </div>
+        </div>
+}
+else
+{
+    <h1 class="title is-4 is-5-mobile">@badge.Title Recipients</h1>
+            <!-- Badge Header -->
+            <div class="box">
+                <div class="media">
+                    <div class="media-left">
+                        <figure class="image is-96x96">
+                            <img src="@badge.Image" alt="@badge.ImageAltText" class="is-rounded">
+                        </figure>
+                    </div>
+                    <div class="media-content">
+                        
+                        <h2 class="subtitle is-4 is-5-mobile">@badge.Title</h2>
+                        <p class="subtitle is-6 is-7-mobile">@badge.Description</p>
+                        <div class="tags">
+                            <span class="tag is-info">@badge.BadgeType</span>
+                            @if (!string.IsNullOrEmpty(badge.Hashtags))
+                            {
+                                @foreach (var hashtag in badge.HashtagsList)
+                                {
+                                    <span class="tag is-light">#@hashtag</span>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="media-right has-text-centered">
+                        <p class="heading">Issued by</p>
+                        @if (!string.IsNullOrEmpty(actor?.AvatarPath))
+                        {
+                            <figure class="image is-48x48 mx-auto">
+                                <img class="is-rounded" src="@actor.AvatarPath" alt="@actor.FullName" />
+                            </figure>
+                        }
+                        <p class="title is-6 mt-2">@actor?.FullName</p>
+                        <a href="/view/actor/@actor?.Domain/@actor?.Username" class="button is-small is-outlined">View Issuer</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="columns is-mobile is-multiline has-text-centered">
+                <div class="column is-4-mobile">
+                    <p class="title is-5">@publicGrants.Count</p>
+                    <p class="subtitle is-7">Public Recipients</p>
+                </div>
+                @if (privateGrantsCount > 0)
+                {
+                    <div class="column is-4-mobile">
+                        <p class="title is-5">@privateGrantsCount</p>
+                        <p class="subtitle is-7">Private Recipients</p>
+                    </div>
+                }
+                <div class="column is-4-mobile">
+                    <p class="title is-5">@(publicGrants.Count + privateGrantsCount)</p>
+                    <p class="subtitle is-7">Total Recipients</p>
+                </div>
+            </div>
+
+            @if (privateGrantsCount > 0)
+            {
+                <div class="notification is-light">
+                    <span class="icon"><i class="fas fa-lock"></i></span>
+                    <strong>@privateGrantsCount private recipients</strong> are not publicly visible.
+                </div>
+            }
+
+            @if (publicGrants.Any())
+            {
+                <h2 class="title is-4 mb-4">Recipients (@publicGrants.Count)</h2>
+                
+                <div class="columns is-multiline">
+                    @foreach (var grant in publicGrants)
+                    {
+                        <div class="column is-4-desktop is-6-tablet is-12-mobile">
+                            <div class="box h-100">
+                                <div class="media is-flex-wrap-wrap">
+                                    <div class="media-left">
+                                        <div class="is-rounded has-text-weight-bold has-text-white 
+                                                    is-flex is-justify-content-center is-align-items-center"
+                                             style="width:40px;height:40px;
+                                                    background:linear-gradient(45deg,#667eea,#764ba2);
+                                                    font-size:0.8rem;">
+                                            @GetRecipientInitials(grant.IssuedToName)
+                                        </div>
+                                    </div>
+                                    <div class="media-content is-clipped">
+                                        <p class="title is-6">@grant.IssuedToName</p>
+                                        <p class="subtitle is-7 mb-2">
+                                            <span class="tag is-light is-small">
+                                                <span class="icon is-small"><i class="fas fa-calendar"></i></span>
+                                                <span>@grant.IssuedOn.ToString("MMM d, yyyy")</span>
+                                            </span>
+                                        </p>
+                                        <div class="buttons are-small is-flex-wrap-wrap">
+                                            @if (!string.IsNullOrEmpty(grant.NoteId))
+                                            {
+                                                <a href="@grant.NoteId" class="button is-outlined is-primary is-small">
+                                                    <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                                                    <span class="is-hidden-mobile">View Grant</span>
+                                                </a>
+                                            }
+                                            @if (!string.IsNullOrEmpty(grant.IssuedToSubjectUri))
+                                            {
+                                                <a href="@grant.IssuedToSubjectUri" 
+                                                   class="button is-outlined is-info is-small">
+                                                    <span class="icon is-small"><i class="fas fa-user"></i></span>
+                                                    <span class="is-hidden-mobile">View Profile</span>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="notification is-info is-light">
+                    <div class="has-text-centered">
+                        <span class="icon is-large"><i class="fas fa-medal fa-2x"></i></span>
+                        <h3 class="title is-5 mt-3">No Public Recipients Yet</h3>
+                        <p class="subtitle is-6">
+                            This badge hasn't been publicly granted to anyone yet, or all grants are marked as private.
+                        </p>
+                    </div>
+                </div>
+            }
+}
+
+@code {
+    [Parameter] public string? BadgeId { get; set; }
+
+    private Badge? badge;
+    private Actor? actor;
+    private List<BadgeRecord> publicGrants = new();
+    private int privateGrantsCount = 0;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
+
+        if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
+        {
+            NavManager.NavigateTo($"/badge/{BadgeId}");
+        }
+
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        if (long.TryParse(BadgeId, out long badgeIdValue))
+        {
+            badge = DbService.GetBadgeDefinitionById(badgeIdValue);
+            
+            if (badge != null)
+            {
+                actor = DbService.GetActorById(badge.IssuedBy);
+                
+                var publicGrantsFilter = new LocalDbService.Filter
+                {
+                    Where = "BadgeId = @BadgeId AND (Visibility = 'Public' OR Visibility IS NULL) AND AcceptedOn IS NOT NULL",
+                    Parameters = new Dictionary<string, object> { { "@BadgeId", badgeIdValue } }
+                };
+                publicGrants = DbService.GetBadgeRecords(publicGrantsFilter, true)
+                    .OrderByDescending(g => g.AcceptedOn ?? g.IssuedOn)
+                    .ToList();
+
+                var privateGrantsFilter = new LocalDbService.Filter
+                {
+                    Where = "BadgeId = @BadgeId AND Visibility = 'Unlisted' AND AcceptedOn IS NOT NULL",
+                    Parameters = new Dictionary<string, object> { { "@BadgeId", badgeIdValue } }
+                };
+                privateGrantsCount = DbService.GetBadgeRecords(privateGrantsFilter, false).Count;
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    private string GetRecipientInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 1)
+            return words[0].Substring(0, Math.Min(2, words[0].Length)).ToUpper();
+        return string.Join("", words.Take(2).Select(w => w[0])).ToUpper();
+    }
+
+    private string TruncateUri(string uri)
+    {
+        if (string.IsNullOrEmpty(uri)) return string.Empty;
+        if (uri.Length <= 50) return uri;
+        return uri.Substring(0, 47) + "...";
+    }
+
+    private string GetThemeCssPath()
+    {
+        if (actor?.Theme == null) return string.Empty;
+        var themePath = $"/css/themes/{actor.Theme}.css";
+        var physicalPath = Path.Combine(Environment.WebRootPath, "css", "themes", $"{actor.Theme}.css");
+        return File.Exists(physicalPath) ? themePath : string.Empty;
+    }
+}

@@ -9,6 +9,11 @@
     overflow: hidden;
 }
 
+.box {
+    background: linear-gradient(135deg, rgb(10, 10, 10) 0%, #1f1b66 100%);
+    color: white;
+}
+
 .issuer-header::before {
     content: '';
     position: absolute;
