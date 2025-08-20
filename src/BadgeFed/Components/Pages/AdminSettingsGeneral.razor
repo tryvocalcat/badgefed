@@ -203,7 +203,24 @@
         }
         try
         {
-            var logoPath = Path.Combine(Environment.WebRootPath, "logo.h.png");
+            string domain;
+            try
+            {
+                var uri = new Uri(NavigationManager.Uri);
+                domain = uri.Host ?? "localhost";
+            }
+            catch
+            {
+                domain = "localhost";
+            }
+            // sanitize to valid filename
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                domain = domain.Replace(c, '_');
+            }
+            var logoFileName = $"logo.{domain}.png";
+            var logoPath = Path.Combine(Environment.WebRootPath, logoFileName);
+            
             using (var stream = SelectedLogoFile.OpenReadStream(5 * 1024 * 1024)) // 5MB max
             using (var fs = File.Create(logoPath))
             {

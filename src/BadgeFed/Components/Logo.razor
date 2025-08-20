@@ -1,0 +1,29 @@
+@inject IHttpContextAccessor HttpContextAccessor
+<a class="navbar-item navbar-logo" href="/">
+    <img src="@logoSrc" style="max-width: 400px" />
+</a>
+@code {
+    private string logoSrc = "/logo.h.png";
+
+    protected override void OnInitialized()
+    {
+        var domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
+        var env = HttpContextAccessor?.HttpContext?.RequestServices?.GetService(typeof(Microsoft.AspNetCore.Hosting.IWebHostEnvironment)) as Microsoft.AspNetCore.Hosting.IWebHostEnvironment;
+
+        if (string.IsNullOrWhiteSpace(domain))
+        {
+            domain = "localhost";
+        }
+
+        foreach (var ch in System.IO.Path.GetInvalidFileNameChars())
+        {
+            domain = domain.Replace(ch, '_');
+        }
+
+        var logoFileName = $"logo.{domain}.png";
+        var webRoot = env?.WebRootPath ?? string.Empty;
+        var logoPath = System.IO.Path.Combine(webRoot, logoFileName);
+
+        logoSrc = System.IO.File.Exists(logoPath) ? $"/{logoFileName}" : "/logo.h.png";
+    }
+}
