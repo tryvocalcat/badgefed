@@ -14,9 +14,12 @@ internal static class LoginLogoutEndpointRouteBuilderExtensions
 
         if (servers?.Any() ?? false)
         {
-            group.MapGet("/login/mastodon", (string? returnUrl) =>
-                TypedResults.Challenge(GetAuthProperties(returnUrl), servers))
-                    .AllowAnonymous();
+            foreach (var server in servers)
+            {
+                group.MapGet($"/login/oauth/{server}", (string? returnUrl) =>
+                    TypedResults.Challenge(GetAuthProperties(returnUrl), new[] { server }))
+                        .AllowAnonymous();
+            }
         }
 
         // Sign out of the Cookie and OIDC handlers. If you do not sign out with the OIDC handler,

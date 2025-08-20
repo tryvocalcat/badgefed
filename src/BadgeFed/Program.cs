@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using BadgeFed.Components;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.StaticFiles;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,6 +97,7 @@ builder.Services.AddScoped<RegistrationService>();
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
 var googleConfig = builder.Configuration.GetSection("GoogleConfig").Get<GoogleConfig>();
 var mastodonConfig = builder.Configuration.GetSection("MastodonConfig").Get<MastodonConfig>();
+var gotoSocialConfig = builder.Configuration.GetSection("GotoSocialConfig").Get<GotoSocialConfig>();
 
 var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(option =>
@@ -105,15 +107,49 @@ var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.Authe
     option.AccessDeniedPath = "/admin/denied";
 });
 
+
 if (mastodonConfig != null)
 {
     auth.AddMastodon(adminConfig, mastodonConfig, o => {
-        o.Scope.Add("read:statuses");
         o.Scope.Add("read:accounts");
+        o.Scope.Add("profile");
         o.ClientId = mastodonConfig.ClientId;
         o.ClientSecret = mastodonConfig.ClientSecret;
         o.SaveTokens = true;
      }, localDbFactory);
+}
+
+if (gotoSocialConfig != null)
+{
+    Console.WriteLine($"GotoSocial configuration found. {System.Text.Json.JsonSerializer.Serialize(gotoSocialConfig)}");
+    // If client id is not configured, attempt to register a new application on the GotoSocial instance
+    if (string.IsNullOrEmpty(gotoSocialConfig.ClientId))
+    {
+        try
+        {
+            Console.WriteLine("GotoSocial client_id not configured, attempting to register application...");
+            var domains = builder.Configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "localhost:5000" };
+            var registration = await RegisterGotoSocialAppAsync(gotoSocialConfig.Server, builder.Environment.ApplicationName ?? "BadgeFed", domains);
+            if (!string.IsNullOrEmpty(registration.clientId))
+            {
+                gotoSocialConfig.ClientId = registration.clientId;
+                gotoSocialConfig.ClientSecret = registration.clientSecret;
+                Console.WriteLine("GotoSocial app registered successfully (client_id set in memory).");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to register GotoSocial app: {ex.Message}");
+        }
+    }
+
+    auth.AddGotoSocial(adminConfig, gotoSocialConfig, o => {
+        o.Scope.Add("read:accounts");
+        o.Scope.Add("profile");
+        o.ClientId = gotoSocialConfig.ClientId;
+        o.ClientSecret = gotoSocialConfig.ClientSecret;
+        o.SaveTokens = true;
+    }, localDbFactory);
 }
 
 if (linkedInConfig != null)
@@ -124,7 +160,7 @@ if (linkedInConfig != null)
             o.ClientSecret = linkedInConfig.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
             o.SaveTokens = true;
-         }, localDbFactory);
+        }, localDbFactory);
 }
 
 if (googleConfig != null)
@@ -188,6 +224,11 @@ if (mastodonConfig != null && !string.IsNullOrEmpty(mastodonConfig.Server))
     loginSchemas.Add(mastodonConfig.Server);
 }
 
+if (gotoSocialConfig != null && !string.IsNullOrEmpty(gotoSocialConfig.Server))
+{
+    loginSchemas.Add(gotoSocialConfig.Server);
+}
+
 app.MapGroup("/admin").MapLoginAndLogout(loginSchemas);
 
 app.Run();
@@ -232,22 +273,202 @@ async Task SetupDefaultActor(IServiceProvider services)
     }
 }
 
+static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppAsync(string hostname, string clientName, IEnumerable<string> siteDomains)
+{
+    if (string.IsNullOrEmpty(hostname)) throw new ArgumentException("Hostname is required", nameof(hostname));
+    var host = hostname.Trim().TrimEnd('/');
+    var url = $"https://{host}/api/v1/apps";
+
+    using var http = new HttpClient();
+
+    var redirectUris = new List<string> { "urn:ietf:wg:oauth:2.0:oob" };
+
+    foreach (var d0 in siteDomains ?? Array.Empty<string>())
+    {
+        if (string.IsNullOrWhiteSpace(d0)) continue;
+        var d = d0.Trim().TrimEnd('/');
+
+        // If a scheme is provided, use it; otherwise default to http for localhost and https otherwise
+        if (d.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || d.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Uri.TryCreate(d, UriKind.Absolute, out var parsed))
+            {
+                d = parsed.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+            }
+        }
+        else
+        {
+            var scheme = d.Contains("localhost") ? "http" : "https";
+            d = $"{scheme}://{d}";
+        }
+
+        // add common callback paths and the provider-specific signin paths
+        redirectUris.Add($"{d}/authentication/oauth/mastodon");
+        redirectUris.Add($"{d}/authentication/oauth/gotosocial");
+        redirectUris.Add($"{d}/signin-mastodon-{host}");
+        redirectUris.Add($"{d}/signin-gotosocial-{host}");
+    }
+
+    var payload = new
+    {
+        client_name = clientName,
+        redirect_uris = string.Join("\n", redirectUris.Distinct()),
+        scopes = "read"
+    };
+
+    Console.WriteLine($"GotoSocial registration request to {url}: {System.Text.Json.JsonSerializer.Serialize(payload)}");
+    
+    var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+    var resp = await http.PostAsync(url, content);
+    resp.EnsureSuccessStatusCode();
+    var body = await resp.Content.ReadAsStringAsync();
+
+    using var doc = JsonDocument.Parse(body);
+    var root = doc.RootElement;
+    var clientId = root.TryGetProperty("client_id", out var cid) ? cid.GetString() : null;
+    var clientSecret = root.TryGetProperty("client_secret", out var cs) ? cs.GetString() : null;
+
+    Console.WriteLine($"GotoSocial registration response: client_id={(clientId ?? "<null>")}, client_secret={(clientSecret != null ? "<hidden>" : "<null>")}");
+
+    return (clientId, clientSecret);
+}
+
 public static class MastodonOAuthExtensions {
     private static readonly HashSet<string> _hosts = new();
 
     public static IEnumerable<string> Hosts => _hosts;
 
+    public static AuthenticationBuilder AddGotoSocial(
+        this AuthenticationBuilder builder,
+        AdminConfig adminConfig,
+        GotoSocialConfig gotoSocialConfig,
+        Action<OAuthOptions> configureOptions,
+        LocalDbFactory localDbFactory)
+    {
+        var hostname = gotoSocialConfig.Server;
+        _hosts.Add(hostname);
+        return builder.AddOAuth(hostname, $"GotoSocial-{hostname}", o =>
+        {
+            if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
+            {
+                throw new ArgumentException("Invalid hostname", nameof(hostname));
+            }
+
+            o.AuthorizationEndpoint = $"https://{hostname}/oauth/authorize";
+            o.TokenEndpoint = $"https://{hostname}/oauth/token";
+            o.UserInformationEndpoint = $"https://{hostname}/api/v1/accounts/verify_credentials";
+            o.CallbackPath = new Microsoft.AspNetCore.Http.PathString($"/signin-gotosocial-{hostname}");
+
+            o.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+            o.ClaimActions.MapJsonKey(ClaimTypes.Name, "username");
+            o.ClaimActions.MapJsonKey($"urn:gotosocial:id", "id");
+            o.ClaimActions.MapJsonKey($"urn:gotosocial:username", "username");
+
+            o.Events = new OAuthEvents
+            {
+                OnCreatingTicket = async context =>
+                {
+                    var localDbService = localDbFactory.GetInstance(context.HttpContext);
+                    var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                    response.EnsureSuccessStatusCode();
+
+                    if (context.Options.SaveTokens)
+                    {
+                        context.Properties.StoreTokens(new[] {
+                            new AuthenticationToken { Name = "access_token", Value = context.AccessToken }
+                        });
+                    }
+
+                    using var user = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    context.RunClaimActions(user.RootElement);
+
+                    var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
+
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a =>
+                        a.Type.Equals("GotoSocial", StringComparison.OrdinalIgnoreCase) &&
+                        a.Id == username) ?? false;
+
+                    Console.WriteLine($"Is admin: {username} {isAdmin}");
+
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
+                        ? context.Properties.Items["invitationCode"]
+                        : null;
+
+                    if (isAdmin)
+                    {
+                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                            new Claim("urn:gotosocial:hostname", hostname),
+                            new Claim(ClaimTypes.Role, "admin")
+                        }));
+                    }
+                    else
+                    {
+                        var userId = $"{hostname}_{username}";
+                        Console.WriteLine($"User ID: {userId}");
+
+                        var registeredUser = localDbService.GetUserById(userId);
+
+                        if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                        {
+                            var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                            var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+
+                            if (invitation != null)
+                            {
+                                registeredUser = new User
+                                {
+                                    Id = userId,
+                                    Email = invitation.Email,
+                                    GivenName = username ?? "User",
+                                    Surname = "",
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "GotoSocial",
+                                    Role = invitation.Role,
+                                    IsActive = true
+                                };
+
+                                invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                            }
+                        }
+
+                        var role = registeredUser != null ? registeredUser.Role : "user";
+
+                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                            new Claim("urn:gotosocial:hostname", hostname),
+                            new Claim(ClaimTypes.Role, role)
+                        }));
+                    }
+                },
+                OnRemoteFailure = context =>
+                {
+                    context.HandleResponse();
+                    context.Response.Redirect("/admin/denied");
+                    return Task.FromResult(0);
+                }
+            };
+
+            configureOptions(o);
+        });
+    }
+
     public static AuthenticationBuilder AddMastodon(
-        this AuthenticationBuilder builder, 
-        AdminConfig adminConfig, 
-        MastodonConfig mastodonConfig, 
+        this AuthenticationBuilder builder,
+        AdminConfig adminConfig,
+        MastodonConfig mastodonConfig,
         Action<OAuthOptions> configureOptions,
         LocalDbFactory localDbFactory)
     {
         var hostname = mastodonConfig.Server;
         _hosts.Add(hostname);
-        return builder.AddOAuth(hostname, hostname, o => {
-            if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown) {
+        return builder.AddOAuth(hostname, hostname, o =>
+        {
+            if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
+            {
                 throw new ArgumentException("Invalid hostname", nameof(hostname));
             }
 
@@ -261,7 +482,8 @@ public static class MastodonOAuthExtensions {
             o.ClaimActions.MapJsonKey($"urn:mastodon:id", "id");
             o.ClaimActions.MapJsonKey($"urn:mastodon:username", "username");
 
-            o.Events = new OAuthEvents {
+            o.Events = new OAuthEvents
+            {
                 OnCreatingTicket = async context =>
                 {
                     var localDbService = localDbFactory.GetInstance(context.HttpContext);
@@ -292,10 +514,10 @@ public static class MastodonOAuthExtensions {
                         a.Id == username) ?? false;
 
                     Console.WriteLine($"Is admin: {username} {isAdmin}");
-                    
+
                     // Check for invitation code
-                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
-                        ? context.Properties.Items["invitationCode"] 
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
+                        ? context.Properties.Items["invitationCode"]
                         : null;
 
                     if (isAdmin)
@@ -311,13 +533,13 @@ public static class MastodonOAuthExtensions {
                         Console.WriteLine($"User ID: {userId}");
 
                         var registeredUser = localDbService.GetUserById(userId);
-                        
+
                         // Handle invitation if provided
                         if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
                         {
                             var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
                             var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
-                            
+
                             if (invitation != null)
                             {
                                 // Create new user from invitation
@@ -332,7 +554,7 @@ public static class MastodonOAuthExtensions {
                                     Role = invitation.Role,
                                     IsActive = true
                                 };
-                                
+
                                 invitationService.AcceptInvitation(invitationCode, registeredUser);
                                 Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
                             }
@@ -346,7 +568,8 @@ public static class MastodonOAuthExtensions {
                         }));
                     }
                 },
-                OnRemoteFailure = context => {
+                OnRemoteFailure = context =>
+                {
                     context.HandleResponse();
                     context.Response.Redirect("/admin/denied");
                     return Task.FromResult(0);
@@ -671,5 +894,12 @@ public class MastodonConfig
 {
     public string ClientId { get; set; }
     public string ClientSecret { get; set; }
+    public string Server { get; set; }
+}
+
+public class GotoSocialConfig
+{
+    public string? ClientId { get; set; }
+    public string? ClientSecret { get; set; }
     public string Server { get; set; }
 }
