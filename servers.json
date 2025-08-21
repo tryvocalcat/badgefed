@@ -46,6 +46,15 @@
         "categories": ["Organization", "OpenBadges", "Commercial", "Nonprofits"],
         "admin": "Community Credentials",
         "actor": "https://communitycredentials.org/view/actor/communitycredentials.org/issuer"
+    },
+    {
+        "name": "Fireside Fedi Badge Server",
+        "url": "https://badges.firesidefedi.live/",
+        "description": "The official badge server for Fireside Fedi, a live podcast show where we sit down with folks from across the Fediverse to get to know them. A relaxing chill time, fully powered by Fediverse-connected tech. Let's stop yelling past each other and put the social back into social media.",
+        "categories": ["Podcast", "Community", "Fediverse", "Media"],
+        "admin": "Fireside Fedi",
+        "actor": "https://badges.firesidefedi.live/actors/badges.firesidefedi.live/admin"
     }
 ]
+
 
