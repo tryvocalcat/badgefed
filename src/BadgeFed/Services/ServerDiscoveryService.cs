@@ -133,11 +133,12 @@ namespace BadgeFed.Services
 
                     var issuer = new FollowedIssuer
                     {
-                        Name = followedActor.Name, 
+                        Name = followedActor.Name,
                         Url = server.Actor,
                         Inbox = followedActor.Inbox,
                         Outbox = followedActor.Outbox,
                         ActorId = actorId,
+                        AvatarUri = followedActor.Icon?.Url ?? string.Empty
                     };
 
                     _localDbService.UpsertFollowedIssuer(issuer);

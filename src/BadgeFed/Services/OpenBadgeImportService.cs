@@ -37,6 +37,22 @@ namespace BadgeFed.Services
 
                 var issuerUrl =  openBadge.Badge.Issuer.Url ?? string.Empty;
 
+
+                // extracting noteId from openBadge.Id is the last part of the url
+                var badgeId = openBadge.Id.Split('/').Last();
+                
+                Console.WriteLine($"Checking if badge record already exists for note ID: {openBadge.Id} / badgeId: {badgeId}");
+
+                var existingLocal = _localDbService.GetGrantByNoteId(badgeId);
+
+                if (existingLocal != null)
+                {
+                    Logger?.LogInformation($"Grant already exists in local database: {existingLocal.Id}");
+                    Console.WriteLine($"Grant already exists in local database: {existingLocal.Id}");
+
+                    return existingLocal;
+                }
+
                 // Convert OpenBadge to BadgeRecord
                 var badgeRecord = new BadgeRecord
                 {

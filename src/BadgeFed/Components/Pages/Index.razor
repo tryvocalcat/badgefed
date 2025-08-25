@@ -297,62 +297,91 @@ else
       </div>
     </section>
 
-        <!-- Badge Issuers Section -->
-        <section class="section">
-            <div class="container">
-                <h3 class="title is-4 has-text-centered">Connected Badge Issuers</h3>
-                <p class="subtitle is-6 has-text-centered mb-5">Part of a growing decentralized ecosystem of badge issuers</p>
-                
-                @if (FollowedIssuers == null)
+       <section class="section">
+    <div class="container">
+        <h3 class="title is-4 has-text-centered">Connected Badge Issuers</h3>
+        <p class="subtitle is-6 has-text-centered mb-5">
+            Part of a growing decentralized ecosystem of badge issuers
+        </p>
+
+        @if (FollowedIssuers == null)
+        {
+            <div class="has-text-centered">
+                <div class="loader is-loading"></div>
+                <p>Loading badge issuers...</p>
+            </div>
+        }
+        else if (!FollowedIssuers.Any())
+        {
+            <div class="notification is-light has-text-centered">
+                Our network is growing! Stay tuned as more badge issuers join the federation.
+            </div>
+        }
+        else
+        {
+            <div class="columns is-multiline is-centered">
+                @foreach (var issuer in FollowedIssuers)
                 {
-                    <div class="has-text-centered">
-                        <div class="loader is-loading"></div>
-                        <p>Loading badge issuers...</p>
-                    </div>
-                }
-                else if (!FollowedIssuers.Any())
-                {
-                    <div class="notification is-light">
-                        <p class="has-text-centered">Our network is growing! Stay tuned as more badge issuers join the federation.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="columns is-multiline is-centered">
-                        @foreach (var issuer in FollowedIssuers)
-                        {
-                            <div class="column is-3">
-                                <div class="card">
-                                    <div class="card-content">
-                                        <div class="content has-text-centered">
-                                            @if (!string.IsNullOrEmpty(issuer.AvatarUri))
-                                            {
-                                                <figure class="image is-64x64 mx-auto mb-3">
-                                                    <img src="@issuer.AvatarUri" alt="@issuer.Name" class="is-rounded">
-                                                </figure>
-                                            }
-                                            <h4 class="title is-5 mb-2">@issuer.Name</h4>
-                                            @if (issuer.TotalIssued.HasValue)
-                                            {
-                                                <div class="has-text-centered" style="margin-top: 1rem;">
-                                                    <p class="subtitle is-6">@issuer.TotalIssued Badges Issued</p>
-                                                </div>
-                                            }
-                                        </div>
+                    var initials = string.Join("", issuer.Name
+                        ?.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(w => w[0])
+                        .Take(2))
+                        .ToUpper();
+
+                    // simple deterministic color palette
+                    string[] colors = { "has-background-primary", "has-background-link", "has-background-info", "has-background-success", "has-background-warning", "has-background-danger" };
+                    var colorClass = colors[Math.Abs(issuer.Id.GetHashCode()) % colors.Length];
+
+                    <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
+                        <div class="card is-flex is-flex-direction-column" style="height:100%;">
+                            <div class="card-content has-text-centered">
+
+                                @if (!string.IsNullOrEmpty(issuer.AvatarUri))
+                                {
+                                    <figure class="image is-96x96 mx-auto mb-3">
+                                        <img src="@issuer.AvatarUri" alt="@issuer.Name" class="is-rounded">
+                                    </figure>
+                                }
+                                else
+                                {
+                                    <div class="@colorClass has-text-white is-rounded mb-3"
+                                         style="width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:0 auto;font-size:1.5rem;font-weight:600;">
+                                        @initials
                                     </div>
-                                    <footer class="card-footer">
-                                        <a href="@issuer.Url" class="card-footer-item">
-                                            <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                                            <span>View Profile</span>
-                                        </a>
-                                    </footer>
-                                </div>
+                                }
+
+                                <h4 class="title is-5 mb-2">@issuer.Name</h4>
+
+                                @if (issuer.TotalIssued.HasValue && issuer.TotalIssued > 0)
+                                {
+                                    <span class="tag is-primary is-rounded mb-2">
+                                        @issuer.TotalIssued @(" Badge" + (issuer.TotalIssued > 1 ? "s" : ""))
+                                    </span>
+                                }
+
+                                @if (!string.IsNullOrEmpty(issuer.Url))
+                                {
+                                    var domain = new Uri(issuer.Url).Host;
+                                    <p class="mt-2">
+                                        <span class="tag is-light is-info">@domain</span>
+                                    </p>
+                                }
                             </div>
-                        }
+
+                            <footer class="card-footer mt-auto">
+                                <a href="@issuer.Url" class="card-footer-item" target="_blank">
+                                    <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                                    <span>View Profile</span>
+                                </a>
+                            </footer>
+                        </div>
                     </div>
                 }
             </div>
-        </section>
+        }
+    </div>
+</section>
+
 
         <!-- Instance Creation Section - subtle -->
         <section class="section has-background-light py-5" id="create-instance">
