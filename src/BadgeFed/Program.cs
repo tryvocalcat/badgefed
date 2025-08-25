@@ -144,7 +144,6 @@ if (gotoSocialConfig != null)
     }
 
     auth.AddGotoSocial(adminConfig, gotoSocialConfig, o => {
-        o.Scope.Add("read:accounts");
         o.Scope.Add("profile");
         o.ClientId = gotoSocialConfig.ClientId;
         o.ClientSecret = gotoSocialConfig.ClientSecret;
@@ -278,8 +277,10 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     if (string.IsNullOrEmpty(hostname)) throw new ArgumentException("Hostname is required", nameof(hostname));
     var host = hostname.Trim().TrimEnd('/');
     var url = $"https://{host}/api/v1/apps";
-
     using var http = new HttpClient();
+
+    // Add a user agent header
+    http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("BadgeFed", "1.0"));
 
     var redirectUris = new List<string> { "urn:ietf:wg:oauth:2.0:oob" };
 
@@ -303,9 +304,7 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
         }
 
         // add common callback paths and the provider-specific signin paths
-        redirectUris.Add($"{d}/authentication/oauth/mastodon");
         redirectUris.Add($"{d}/authentication/oauth/gotosocial");
-        redirectUris.Add($"{d}/signin-mastodon-{host}");
         redirectUris.Add($"{d}/signin-gotosocial-{host}");
     }
 
@@ -313,7 +312,7 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     {
         client_name = clientName,
         redirect_uris = string.Join("\n", redirectUris.Distinct()),
-        scopes = "read"
+        scopes = "read profile"
     };
 
     Console.WriteLine($"GotoSocial registration request to {url}: {System.Text.Json.JsonSerializer.Serialize(payload)}");
@@ -349,10 +348,10 @@ public static class MastodonOAuthExtensions {
         _hosts.Add(hostname);
         return builder.AddOAuth(hostname, $"GotoSocial-{hostname}", o =>
         {
-            if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
+           /* if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
             {
                 throw new ArgumentException("Invalid hostname", nameof(hostname));
-            }
+            }*/
 
             o.AuthorizationEndpoint = $"https://{hostname}/oauth/authorize";
             o.TokenEndpoint = $"https://{hostname}/oauth/token";
@@ -368,6 +367,8 @@ public static class MastodonOAuthExtensions {
             {
                 OnCreatingTicket = async context =>
                 {
+                    Console.WriteLine($"GotoSocial OnCreatingTicket for {hostname}");
+
                     var localDbService = localDbFactory.GetInstance(context.HttpContext);
                     var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
@@ -394,9 +395,12 @@ public static class MastodonOAuthExtensions {
 
                     Console.WriteLine($"Is admin: {username} {isAdmin}");
 
+                    // suppor OAuth state, and also cookies
                     var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
                         ? context.Properties.Items["invitationCode"]
-                        : null;
+                        : context.HttpContext.Request.Cookies["invitationCode"];
+
+                    Console.WriteLine($"Invitation code: {(invitationCode != null ? invitationCode : "<none>")}");
 
                     if (isAdmin)
                     {
@@ -446,6 +450,7 @@ public static class MastodonOAuthExtensions {
                 },
                 OnRemoteFailure = context =>
                 {
+                    Console.WriteLine($"GotoSocial OnRemoteFailure for {hostname} - Error: {context.Failure}");
                     context.HandleResponse();
                     context.Response.Redirect("/admin/denied");
                     return Task.FromResult(0);
@@ -518,7 +523,9 @@ public static class MastodonOAuthExtensions {
                     // Check for invitation code
                     var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
                         ? context.Properties.Items["invitationCode"]
-                        : null;
+                        : context.HttpContext.Request.Cookies["invitationCode"];
+
+                    Console.WriteLine($"Invitation code: {(invitationCode != null ? invitationCode : "<none>")}");
 
                     if (isAdmin)
                     {
@@ -530,42 +537,63 @@ public static class MastodonOAuthExtensions {
                     else
                     {
                         var userId = $"{hostname}_{username}";
-                        Console.WriteLine($"User ID: {userId}");
+                        Console.WriteLine($"User ID: {userId} [ic: {invitationCode}]");
 
-                        var registeredUser = localDbService.GetUserById(userId);
-
-                        // Handle invitation if provided
-                        if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                        try
                         {
-                            var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
-                            var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+                            var registeredUser = localDbService.GetUserById(userId);
 
-                            if (invitation != null)
+                            if (registeredUser != null)
                             {
-                                // Create new user from invitation
-                                registeredUser = new User
-                                {
-                                    Id = userId,
-                                    Email = invitation.Email,
-                                    GivenName = username ?? "User",
-                                    Surname = "",
-                                    CreatedAt = DateTime.UtcNow,
-                                    Provider = "Mastodon",
-                                    Role = invitation.Role,
-                                    IsActive = true
-                                };
-
-                                invitationService.AcceptInvitation(invitationCode, registeredUser);
-                                Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                                Console.WriteLine($"User {userId} is already registered.");
                             }
+                            else
+                            {
+                                Console.WriteLine($"User {userId} is not registered.");
+                            }
+
+                            // Handle invitation if provided
+                            if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                            {
+                                var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                                var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+
+                                if (invitation != null)
+                                {
+                                    // Create new user from invitation
+                                    registeredUser = new User
+                                    {
+                                        Id = userId,
+                                        Email = invitation.Email,
+                                        GivenName = username ?? "User",
+                                        Surname = "",
+                                        CreatedAt = DateTime.UtcNow,
+                                        Provider = "Mastodon",
+                                        Role = invitation.Role,
+                                        IsActive = true
+                                    };
+
+                                    invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                    Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Invitation code {invitationCode} is invalid or expired.");
+                                }
+                            }
+
+                            var role = registeredUser != null ? registeredUser.Role : "user";
+
+                            context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                                new Claim("urn:mastodon:hostname", hostname),
+                                new Claim(ClaimTypes.Role, role)
+                            }));
                         }
-
-                        var role = registeredUser != null ? registeredUser.Role : "user";
-
-                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
-                            new Claim("urn:mastodon:hostname", hostname),
-                            new Claim(ClaimTypes.Role, role)
-                        }));
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error processing user {userId}: {ex.Message}");
+                            throw;
+                        }                        
                     }
                 },
                 OnRemoteFailure = context =>
@@ -633,11 +661,11 @@ public static class LinkedInOAuthExtensions
                     Console.WriteLine($"Is admin: {isAdmin}");
 
                     var role = "user";
-
-                    // Check for invitation code
-                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
-                        ? context.Properties.Items["invitationCode"] 
-                        : null;
+                    
+                    // suppor OAuth state, and also cookies
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
+                        ? context.Properties.Items["invitationCode"]
+                        : context.HttpContext.Request.Cookies["invitationCode"];
 
                     if (isAdmin)
                     {

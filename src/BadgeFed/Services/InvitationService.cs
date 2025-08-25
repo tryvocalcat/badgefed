@@ -112,6 +112,7 @@ public class InvitationService
     public Invitation? ValidateAndGetInvitation(string invitationCode)
     {
         var invitation = _localDbService.GetInvitationById(invitationCode);
+        Console.WriteLine($"Validating invitation code: {invitationCode}, Found: {invitation != null}, IsValid: {invitation?.IsValid}");
         return invitation?.IsValid == true ? invitation : null;
     }
 

@@ -40,7 +40,7 @@ public class JobProcessor
     {
         var grantId = _dbService.PeekNotifyGrantId();
 
-        Console.WriteLine($"Processing notify grant: {grantId}");
+     //   Console.WriteLine($"Processing notify grant: {grantId}");
 
         if (grantId == 0)
         {
@@ -52,13 +52,13 @@ public class JobProcessor
 
     private async Task ProcessNextProcessGrantAsync(LocalScopedDb _dbService, BadgeProcessor _badgeProcessor)
     {
-        Console.WriteLine("Processing next grant...");
+      //  Console.WriteLine("Processing next grant...");
 
         var grantId = _dbService.PeekProcessGrantId();
 
         if (grantId == 0)
         {
-            Console.WriteLine("No grants to process.");
+           // Console.WriteLine("No grants to process.");
             return;
         }
 
@@ -79,7 +79,7 @@ public class JobProcessor
     {
         var followers = _dbService.GetFollowersToProcess();
 
-        Console.WriteLine($"Processing followers: {followers.Count}");
+       // Console.WriteLine($"Processing followers: {followers.Count}");
 
         if (followers.Count == 0)
         {

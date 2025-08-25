@@ -9,6 +9,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject HttpClient Http
 @inject ProtectedSessionStorage ProtectedSessionStore
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <section class="section">
@@ -284,9 +285,7 @@
 
             // Check if GotoSocialConfig is present
             var gotoSocialSection = Configuration.GetSection("GotoSocialConfig");
-            IsGotoSocialConfigured = !string.IsNullOrEmpty(gotoSocialSection["ClientId"]) &&
-                                     !string.IsNullOrEmpty(gotoSocialSection["ClientSecret"]) &&
-                                     !string.IsNullOrEmpty(gotoSocialSection["Server"]);
+            IsGotoSocialConfigured = !string.IsNullOrEmpty(gotoSocialSection["Server"]);
 
             if (IsGotoSocialConfigured) {
                 gotoSocialServer = gotoSocialSection["Server"];
@@ -358,7 +357,7 @@
         if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("invitationCode", out var invitationCode))
         {
             // Store the invitation code in session storage
-            await ProtectedSessionStore.SetAsync("invitationCode", invitationCode.ToString());
+            await JS.InvokeVoidAsync("setCookie", "invitationCode", invitationCode, 1);
         }
     }
 

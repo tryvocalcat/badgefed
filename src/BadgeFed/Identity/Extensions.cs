@@ -16,9 +16,17 @@ internal static class LoginLogoutEndpointRouteBuilderExtensions
         {
             foreach (var server in servers)
             {
-                group.MapGet($"/login/oauth/{server}", (string? returnUrl) =>
-                    TypedResults.Challenge(GetAuthProperties(returnUrl), new[] { server }))
-                        .AllowAnonymous();
+                group.MapGet($"/login/oauth/{server}", (string? returnUrl, string? invitationCode) =>
+                {
+                    var authProps = GetAuthProperties(returnUrl);
+
+                    if (!string.IsNullOrEmpty(invitationCode))
+                    {
+                        authProps.Items["invitationCode"] = invitationCode;
+                    }
+
+                    return TypedResults.Challenge(authProps, new[] { server });
+                }).AllowAnonymous();
             }
         }
 

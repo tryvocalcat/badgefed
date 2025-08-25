@@ -70,6 +70,8 @@ public class LocalDbService
         return new SQLiteConnection(connectionString);
     }
 
+    private static bool hasAppliedMigrationsTried = false;
+
     private void CreateDb()
     {
         // create if not exists
@@ -89,7 +91,11 @@ public class LocalDbService
         }
 
         // Apply any pending migrations
-        ApplyPendingMigrations();
+        if (!hasAppliedMigrationsTried)
+        {
+            hasAppliedMigrationsTried = true;
+            ApplyPendingMigrations();
+        }
     }
 
     private void ApplyPendingMigrations()
@@ -98,25 +104,25 @@ public class LocalDbService
         {
             var migrationService = new DatabaseMigrationService(this);
             var pendingMigrations = migrationService.GetPendingMigrations();
-            
+
             if (pendingMigrations.Any())
             {
-                Log(LogLevel.Information, "Found {MigrationCount} pending migrations. Applying...", pendingMigrations.Count);
-                
+                Log(LogLevel.Information, $"Found {pendingMigrations.Count} pending migrations. Applying...");
+
                 foreach (var migration in pendingMigrations)
                 {
-                    Log(LogLevel.Information, "Applying migration: {Version} - {Name}", migration.Version, migration.Name);
+                    Log(LogLevel.Information, $"Applying migration: {migration.Version} - {migration.Name}");
                     var task = migrationService.ApplyMigration(migration);
                     task.Wait(); // Wait for async operation to complete
-                    Log(LogLevel.Information, "Successfully applied migration: {Version}", migration.Version);
+                    Log(LogLevel.Information, $"Successfully applied migration: {migration.Version}");
                 }
-                
+
                 Log(LogLevel.Information, "All pending migrations applied successfully.");
             }
         }
         catch (Exception ex)
         {
-            Log(LogLevel.Error, "Error applying migrations: {ErrorMessage}", ex.Message);
+            Log(LogLevel.Error, $"Error applying migrations: {ex.Message}");
             // Don't throw here to avoid breaking database initialization
         }
     }
@@ -537,6 +543,8 @@ public class LocalDbService
         var command = connection.CreateCommand();
         command.CommandText = "SELECT * FROM Users WHERE id = @Id";
         command.Parameters.AddWithValue("@Id", id);
+
+        Console.WriteLine($"Executing SQL: {command.CommandText} with Id={id}");
 
         using var reader = command.ExecuteReader();
         if (reader.Read())
