@@ -141,7 +141,11 @@ namespace ActivityPubDotNet.Core
             // Target is the account to be followed
             var target = message.Object!.ToString();
 
-            var actor = db.GetActorByFilter($"Uri = \"{target}\"")!;
+            // target could be https://communitycredentials.org/view/actor/communitycredentials.org/issuer
+            // but we need to check https://communitycredentials.org/actors/communitycredentials.org/issuer
+            var targetClean = target!.Replace("/view/actor/", "/actors/");
+
+            var actor = db.GetActorByFilter($"Uri = \"{targetClean}\"")!;
 
             var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
 
