@@ -480,6 +480,7 @@
                         Inbox = fediverseInfo.Inbox,
                         Outbox = fediverseInfo.Outbox,
                         ActorId = actorId,
+                        AvatarUri = fediverseInfo.Icon?.Url ?? string.Empty
                     };
 
                     LocalDbService.UpsertFollowedIssuer(issuer);

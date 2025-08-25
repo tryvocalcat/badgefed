@@ -195,7 +195,7 @@ public class LocalDbService
         {
             command.CommandText = @"SELECT fi.*, COUNT(br.id) AS TotalIssued
                                  FROM FollowedIssuer AS fi 
-                                 INNER JOIN BadgeRecord br ON (br.IssuedBy = fi.Url) 
+                                 LEFT JOIN BadgeRecord br ON (br.IssuedBy = fi.Url) 
                                  GROUP BY fi.Id";
         }
         else
