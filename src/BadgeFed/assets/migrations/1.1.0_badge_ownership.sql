@@ -11,8 +11,6 @@ CREATE TABLE IF NOT EXISTS Users (
     isActive BOOLEAN DEFAULT TRUE
 );
 
-ALTER TABLE Badge ADD COLUMN OwnerId TEXT NOT NULL DEFAULT 'system';
-
 -- Ensure all badges have an OwnerId
 UPDATE Badge SET OwnerId = 'system' WHERE OwnerId IS NULL OR OwnerId = '';
 

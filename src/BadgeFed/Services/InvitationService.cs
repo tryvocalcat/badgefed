@@ -5,11 +5,11 @@ namespace BadgeFed.Services;
 
 public class InvitationService
 {
-    private readonly LocalDbService _localDbService;
+    private readonly LocalScopedDb _localDbService;
     private readonly MailService _mailService;
     private readonly IConfiguration _configuration;
 
-    public InvitationService(LocalDbService localDbService, MailService mailService, IConfiguration configuration)
+    public InvitationService(LocalScopedDb localDbService, MailService mailService, IConfiguration configuration)
     {
         _localDbService = localDbService;
         _mailService = mailService;
@@ -112,6 +112,7 @@ public class InvitationService
     public Invitation? ValidateAndGetInvitation(string invitationCode)
     {
         var invitation = _localDbService.GetInvitationById(invitationCode);
+        Console.WriteLine($"Validating invitation code: {invitationCode}, Found: {invitation != null}, IsValid: {invitation?.IsValid}");
         return invitation?.IsValid == true ? invitation : null;
     }
 

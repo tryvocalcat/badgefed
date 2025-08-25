@@ -6,7 +6,7 @@ public sealed class JobExecutor(
 {
     private const string ClassName = nameof(JobExecutor);
 
-    private const int delay = 30_000;
+    private const int delay = 600_000;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

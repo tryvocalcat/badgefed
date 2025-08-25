@@ -2,7 +2,7 @@
 
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
-@inject LocalDbService DbService
+@inject LocalScopedDb DbService
 @inject IWebHostEnvironment Environment
 
 @if (!string.IsNullOrEmpty(GetThemeCssPath()))
@@ -187,7 +187,27 @@ else
 
     <div class="container">
         <div class="section">
-            <h2 class="title is-3 mb-5">Featured Badges</h2>
+            <div class="level mb-5">
+                <div class="level-left">
+                    <div class="level-item">
+                        <h2 class="title is-3 mb-0">Featured Badges</h2>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <div class="field has-addons">
+                            <div class="control">
+                                <a href="/view/actor/@Domain/@Username" class="button is-primary is-outlined">
+                                    <span class="icon">
+                                        <i class="fas fa-certificate"></i>
+                                    </span>
+                                    <span>All Badges</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="badge-grid">
                 @foreach (var badge in featuredBadges)
                 {
@@ -196,7 +216,23 @@ else
                         <div class="badge-content">
                             <h3 class="title is-5">@badge.Title</h3>
                             <p class="subtitle is-6">@badge.Description</p>
-                            <span class="tag is-info">@badge.BadgeType</span>
+                            <div class="level">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <span class="tag is-info">@badge.BadgeType</span>
+                                    </div>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        <a href="/view/badge/@badge.Id/grants" class="button is-small is-outlined">
+                                            <span class="icon">
+                                                <i class="fas fa-users"></i>
+                                            </span>
+                                            <span>Recipients</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }

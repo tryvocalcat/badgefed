@@ -11,9 +11,9 @@ namespace BadgeFed.Controllers
         private readonly IConfiguration _configuration;
         private readonly BadgeProcessor _badgeProcessor;
         private readonly MailService _mailService;
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
 
-        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, LocalDbService localDbService)
+        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, LocalScopedDb localDbService)
         {
             _configuration = configuration;
             _badgeProcessor = badgeProcessor;

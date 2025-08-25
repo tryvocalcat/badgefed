@@ -1,0 +1,1085 @@
+@page "/admin/registrations"
+@inject RegistrationService RegistrationService
+@inject CurrentUser CurrentUser
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Registrations</a></li>
+        </ul>
+    </nav>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">User Registrations</h1>
+                    <p class="subtitle">Review and manage user registration requests</p>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <button class="button is-info" @onclick="ShowConfigModal">
+                    <span class="icon">
+                        <i class="fas fa-cog"></i>
+                    </span>
+                    <span>Configure Form</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Filter tabs -->
+    <div class="tabs">
+        <ul>
+            <li class="@(currentFilter == "pending" ? "is-active" : "")">
+                <a @onclick="FilterRegistrationsPending">Pending Review (@pendingCount)</a>
+            </li>
+            <li class="@(currentFilter == "approved" ? "is-active" : "")">
+                <a @onclick="FilterRegistrationsApproved">Approved (@approvedCount)</a>
+            </li>
+            <li class="@(currentFilter == "rejected" ? "is-active" : "")">
+                <a @onclick="FilterRegistrationsRejected">Rejected (@rejectedCount)</a>
+            </li>
+            <li class="@(currentFilter == "all" ? "is-active" : "")">
+                <a @onclick="FilterRegistrationsAll">All (@totalCount)</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Registrations table -->
+    @if (registrations == null)
+    {
+        <div class="notification is-info">
+            <p>Loading registrations...</p>
+        </div>
+    }
+    else if (!registrations.Any())
+    {
+        <div class="notification is-light">
+            <p>No registrations found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var registration in registrations)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@(registration.Name ?? "N/A")</strong>
+                                @if (!string.IsNullOrEmpty(registration.IpAddress))
+                                {
+                                    <br />
+                                    <small class="has-text-grey">IP: @registration.IpAddress</small>
+                                }
+                            </td>
+                            <td>@(registration.Email ?? "N/A")</td>
+                            <td>
+                                <span title="@registration.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss UTC")">
+                                    @registration.SubmittedAt.ToString("MMM d, yyyy")
+                                </span>
+                            </td>
+                            <td>
+                                @if (!registration.IsReviewed)
+                                {
+                                    <span class="tag is-warning">Pending Review</span>
+                                }
+                                else if (registration.IsApproved)
+                                {
+                                    <span class="tag is-success">Approved</span>
+                                    @if (registration.ReviewedAt.HasValue)
+                                    {
+                                        <br />
+                                        <small class="has-text-grey">@registration.ReviewedAt.Value.ToString("MMM d, yyyy")</small>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="tag is-danger">Rejected</span>
+                                    @if (registration.ReviewedAt.HasValue)
+                                    {
+                                        <br />
+                                        <small class="has-text-grey">@registration.ReviewedAt.Value.ToString("MMM d, yyyy")</small>
+                                    }
+                                }
+                            </td>
+                            <td>
+                                <div class="buttons are-small">
+                                    <button class="button is-info is-small" @onclick="@(() => ViewRegistration(registration))">
+                                        <span class="icon">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                        <span>View</span>
+                                    </button>
+                                    @if (!registration.IsReviewed)
+                                    {
+                                        <button class="button is-success is-small" @onclick="@(() => ApproveRegistration(registration))">
+                                            <span class="icon">
+                                                <i class="fas fa-check"></i>
+                                            </span>
+                                            <span>Approve</span>
+                                        </button>
+                                        <button class="button is-danger is-small" @onclick="@(() => RejectRegistration(registration))">
+                                            <span class="icon">
+                                                <i class="fas fa-times"></i>
+                                            </span>
+                                            <span>Reject</span>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Registration details modal -->
+@if (showDetailsModal && selectedRegistration != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="HideDetailsModal"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Registration Details</p>
+                <button class="delete" @onclick="HideDetailsModal"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="content">
+                    <h4>Basic Information</h4>
+                    <table class="table is-fullwidth">
+                        <tbody>
+                            <tr>
+                                <td><strong>Name:</strong></td>
+                                <td>@(selectedRegistration.Name ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>@(selectedRegistration.Email ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Submitted:</strong></td>
+                                <td>@selectedRegistration.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss UTC")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>IP Address:</strong></td>
+                                <td>@selectedRegistration.IpAddress</td>
+                            </tr>
+                            <tr>
+                                <td><strong>User Agent:</strong></td>
+                                <td style="word-break: break-word;">@selectedRegistration.UserAgent</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Form Data</h4>
+                    <div class="box">
+                        @try 
+                        {
+                            var formData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(selectedRegistration.FormData);
+                            <table class="table is-fullwidth">
+                                <tbody>
+                                    @foreach (var item in formData)
+                                    {
+                                        <tr>
+                                            <td><strong>@FormatFieldName(item.Key):</strong></td>
+                                            <td>@FormatFieldValue(item.Key, item.Value?.ToString())</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        catch
+                        {
+                            <pre>@selectedRegistration.FormData</pre>
+                        }
+                    </div>
+
+                    @if (selectedRegistration.IsReviewed)
+                    {
+                        <h4>Review Information</h4>
+                        <table class="table is-fullwidth">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        @if (selectedRegistration.IsApproved)
+                                        {
+                                            <span class="tag is-success">Approved</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tag is-danger">Rejected</span>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Reviewed At:</strong></td>
+                                    <td>@(selectedRegistration.ReviewedAt?.ToString("yyyy-MM-dd HH:mm:ss UTC") ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Reviewed By:</strong></td>
+                                    <td>@(selectedRegistration.ReviewedBy ?? "N/A")</td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(selectedRegistration.ReviewNotes))
+                                {
+                                    <tr>
+                                        <td><strong>Notes:</strong></td>
+                                        <td>@selectedRegistration.ReviewNotes</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                @if (!selectedRegistration.IsReviewed)
+                {
+                    <button class="button is-success" @onclick="@(() => ApproveRegistration(selectedRegistration))">Approve</button>
+                    <button class="button is-danger" @onclick="@(() => RejectRegistration(selectedRegistration))">Reject</button>
+                }
+                <button class="button" @onclick="HideDetailsModal">Close</button>
+            </footer>
+        </div>
+    </div>
+}
+
+<!-- Review modal -->
+@if (showReviewModal && registrationToReview != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="HideReviewModal"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">
+                    @(reviewAction == "approve" ? "Approve" : "Reject") Registration
+                </p>
+                <button class="delete" @onclick="HideReviewModal"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="content">
+                    <p>Are you sure you want to <strong>@reviewAction</strong> the registration from <strong>@(registrationToReview.Name ?? registrationToReview.Email ?? "this user")</strong>?</p>
+                    
+                    <div class="field">
+                        <label class="label">Review Notes (Optional)</label>
+                        <div class="control">
+                            <textarea @bind="reviewNotes" class="textarea" rows="3" placeholder="Add any notes about your decision..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button @(reviewAction == "approve" ? "is-success" : "is-danger")" 
+                        @onclick="SubmitReview" disabled="@isSubmittingReview">
+                    @if (isSubmittingReview)
+                    {
+                        <span class="icon">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                        <span>Processing...</span>
+                    }
+                    else
+                    {
+                        <span>@(reviewAction == "approve" ? "Approve" : "Reject")</span>
+                    }
+                </button>
+                <button class="button" @onclick="HideReviewModal" disabled="@isSubmittingReview">Cancel</button>
+            </footer>
+        </div>
+    </div>
+}
+
+<!-- Form Configuration Modal -->
+@if (showConfigModal)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="HideConfigModal"></div>
+        <div class="modal-card" style="width: 90vw; max-width: 1200px;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Configure Registration Form</p>
+                <button class="delete" @onclick="HideConfigModal"></button>
+            </header>
+            <section class="modal-card-body" style="max-height: 70vh; overflow-y: auto;">
+                <div class="content">
+                    <div class="notification is-info">
+                        <p><strong>Note:</strong> Changes will be saved to a custom configuration file and will override the default form. This affects all new registrations.</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(configErrorMessage))
+                    {
+                        <div class="notification is-danger">
+                            @configErrorMessage
+                        </div>
+                    }
+
+                    <!-- Form Basic Settings -->
+                    <div class="box">
+                        <h4 class="title is-5">Form Settings</h4>
+                        <div class="field">
+                            <label class="label">Form Title</label>
+                            <div class="control">
+                                <input class="input" type="text" @bind="editableConfig.Title" placeholder="Registration Form Title" />
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Description</label>
+                            <div class="control">
+                                <textarea class="textarea" @bind="editableConfig.Description" rows="2" placeholder="Form description text"></textarea>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Submit Button Text</label>
+                            <div class="control">
+                                <input class="input" type="text" @bind="editableConfig.SubmitButtonText" placeholder="Submit Registration" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Fields -->
+                    <div class="box">
+                        <div class="level">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <h4 class="title is-5">Form Fields</h4>
+                                </div>
+                            </div>
+                            <div class="level-right">
+                                <div class="level-item">
+                                    <button class="button is-success is-small" @onclick="AddNewField">
+                                        <span class="icon">
+                                            <i class="fas fa-plus"></i>
+                                        </span>
+                                        <span>Add Field</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (editableConfig.Fields?.Any() == true)
+                        {
+                            @for (int i = 0; i < editableConfig.Fields.Count; i++)
+                            {
+                                var fieldIndex = i;
+                                var field = editableConfig.Fields[fieldIndex];
+                                
+                                <div class="box has-background-light">
+                                    <div class="level">
+                                        <div class="level-left">
+                                            <div class="level-item">
+                                                <h6 class="subtitle is-6">Field @(fieldIndex + 1): @(field.Label ?? "New Field")</h6>
+                                            </div>
+                                        </div>
+                                        <div class="level-right">
+                                            <div class="level-item">
+                                                <div class="buttons">
+                                                    @if (fieldIndex > 0)
+                                                    {
+                                                        <button class="button is-small" @onclick="@(() => MoveFieldUp(fieldIndex))">
+                                                            <span class="icon">
+                                                                <i class="fas fa-arrow-up"></i>
+                                                            </span>
+                                                        </button>
+                                                    }
+                                                    @if (fieldIndex < editableConfig.Fields.Count - 1)
+                                                    {
+                                                        <button class="button is-small" @onclick="@(() => MoveFieldDown(fieldIndex))">
+                                                            <span class="icon">
+                                                                <i class="fas fa-arrow-down"></i>
+                                                            </span>
+                                                        </button>
+                                                    }
+                                                    <button class="button is-danger is-small" @onclick="@(() => RemoveField(fieldIndex))">
+                                                        <span class="icon">
+                                                            <i class="fas fa-trash"></i>
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="columns">
+                                        <div class="column is-6">
+                                            <div class="field">
+                                                <label class="label">Field Name (unique identifier)</label>
+                                                <div class="control">
+                                                    <input class="input" type="text" @bind="field.Name" placeholder="fieldName" />
+                                                </div>
+                                            </div>
+                                            <div class="field">
+                                                <label class="label">Label</label>
+                                                <div class="control">
+                                                    <input class="input" type="text" @bind="field.Label" placeholder="Field Label" />
+                                                </div>
+                                            </div>
+                                            <div class="field">
+                                                <label class="label">Type</label>
+                                                <div class="control">
+                                                    <div class="select is-fullwidth">
+                                                        <select @bind="field.Type">
+                                                            <option value="text">Text</option>
+                                                            <option value="email">Email</option>
+                                                            <option value="url">URL</option>
+                                                            <option value="textarea">Textarea</option>
+                                                            <option value="checkbox">Checkbox</option>
+                                                            <option value="checkboxGroup">Checkbox Group</option>
+                                                            <option value="select">Select Dropdown</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-6">
+                                            <div class="field">
+                                                <label class="label">Placeholder</label>
+                                                <div class="control">
+                                                    <input class="input" type="text" @bind="field.Placeholder" placeholder="Placeholder text" />
+                                                </div>
+                                            </div>
+                                            <div class="field">
+                                                <label class="label">Help Text</label>
+                                                <div class="control">
+                                                    <input class="input" type="text" @bind="field.HelpText" placeholder="Help text for users" />
+                                                </div>
+                                            </div>
+                                            <div class="field">
+                                                <label class="label">Max Length</label>
+                                                <div class="control">
+                                                    <input class="input" type="number" @bind="field.MaxLength" placeholder="Optional max length" />
+                                                </div>
+                                            </div>
+                                            @if (field.Type == "textarea")
+                                            {
+                                                <div class="field">
+                                                    <label class="label">Rows</label>
+                                                    <div class="control">
+                                                        <input class="input" type="number" @bind="field.Rows" placeholder="3" min="1" max="20" />
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="columns">
+                                        <div class="column is-4">
+                                            <div class="field">
+                                                <div class="control">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" @bind="field.Required" />
+                                                        Required field
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-8">
+                                            @if (field.Type == "select" || field.Type == "checkboxGroup")
+                                            {
+                                                <div class="field">
+                                                    <label class="label">Options (one per line, format: value|label)</label>
+                                                    <div class="control">
+                                                        <textarea class="textarea" rows="3" 
+                                                                value="@GetOptionsText(field)"
+                                                                @onchange="@(e => SetOptionsFromText(field, e.Value?.ToString()))"
+                                                                placeholder="option1|Option 1&#10;option2|Option 2"></textarea>
+                                                    </div>
+                                                    <p class="help">Format: value|Display Label (one option per line)</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="notification is-light">
+                                <p>No fields configured. Click "Add Field" to create your first field.</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="box">
+                        <h4 class="title is-5">Preview</h4>
+                        <div class="content">
+                            <h5 class="title is-6">@editableConfig.Title</h5>
+                            <p>@editableConfig.Description</p>
+                            
+                            @if (editableConfig.Fields?.Any() == true)
+                            {
+                                @foreach (var field in editableConfig.Fields)
+                                {
+                                    <div class="field">
+                                        <label class="label">
+                                            @field.Label
+                                            @if (field.Required)
+                                            {
+                                                <span class="has-text-danger">*</span>
+                                            }
+                                        </label>
+                                        <div class="control">
+                                            @switch (field.Type)
+                                            {
+                                                case "text":
+                                                case "email":
+                                                    <input class="input" type="@field.Type" placeholder="@field.Placeholder" disabled />
+                                                    break;
+                                                case "url":
+                                                    <input class="input" type="url" placeholder="@(field.Placeholder ?? "https://example.com")" disabled />
+                                                    break;
+                                                case "textarea":
+                                                    <textarea class="textarea" placeholder="@field.Placeholder" rows="@(field.Rows ?? 3)" disabled>@field.Placeholder</textarea>
+                                                    break;
+                                                case "checkbox":
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" disabled />
+                                                        @field.Label
+                                                    </label>
+                                                    break;
+                                                case "checkboxGroup":
+                                                    @if (field.Options != null)
+                                                    {
+                                                        <div class="field is-grouped is-grouped-multiline">
+                                                            @foreach (var option in field.Options)
+                                                            {
+                                                                <div class="control">
+                                                                    <label class="checkbox">
+                                                                        <input type="checkbox" disabled />
+                                                                        @option.Label
+                                                                    </label>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    break;
+                                                case "select":
+                                                    <div class="select is-fullwidth">
+                                                        <select disabled>
+                                                            <option>Please select...</option>
+                                                            @if (field.Options != null)
+                                                            {
+                                                                @foreach (var option in field.Options)
+                                                                {
+                                                                    <option>@option.Label</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                    break;
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                        {
+                                            <p class="help">@field.HelpText</p>
+                                        }
+                                    </div>
+                                }
+                            }
+                            
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button is-primary" disabled>@editableConfig.SubmitButtonText</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" @onclick="SaveFormConfiguration" disabled="@isSavingConfig">
+                    @if (isSavingConfig)
+                    {
+                        <span class="icon">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Save Configuration</span>
+                    }
+                </button>
+                <button class="button is-warning" @onclick="ResetFormConfiguration" disabled="@isSavingConfig">
+                    Reset to Default
+                </button>
+                <button class="button" @onclick="HideConfigModal" disabled="@isSavingConfig">Cancel</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Registration>? registrations;
+    private Registration? selectedRegistration;
+    private Registration? registrationToReview;
+    private string currentFilter = "pending";
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool showDetailsModal = false;
+    private bool showReviewModal = false;
+    private string reviewAction = string.Empty;
+    private string reviewNotes = string.Empty;
+    private bool isSubmittingReview = false;
+
+    private int pendingCount = 0;
+    private int approvedCount = 0;
+    private int rejectedCount = 0;
+    private int totalCount = 0;
+
+    // Form configuration modal
+    private bool showConfigModal = false;
+    private FormConfiguration editableConfig = new();
+    private bool isSavingConfig = false;
+    private string configErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRegistrations();
+        await UpdateCounts();
+    }
+
+    private async Task LoadRegistrations()
+    {
+        try
+        {
+            bool? reviewed = currentFilter switch
+            {
+                "pending" => false,
+                "approved" => true,
+                "rejected" => true,
+                _ => null
+            };
+
+            bool? approved = currentFilter switch
+            {
+                "approved" => true,
+                "rejected" => false,
+                _ => null
+            };
+
+            registrations = await RegistrationService.GetRegistrationsAsync(reviewed, approved);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading registrations: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateCounts()
+    {
+        try
+        {
+            var allRegistrations = await RegistrationService.GetRegistrationsAsync();
+            totalCount = allRegistrations.Count;
+            pendingCount = allRegistrations.Count(r => !r.IsReviewed);
+            approvedCount = allRegistrations.Count(r => r.IsReviewed && r.IsApproved);
+            rejectedCount = allRegistrations.Count(r => r.IsReviewed && !r.IsApproved);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating counts: {ex.Message}";
+        }
+    }
+
+    private async Task FilterRegistrations(string filter)
+    {
+        currentFilter = filter;
+        await LoadRegistrations();
+    }
+
+    private async Task FilterRegistrationsPending()
+    {
+        await FilterRegistrations("pending");
+    }
+
+    private async Task FilterRegistrationsApproved()
+    {
+        await FilterRegistrations("approved");
+    }
+
+    private async Task FilterRegistrationsRejected()
+    {
+        await FilterRegistrations("rejected");
+    }
+
+    private async Task FilterRegistrationsAll()
+    {
+        await FilterRegistrations("all");
+    }
+
+    private void ViewRegistration(Registration registration)
+    {
+        selectedRegistration = registration;
+        showDetailsModal = true;
+    }
+
+    private void HideDetailsModal()
+    {
+        showDetailsModal = false;
+        selectedRegistration = null;
+    }
+
+    private void ApproveRegistration(Registration registration)
+    {
+        registrationToReview = registration;
+        reviewAction = "approve";
+        reviewNotes = string.Empty;
+        showReviewModal = true;
+    }
+
+    private void RejectRegistration(Registration registration)
+    {
+        registrationToReview = registration;
+        reviewAction = "reject";
+        reviewNotes = string.Empty;
+        showReviewModal = true;
+    }
+
+    private void HideReviewModal()
+    {
+        showReviewModal = false;
+        registrationToReview = null;
+        reviewAction = string.Empty;
+        reviewNotes = string.Empty;
+    }
+
+    private async Task SubmitReview()
+    {
+        if (registrationToReview == null || isSubmittingReview) return;
+
+        isSubmittingReview = true;
+
+        try
+        {
+            var approved = reviewAction == "approve";
+            var currentUserName = $"{CurrentUser.Id} {CurrentUser.Email} {CurrentUser.Name}";
+            
+            var success = await RegistrationService.ReviewRegistrationAsync(
+                registrationToReview.Id, 
+                approved, 
+                string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes,
+                currentUserName);
+
+            if (success)
+            {
+                successMessage = $"Registration has been {(approved ? "approved" : "rejected")} successfully.";
+                HideReviewModal();
+                HideDetailsModal();
+                await LoadRegistrations();
+                await UpdateCounts();
+            }
+            else
+            {
+                errorMessage = "Failed to update registration status.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating registration: {ex.Message}";
+        }
+
+        isSubmittingReview = false;
+    }
+
+    private string FormatFieldName(string fieldName)
+    {
+        // Convert camelCase to proper case
+        return System.Text.RegularExpressions.Regex.Replace(fieldName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private string FormatFieldValue(string fieldName, string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "N/A";
+
+        // Check if this might be a checkbox group (comma-separated values)
+        if (value.Contains(','))
+        {
+            var values = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            if (values.Length > 1)
+            {
+                return string.Join(", ", values);
+            }
+        }
+
+        return value;
+    }
+
+    // Form Configuration Modal Methods
+    private void ShowConfigModal()
+    {
+        editableConfig = CloneFormConfiguration(RegistrationService.GetFormConfiguration());
+        configErrorMessage = string.Empty;
+        showConfigModal = true;
+    }
+
+    private void HideConfigModal()
+    {
+        showConfigModal = false;
+        editableConfig = new FormConfiguration();
+        configErrorMessage = string.Empty;
+    }
+
+    private FormConfiguration CloneFormConfiguration(FormConfiguration original)
+    {
+        // Deep clone using JSON serialization
+        var json = System.Text.Json.JsonSerializer.Serialize(original);
+        return System.Text.Json.JsonSerializer.Deserialize<FormConfiguration>(json) ?? new FormConfiguration();
+    }
+
+    private void AddNewField()
+    {
+        editableConfig.Fields ??= new List<FormField>();
+        editableConfig.Fields.Add(new FormField
+        {
+            Name = $"field{editableConfig.Fields.Count + 1}",
+            Label = "New Field",
+            Type = "text",
+            Required = false
+        });
+    }
+
+    private void RemoveField(int index)
+    {
+        if (editableConfig.Fields != null && index >= 0 && index < editableConfig.Fields.Count)
+        {
+            editableConfig.Fields.RemoveAt(index);
+        }
+    }
+
+    private void MoveFieldUp(int index)
+    {
+        if (editableConfig.Fields != null && index > 0 && index < editableConfig.Fields.Count)
+        {
+            var field = editableConfig.Fields[index];
+            editableConfig.Fields.RemoveAt(index);
+            editableConfig.Fields.Insert(index - 1, field);
+        }
+    }
+
+    private void MoveFieldDown(int index)
+    {
+        if (editableConfig.Fields != null && index >= 0 && index < editableConfig.Fields.Count - 1)
+        {
+            var field = editableConfig.Fields[index];
+            editableConfig.Fields.RemoveAt(index);
+            editableConfig.Fields.Insert(index + 1, field);
+        }
+    }
+
+    private string GetOptionsText(FormField field)
+    {
+        if (field.Options == null || !field.Options.Any())
+            return "";
+
+        return string.Join("\n", field.Options.Select(o => $"{o.Value}|{o.Label}"));
+    }
+
+    private void SetOptionsFromText(FormField field, string? text)
+    {
+        field.Options = new List<SelectOption>();
+        
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var parts = line.Split('|', 2);
+            if (parts.Length == 2)
+            {
+                field.Options.Add(new SelectOption
+                {
+                    Value = parts[0].Trim(),
+                    Label = parts[1].Trim()
+                });
+            }
+            else if (parts.Length == 1 && !string.IsNullOrWhiteSpace(parts[0]))
+            {
+                var value = parts[0].Trim();
+                field.Options.Add(new SelectOption
+                {
+                    Value = value,
+                    Label = value
+                });
+            }
+        }
+    }
+
+    private async Task SaveFormConfiguration()
+    {
+        if (isSavingConfig) return;
+
+        isSavingConfig = true;
+        configErrorMessage = string.Empty;
+
+        try
+        {
+            // Basic validation
+            if (string.IsNullOrWhiteSpace(editableConfig.Title))
+            {
+                configErrorMessage = "Form title is required.";
+                isSavingConfig = false;
+                return;
+            }
+
+            if (editableConfig.Fields == null || !editableConfig.Fields.Any())
+            {
+                configErrorMessage = "At least one field is required.";
+                isSavingConfig = false;
+                return;
+            }
+
+            // Validate fields
+            for (int i = 0; i < editableConfig.Fields.Count; i++)
+            {
+                var field = editableConfig.Fields[i];
+                if (string.IsNullOrWhiteSpace(field.Name))
+                {
+                    configErrorMessage = $"Field {i + 1}: Name is required.";
+                    isSavingConfig = false;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(field.Label))
+                {
+                    configErrorMessage = $"Field {i + 1}: Label is required.";
+                    isSavingConfig = false;
+                    return;
+                }
+
+                if ((field.Type == "select" || field.Type == "checkboxGroup") && (field.Options == null || !field.Options.Any()))
+                {
+                    configErrorMessage = $"Field {i + 1}: {(field.Type == "select" ? "Select" : "Checkbox group")} fields must have at least one option.";
+                    isSavingConfig = false;
+                    return;
+                }
+
+                // Check for duplicate field names
+                var duplicateNames = editableConfig.Fields
+                    .GroupBy(f => f.Name.ToLowerInvariant())
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key);
+
+                if (duplicateNames.Any())
+                {
+                    configErrorMessage = $"Duplicate field names found: {string.Join(", ", duplicateNames)}";
+                    isSavingConfig = false;
+                    return;
+                }
+            }
+
+            var success = await RegistrationService.SaveFormConfigurationAsync(editableConfig);
+            
+            if (success)
+            {
+                successMessage = "Form configuration saved successfully!";
+                HideConfigModal();
+            }
+            else
+            {
+                configErrorMessage = "Failed to save form configuration. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            configErrorMessage = $"Error saving configuration: {ex.Message}";
+        }
+
+        isSavingConfig = false;
+    }
+
+    private async Task ResetFormConfiguration()
+    {
+        if (isSavingConfig) return;
+
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to reset the form configuration to default? This cannot be undone."))
+            return;
+
+        isSavingConfig = true;
+        configErrorMessage = string.Empty;
+
+        try
+        {
+            var success = await RegistrationService.ResetFormConfigurationAsync();
+            
+            if (success)
+            {
+                successMessage = "Form configuration reset to default successfully!";
+                HideConfigModal();
+            }
+            else
+            {
+                configErrorMessage = "Failed to reset form configuration. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            configErrorMessage = $"Error resetting configuration: {ex.Message}";
+        }
+
+        isSavingConfig = false;
+    }
+}
+
+<style>
+    .buttons.are-small .button {
+        margin-right: 0.25rem;
+    }
+
+    .level-item .title {
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-card {
+        max-width: 80vw;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .tag {
+        margin-bottom: 0.25rem;
+    }
+</style>

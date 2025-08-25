@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Data.SQLite;
@@ -9,33 +10,67 @@ namespace BadgeFed.Services;
 public class LocalDbService
 {
     private readonly string connectionString;
+    private readonly ILogger<LocalDbService>? _logger;
 
     public readonly string DbPath;
 
-    public static LocalDbService GetInstance(string dbName)
+    public LocalDbService(string dbPath, ILogger<LocalDbService>? logger = null)
     {
-        string currentDirectory = Directory.GetCurrentDirectory();
-        string filePath = Path.Combine(currentDirectory, $"{dbName.ToLowerInvariant()}.db");
-        return new LocalDbService(filePath);
-    }
+        _logger = logger;
+        
+        if (string.IsNullOrEmpty(dbPath))
+        {
+            Log(LogLevel.Warning, "DB PATH CANNOT BE EMPTY");
+            dbPath = "default.db";
+        }
+      //  Log(LogLevel.Information, "Initializing LocalDbService with path: {dbPath}", dbPath);
 
-    public LocalDbService(string dbPath)
-    {
+        dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
+
         this.DbPath = dbPath;
         this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
     }
 
-    public static LocalDbService GetGlobalDatabase()
+    private void Log(LogLevel level, string message, params object[] args)
     {
-        return GetInstance("_global.db");
+        var structuredArgs = new List<object> { DbPath };
+        structuredArgs.AddRange(args);
+        
+        var messageWithDbPath = "[DbPath: {DbPath}] " + message;
+        
+        if (_logger != null)
+        {
+            _logger.Log(level, messageWithDbPath, structuredArgs.ToArray());
+        }
+        else
+        {
+            // Fallback to Console when logger is not available
+            var formattedMessage = messageWithDbPath;
+            for (int i = 0; i < structuredArgs.Count; i++)
+            {
+                formattedMessage = formattedMessage.Replace($"{{{GetParameterName(i)}}}", structuredArgs[i]?.ToString() ?? "null");
+            }
+            Console.WriteLine($"[{level}] {formattedMessage}");
+        }
+    }
+
+    private string GetParameterName(int index)
+    {
+        return index switch
+        {
+            0 => "DbPath",
+            _ => $"Param{index}"
+        };
     }
 
     public SQLiteConnection GetConnection()
     {
         return new SQLiteConnection(connectionString);
     }
+
+    private static bool hasAppliedMigrationsTried = false;
 
     private void CreateDb()
     {
@@ -52,11 +87,15 @@ public class LocalDbService
             command.ExecuteNonQuery();
             connection.Close();
 
-            Console.WriteLine($"Database created at {DbPath}");
+            Log(LogLevel.Information, "Database created at {DatabasePath}", DbPath);
         }
 
         // Apply any pending migrations
-        ApplyPendingMigrations();
+        if (!hasAppliedMigrationsTried)
+        {
+            hasAppliedMigrationsTried = true;
+            ApplyPendingMigrations();
+        }
     }
 
     private void ApplyPendingMigrations()
@@ -65,25 +104,25 @@ public class LocalDbService
         {
             var migrationService = new DatabaseMigrationService(this);
             var pendingMigrations = migrationService.GetPendingMigrations();
-            
+
             if (pendingMigrations.Any())
             {
-                Console.WriteLine($"Found {pendingMigrations.Count} pending migrations. Applying...");
-                
+                Log(LogLevel.Information, $"Found {pendingMigrations.Count} pending migrations. Applying...");
+
                 foreach (var migration in pendingMigrations)
                 {
-                    Console.WriteLine($"Applying migration: {migration.Version} - {migration.Name}");
+                    Log(LogLevel.Information, $"Applying migration: {migration.Version} - {migration.Name}");
                     var task = migrationService.ApplyMigration(migration);
                     task.Wait(); // Wait for async operation to complete
-                    Console.WriteLine($"Successfully applied migration: {migration.Version}");
+                    Log(LogLevel.Information, $"Successfully applied migration: {migration.Version}");
                 }
-                
-                Console.WriteLine("All pending migrations applied successfully.");
+
+                Log(LogLevel.Information, "All pending migrations applied successfully.");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error applying migrations: {ex.Message}");
+            Log(LogLevel.Error, $"Error applying migrations: {ex.Message}");
             // Don't throw here to avoid breaking database initialization
         }
     }
@@ -505,6 +544,8 @@ public class LocalDbService
         command.CommandText = "SELECT * FROM Users WHERE id = @Id";
         command.Parameters.AddWithValue("@Id", id);
 
+        Console.WriteLine($"Executing SQL: {command.CommandText} with Id={id}");
+
         using var reader = command.ExecuteReader();
         if (reader.Read())
         {
@@ -720,7 +761,7 @@ public class LocalDbService
             command.Parameters.AddWithValue("@Id", badge.Id);
         }
 
-        Console.WriteLine($"Saving badge: {badge.Image}");
+        Log(LogLevel.Debug, "Saving badge: {BadgeImage}", badge.Image);
 
         command.Parameters.AddWithValue("@Title", badge.Title);
         command.Parameters.AddWithValue("@Description", badge.Description ?? (object)DBNull.Value);
@@ -813,9 +854,9 @@ public class LocalDbService
             } 
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading badge: {ex.Message}");
-                Console.WriteLine($"Badge data: {ex}");
-                Console.WriteLine($"Badge data: {JsonSerializer.Serialize(reader)}");
+                Log(LogLevel.Error, "Error reading badge: {ErrorMessage}", ex.Message);
+                Log(LogLevel.Debug, "Badge error details: {Exception}", ex);
+                Log(LogLevel.Debug, "Badge reader data: {ReaderData}", JsonSerializer.Serialize(reader));
             }
             
         }
@@ -1193,7 +1234,7 @@ public class ActorStats
         command.CommandText = @"
             SELECT id FROM BadgeRecord WHERE
                 (AcceptKey = '' OR AcceptKey IS NULL) 
-            AND AcceptedOn IS NOT NULL 
+            AND AcceptedOn IS NOT NULL AND IsExternal = FALSE 
             AND (FingerPrint = '' OR FingerPrint IS NULL) ORDER BY IssuedOn ASC LIMIT 1";
 
         using var reader = command.ExecuteReader();
@@ -1266,6 +1307,28 @@ public class ActorStats
 
         command.ExecuteNonQuery();
         transaction.Commit();
+    }
+
+    public void MarkBadgeRecordAsBoosted(long badgeRecordId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE BadgeRecord SET 
+                BoostedOn = @BoostedOn
+            WHERE Id = @Id;
+        ";
+
+        command.Parameters.AddWithValue("@Id", badgeRecordId);
+        command.Parameters.AddWithValue("@BoostedOn", DateTime.UtcNow);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+
+        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers");
     }
 
     public void CreateBadgeRecord(BadgeRecord record)
@@ -1387,6 +1450,7 @@ public class ActorStats
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1401,6 +1465,7 @@ public class ActorStats
 
     public BadgeRecord? GetGrantByNoteId(string noteId)
     {
+        Log(LogLevel.Debug, "GetGrantByNoteId: {NoteId}", noteId);
         BadgeRecord? badgeRecord = null;
 
         using var connection = GetConnection();
@@ -1428,13 +1493,17 @@ public class ActorStats
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 IssuedToEmail = reader["IssuedToEmail"] == DBNull.Value ? null : reader["IssuedToEmail"].ToString(),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                 IsExternal = reader["IsExternal"] == DBNull.Value ? false : reader.GetBoolean(reader.GetOrdinal("IsExternal")),
             };
+
+            break;
         }
+
         return badgeRecord;
     }
 
@@ -1460,6 +1529,7 @@ public class ActorStats
         command.CommandText = @"SELECT * FROM BadgeRecord 
                  WHERE (FingerPrint IS NULL OR FingerPrint = '')
                  AND (AcceptKey IS NULL OR AcceptKey = '')
+                 AND IsExternal = FALSE 
                  AND AcceptedOn IS NOT NULL " +
                  (whereClause.Count > 0 ? " AND " + string.Join(" AND ", whereClause) : "");
 
@@ -1482,6 +1552,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1511,7 +1582,10 @@ public class ActorStats
         command.CommandText = "SELECT * FROM BadgeRecord" + 
             (whereClause.Count > 0 ? " WHERE " + string.Join(" AND ", whereClause) : "");
 
-        Console.WriteLine($"{command.CommandText} - Id = {id}");
+        if (id.HasValue)
+        {
+            Log(LogLevel.Debug, "{CommandText} - Id = {Id}", command.CommandText, id);
+        }
 
         using var reader = command.ExecuteReader();
 
@@ -1532,6 +1606,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = new Badge { Id = reader.GetInt64(reader.GetOrdinal("BadgeId")) },
@@ -1633,6 +1708,7 @@ public class ActorStats
                 IssuedToName = reader.GetString(reader.GetOrdinal("IssuedToName")),
                 IssuedToSubjectUri = reader.GetString(reader.GetOrdinal("IssuedToSubjectUri")),
                 AcceptedOn = reader["AcceptedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("AcceptedOn")),
+                BoostedOn = reader["BoostedOn"] == DBNull.Value ? null : (DateTime?)reader.GetDateTime(reader.GetOrdinal("BoostedOn")),
                 FingerPrint = reader["FingerPrint"] == DBNull.Value ? null : reader["FingerPrint"].ToString(),
                 AcceptKey = reader["AcceptKey"] == DBNull.Value ? null : reader["AcceptKey"].ToString(),
                 Badge = badge,
@@ -1644,22 +1720,13 @@ public class ActorStats
         return records;
     }
 
-    public InstanceDescription GetInstanceDescription(string domain = null)
+    public InstanceDescription GetInstanceDescription()
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        
-        if (!string.IsNullOrEmpty(domain))
-        {
-            command.CommandText = "SELECT * FROM InstanceDescription WHERE Domain = @Domain LIMIT 1";
-            command.Parameters.AddWithValue("@Domain", domain);
-        }
-        else
-        {
-            command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
-        }
+        command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
 
         using var reader = command.ExecuteReader();
         if (reader.Read())
@@ -1671,81 +1738,14 @@ public class ActorStats
                 Description = reader["Description"] as string ?? "",
                 Purpose = reader["Purpose"] as string ?? "",
                 ContactInfo = reader["ContactInfo"] as string ?? "",
-                Domain = reader["Domain"] as string ?? "",
                 CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
-                IsEnabled = Convert.ToBoolean(reader["IsEnabled"]),
-                CreatedAt = reader["CreatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["CreatedAt"].ToString()) 
-                    : DateTime.UtcNow,
-                UpdatedAt = reader["UpdatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["UpdatedAt"].ToString()) 
-                    : DateTime.UtcNow
+                IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled")),
+                LandingPageType = reader["LandingPageType"] as string ?? "default",
+                StaticPageFilename = reader["StaticPageFilename"] as string ?? ""
             };
-        }
-        
-        if (string.IsNullOrEmpty(domain))
-        {
-            // No primary domain found, try to get any instance description
-            command.CommandText = "SELECT * FROM InstanceDescription LIMIT 1";
-            using var fallbackReader = command.ExecuteReader();
-            if (fallbackReader.Read())
-            {
-                return new InstanceDescription
-                {
-                    Id = fallbackReader.GetInt32(fallbackReader.GetOrdinal("Id")),
-                    Name = fallbackReader["Name"] as string ?? "",
-                    Description = fallbackReader["Description"] as string ?? "",
-                    Purpose = fallbackReader["Purpose"] as string ?? "",
-                    ContactInfo = fallbackReader["ContactInfo"] as string ?? "",
-                    Domain = fallbackReader["Domain"] as string ?? "",
-                    CustomLandingPageHtml = fallbackReader["CustomLandingPageHtml"] as string ?? "",
-                    IsEnabled = Convert.ToBoolean(fallbackReader["IsEnabled"]),
-                    CreatedAt = fallbackReader["CreatedAt"] != DBNull.Value 
-                        ? DateTime.Parse(fallbackReader["CreatedAt"].ToString()) 
-                        : DateTime.UtcNow,
-                    UpdatedAt = fallbackReader["UpdatedAt"] != DBNull.Value 
-                        ? DateTime.Parse(fallbackReader["UpdatedAt"].ToString()) 
-                        : DateTime.UtcNow
-                };
-            }
         }
 
         return new InstanceDescription();
-    }
-    
-    public List<InstanceDescription> GetAllInstanceDescriptions()
-    {
-        var instances = new List<InstanceDescription>();
-        
-        using var connection = GetConnection();
-        connection.Open();
-
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM InstanceDescription ORDER BY Domain ASC";
-
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            instances.Add(new InstanceDescription
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Name = reader["Name"] as string ?? "",
-                Description = reader["Description"] as string ?? "",
-                Purpose = reader["Purpose"] as string ?? "",
-                ContactInfo = reader["ContactInfo"] as string ?? "",
-                Domain = reader["Domain"] as string ?? "",
-                CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
-                IsEnabled = Convert.ToBoolean(reader["IsEnabled"]),
-                CreatedAt = reader["CreatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["CreatedAt"].ToString()) 
-                    : DateTime.UtcNow,
-                UpdatedAt = reader["UpdatedAt"] != DBNull.Value 
-                    ? DateTime.Parse(reader["UpdatedAt"].ToString()) 
-                    : DateTime.UtcNow
-            });
-        }
-        
-        return instances;
     }
 
     public void SaveInstanceDescription(InstanceDescription description)
@@ -1757,29 +1757,17 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.Transaction = transaction;
 
-        // Sanitize input - remove HTML tags from fields that shouldn't contain HTML
+        // Sanitize input - remove HTML tags
         description.Name = System.Text.RegularExpressions.Regex.Replace(description.Name ?? "", "<.*?>", "").Trim();
         description.Description = System.Text.RegularExpressions.Regex.Replace(description.Description ?? "", "<.*?>", "").Trim();
         description.Purpose = System.Text.RegularExpressions.Regex.Replace(description.Purpose ?? "", "<.*?>", "").Trim();
         description.ContactInfo = System.Text.RegularExpressions.Regex.Replace(description.ContactInfo ?? "", "<.*?>", "").Trim();
-        description.Domain = System.Text.RegularExpressions.Regex.Replace(description.Domain ?? "", "<.*?>", "").Trim();
-        
-        // Update the timestamp
-        description.UpdatedAt = DateTime.UtcNow;
-        
 
         if (description.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO InstanceDescription (
-                    Name, Description, Purpose, ContactInfo, Domain, 
-                    CustomLandingPageHtml, IsEnabled, 
-                    CreatedAt, UpdatedAt)
-                VALUES (
-                    @Name, @Description, @Purpose, @ContactInfo, @Domain,
-                    @CustomLandingPageHtml, @IsEnabled,
-                    @CreatedAt, @UpdatedAt
-                );
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename);
                 SELECT last_insert_rowid();
             ";
         }
@@ -1791,10 +1779,10 @@ public class ActorStats
                     Description = @Description, 
                     Purpose = @Purpose, 
                     ContactInfo = @ContactInfo,
-                    Domain = @Domain,
                     CustomLandingPageHtml = @CustomLandingPageHtml,
                     IsEnabled = @IsEnabled,
-                    UpdatedAt = @UpdatedAt
+                    LandingPageType = @LandingPageType,
+                    StaticPageFilename = @StaticPageFilename
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", description.Id);
@@ -1804,15 +1792,10 @@ public class ActorStats
         command.Parameters.AddWithValue("@Description", description.Description);
         command.Parameters.AddWithValue("@Purpose", description.Purpose);
         command.Parameters.AddWithValue("@ContactInfo", description.ContactInfo);
-        command.Parameters.AddWithValue("@Domain", description.Domain);
         command.Parameters.AddWithValue("@CustomLandingPageHtml", description.CustomLandingPageHtml);
         command.Parameters.AddWithValue("@IsEnabled", description.IsEnabled);
-        command.Parameters.AddWithValue("@UpdatedAt", description.UpdatedAt.ToString("o"));
-        
-        if (description.Id == 0)
-        {
-            command.Parameters.AddWithValue("@CreatedAt", description.CreatedAt.ToString("o"));
-        }
+        command.Parameters.AddWithValue("@LandingPageType", description.LandingPageType);
+        command.Parameters.AddWithValue("@StaticPageFilename", description.StaticPageFilename);
 
         if (description.Id == 0)
         {
@@ -1831,24 +1814,6 @@ public class ActorStats
         using var connection = GetConnection();
         connection.Open();
 
-        // Check if the Domain column exists
-        bool domainColumnExists = false;
-        using (var checkCommand = connection.CreateCommand())
-        {
-            checkCommand.CommandText = "PRAGMA table_info(InstanceDescription)";
-            using var reader = checkCommand.ExecuteReader();
-            while (reader.Read())
-            {
-                string columnName = reader["name"].ToString();
-                if (columnName == "Domain")
-                {
-                    domainColumnExists = true;
-                    break;
-                }
-            }
-        }
-
-        // Create the table if it doesn't exist
         var command = connection.CreateCommand();
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS InstanceDescription (
@@ -1857,37 +1822,10 @@ public class ActorStats
                 Description TEXT NOT NULL DEFAULT '',
                 Purpose TEXT NOT NULL DEFAULT '',
                 ContactInfo TEXT NOT NULL DEFAULT '',
-                Domain TEXT NOT NULL DEFAULT '',
-                CustomLandingPageHtml TEXT NOT NULL DEFAULT '',
-                IsEnabled BOOLEAN NOT NULL DEFAULT 0,
-                CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                IsEnabled BOOLEAN NOT NULL DEFAULT 0
             );
         ";
         command.ExecuteNonQuery();
-        
-        // If the table exists but doesn't have the new columns, alter the table to add them
-        if (!domainColumnExists)
-        {
-            try
-            {
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN Domain TEXT NOT NULL DEFAULT ''";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN CustomLandingPageHtml TEXT NOT NULL DEFAULT ''";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP";
-                command.ExecuteNonQuery();
-                
-                command.CommandText = "ALTER TABLE InstanceDescription ADD COLUMN UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP";
-                command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating InstanceDescription table: {ex.Message}");
-            }
-        }
     }
 
     // Invitation management methods
@@ -2206,147 +2144,267 @@ public class ActorStats
         return null;
     }
 
-    public void InitializeDomainLandingPageTable()
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS DomainLandingPages (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Domain TEXT NOT NULL UNIQUE,
-                HtmlContent TEXT NOT NULL,
-                IsEnabled INTEGER NOT NULL DEFAULT 1,
-                CreatedAt TEXT NOT NULL,
-                UpdatedAt TEXT NOT NULL
-            )";
-        command.ExecuteNonQuery();
-    }
-
-    public void SaveDomainLandingPage(DomainLandingPage landingPage)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        // Check if domain already exists
-        var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT Id FROM DomainLandingPages WHERE Domain = @Domain";
-        checkCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-        
-        var existingId = checkCommand.ExecuteScalar();
-        landingPage.UpdatedAt = DateTime.UtcNow;
-        
-        if (existingId != null)
-        {
-            // Update existing record
-            var updateCommand = connection.CreateCommand();
-            updateCommand.CommandText = @"
-                UPDATE DomainLandingPages 
-                SET HtmlContent = @HtmlContent, 
-                    IsEnabled = @IsEnabled, 
-                    UpdatedAt = @UpdatedAt
-                WHERE Domain = @Domain";
-            updateCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-            updateCommand.Parameters.AddWithValue("@HtmlContent", landingPage.HtmlContent);
-            updateCommand.Parameters.AddWithValue("@IsEnabled", landingPage.IsEnabled ? 1 : 0);
-            updateCommand.Parameters.AddWithValue("@UpdatedAt", landingPage.UpdatedAt.ToString("o"));
-            updateCommand.ExecuteNonQuery();
-        }
-        else
-        {
-            // Insert new record
-            var insertCommand = connection.CreateCommand();
-            insertCommand.CommandText = @"
-                INSERT INTO DomainLandingPages 
-                    (Domain, HtmlContent, IsEnabled, CreatedAt, UpdatedAt) 
-                VALUES 
-                    (@Domain, @HtmlContent, @IsEnabled, @CreatedAt, @UpdatedAt)";
-            insertCommand.Parameters.AddWithValue("@Domain", landingPage.Domain);
-            insertCommand.Parameters.AddWithValue("@HtmlContent", landingPage.HtmlContent);
-            insertCommand.Parameters.AddWithValue("@IsEnabled", landingPage.IsEnabled ? 1 : 0);
-            insertCommand.Parameters.AddWithValue("@CreatedAt", landingPage.CreatedAt.ToString("o"));
-            insertCommand.Parameters.AddWithValue("@UpdatedAt", landingPage.UpdatedAt.ToString("o"));
-            insertCommand.ExecuteNonQuery();
-        }
-    }
-
-    public DomainLandingPage GetDomainLandingPage(string domain)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM DomainLandingPages WHERE Domain = @Domain AND IsEnabled = 1";
-        command.Parameters.AddWithValue("@Domain", domain);
-        
-        using var reader = command.ExecuteReader();
-        if (reader.Read())
-        {
-            return new DomainLandingPage
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Domain = reader.GetString(reader.GetOrdinal("Domain")),
-                HtmlContent = reader.GetString(reader.GetOrdinal("HtmlContent")),
-                IsEnabled = reader.GetInt32(reader.GetOrdinal("IsEnabled")) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
-                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
-            };
-        }
-        
-        return null;
-    }
-
-    public List<DomainLandingPage> GetAllDomainLandingPages()
-    {
-        var landingPages = new List<DomainLandingPage>();
-        
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM DomainLandingPages ORDER BY Domain";
-        
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            landingPages.Add(new DomainLandingPage
-            {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Domain = reader.GetString(reader.GetOrdinal("Domain")),
-                HtmlContent = reader.GetString(reader.GetOrdinal("HtmlContent")),
-                IsEnabled = reader.GetInt32(reader.GetOrdinal("IsEnabled")) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreatedAt"))),
-                UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("UpdatedAt")))
-            });
-        }
-        
-        return landingPages;
-    }
-
-    public void DeleteDomainLandingPage(string domain)
-    {
-        using var connection = GetConnection();
-        connection.Open();
-        
-        var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM DomainLandingPages WHERE Domain = @Domain";
-        command.Parameters.AddWithValue("@Domain", domain);
-        command.ExecuteNonQuery();
-    }
-
-    public void DeleteInstanceDescription(int id)
+    // Static Pages management methods
+    public void UpsertStaticPage(StaticPage page)
     {
         using var connection = GetConnection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
         var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "DELETE FROM InstanceDescription WHERE Id = @Id";
-        command.Parameters.AddWithValue("@Id", id);
-        command.ExecuteNonQuery();
+        if (page.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO StaticPages (Filename, Title, Description, FileSize, CreatedAt, UpdatedAt)
+                VALUES (@Filename, @Title, @Description, @FileSize, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT(Filename) DO UPDATE SET
+                    Title = @Title,
+                    Description = @Description,
+                    FileSize = @FileSize,
+                    UpdatedAt = CURRENT_TIMESTAMP;
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE StaticPages SET 
+                    Title = @Title, 
+                    Description = @Description, 
+                    FileSize = @FileSize,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", page.Id);
+        }
+
+        command.Parameters.AddWithValue("@Filename", page.Filename);
+        command.Parameters.AddWithValue("@Title", page.Title);
+        command.Parameters.AddWithValue("@Description", page.Description);
+        command.Parameters.AddWithValue("@FileSize", page.FileSize);
+
+        if (page.Id == 0)
+        {
+            var result = command.ExecuteScalar();
+            if (result != null && long.TryParse(result.ToString(), out long newId))
+            {
+                page.Id = (int)newId;
+            }
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
 
         transaction.Commit();
+    }
+
+    public List<StaticPage> GetAllStaticPages()
+    {
+        var pages = new List<StaticPage>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM StaticPages ORDER BY CreatedAt DESC";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            pages.Add(new StaticPage
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Filename = reader.GetString(reader.GetOrdinal("Filename")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.GetString(reader.GetOrdinal("Description")),
+                FileSize = reader.GetInt64(reader.GetOrdinal("FileSize")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            });
+        }
+
+        return pages;
+    }
+
+    public StaticPage? GetStaticPageByFilename(string filename)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM StaticPages WHERE Filename = @Filename";
+        command.Parameters.AddWithValue("@Filename", filename);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new StaticPage
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Filename = reader.GetString(reader.GetOrdinal("Filename")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.GetString(reader.GetOrdinal("Description")),
+                FileSize = reader.GetInt64(reader.GetOrdinal("FileSize")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+        }
+
+        return null;
+    }
+
+    public void DeleteStaticPage(int id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM StaticPages WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
+    }
+
+    // Registration methods
+    public async Task<int> CreateRegistrationAsync(Registration registration)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO Registrations (FormData, Email, Name, IpAddress, UserAgent, SubmittedAt, IsReviewed, IsApproved)
+            VALUES (@FormData, @Email, @Name, @IpAddress, @UserAgent, @SubmittedAt, @IsReviewed, @IsApproved);
+            SELECT last_insert_rowid();";
+
+        command.Parameters.AddWithValue("@FormData", registration.FormData);
+        command.Parameters.AddWithValue("@Email", registration.Email ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Name", registration.Name ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IpAddress", registration.IpAddress);
+        command.Parameters.AddWithValue("@UserAgent", registration.UserAgent);
+        command.Parameters.AddWithValue("@SubmittedAt", registration.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+        command.Parameters.AddWithValue("@IsReviewed", registration.IsReviewed);
+        command.Parameters.AddWithValue("@IsApproved", registration.IsApproved);
+
+        var result = await command.ExecuteScalarAsync();
+        return Convert.ToInt32(result);
+    }
+
+    public async Task<List<Registration>> GetRegistrationsAsync(bool? reviewed = null, bool? approved = null)
+    {
+        var registrations = new List<Registration>();
+
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        var sql = "SELECT * FROM Registrations";
+        var conditions = new List<string>();
+
+        if (reviewed.HasValue)
+        {
+            conditions.Add("IsReviewed = @IsReviewed");
+        }
+
+        if (approved.HasValue)
+        {
+            conditions.Add("IsApproved = @IsApproved");
+        }
+
+        if (conditions.Any())
+        {
+            sql += " WHERE " + string.Join(" AND ", conditions);
+        }
+
+        sql += " ORDER BY SubmittedAt DESC";
+
+        command.CommandText = sql;
+
+        if (reviewed.HasValue)
+        {
+            command.Parameters.AddWithValue("@IsReviewed", reviewed.Value);
+        }
+
+        if (approved.HasValue)
+        {
+            command.Parameters.AddWithValue("@IsApproved", approved.Value);
+        }
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            registrations.Add(new Registration
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                FormData = reader.GetString(reader.GetOrdinal("FormData")),
+                Email = reader.IsDBNull(reader.GetOrdinal("Email")) ? null : reader.GetString(reader.GetOrdinal("Email")),
+                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? null : reader.GetString(reader.GetOrdinal("Name")),
+                IpAddress = reader.GetString(reader.GetOrdinal("IpAddress")),
+                UserAgent = reader.GetString(reader.GetOrdinal("UserAgent")),
+                SubmittedAt = reader.GetDateTime(reader.GetOrdinal("SubmittedAt")),
+                IsReviewed = reader.GetBoolean(reader.GetOrdinal("IsReviewed")),
+                IsApproved = reader.GetBoolean(reader.GetOrdinal("IsApproved")),
+                ReviewNotes = reader.IsDBNull(reader.GetOrdinal("ReviewNotes")) ? null : reader.GetString(reader.GetOrdinal("ReviewNotes")),
+                ReviewedAt = reader.IsDBNull(reader.GetOrdinal("ReviewedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("ReviewedAt")),
+                ReviewedBy = reader.IsDBNull(reader.GetOrdinal("ReviewedBy")) ? null : reader.GetString(reader.GetOrdinal("ReviewedBy"))
+            });
+        }
+
+        return registrations;
+    }
+
+    public async Task<Registration?> GetRegistrationByIdAsync(int id)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Registrations WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            return new Registration
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                FormData = reader.GetString(reader.GetOrdinal("FormData")),
+                Email = reader.IsDBNull(reader.GetOrdinal("Email")) ? null : reader.GetString(reader.GetOrdinal("Email")),
+                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? null : reader.GetString(reader.GetOrdinal("Name")),
+                IpAddress = reader.GetString(reader.GetOrdinal("IpAddress")),
+                UserAgent = reader.GetString(reader.GetOrdinal("UserAgent")),
+                SubmittedAt = reader.GetDateTime(reader.GetOrdinal("SubmittedAt")),
+                IsReviewed = reader.GetBoolean(reader.GetOrdinal("IsReviewed")),
+                IsApproved = reader.GetBoolean(reader.GetOrdinal("IsApproved")),
+                ReviewNotes = reader.IsDBNull(reader.GetOrdinal("ReviewNotes")) ? null : reader.GetString(reader.GetOrdinal("ReviewNotes")),
+                ReviewedAt = reader.IsDBNull(reader.GetOrdinal("ReviewedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("ReviewedAt")),
+                ReviewedBy = reader.IsDBNull(reader.GetOrdinal("ReviewedBy")) ? null : reader.GetString(reader.GetOrdinal("ReviewedBy"))
+            };
+        }
+
+        return null;
+    }
+
+    public async Task<bool> ReviewRegistrationAsync(int id, bool approved, string? notes = null, string? reviewedBy = null)
+    {
+        using var connection = GetConnection();
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            UPDATE Registrations 
+            SET IsReviewed = 1, IsApproved = @IsApproved, ReviewNotes = @ReviewNotes, 
+                ReviewedAt = @ReviewedAt, ReviewedBy = @ReviewedBy
+            WHERE Id = @Id";
+
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@IsApproved", approved);
+        command.Parameters.AddWithValue("@ReviewNotes", notes ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ReviewedAt", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+        command.Parameters.AddWithValue("@ReviewedBy", reviewedBy ?? (object)DBNull.Value);
+
+        var rowsAffected = await command.ExecuteNonQueryAsync();
+        return rowsAffected > 0;
     }
 }

@@ -1,15 +1,14 @@
 ﻿@page "/"
 @using BadgeFed.Models
 @inject HttpClient Http
-@inject LocalDbService LocalDbService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject LandingPageCacheService LandingPageCache
-@inject IConfiguration Configuration
 @layout BadgeFed.Components.Layouts.LandingLayout
+@inject LocalScopedDb LocalDbService
 
-@if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+@if (!string.IsNullOrEmpty(CustomLandingPageHtmlContent))
 {
-    @((MarkupString)InstanceDescriptionData.CustomLandingPageHtml)
+    @((MarkupString)CustomLandingPageHtmlContent)
 }
 else
 {
@@ -388,61 +387,77 @@ else
 @code {
     private List<Actor> Actors { get; set; }
     private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
-    private InstanceDescription InstanceDescriptionData { get; set; }
-    private DomainLandingPage CustomLandingPage { get; set; }
+    private InstanceDescription? InstanceDescriptionData { get; set; } = null;
+    private string CustomLandingPageHtmlContent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        // Get current domain from request
-        var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Host;
+        var db = LocalDbService;
 
-        Console.WriteLine($"Request Host: {requestHost}");
+        var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Value;
+
         if (!string.IsNullOrEmpty(requestHost))
         {
-            // Initialize tables
-            LocalDbService.InitializeInstanceDescriptionTable();
-            
-            // Try to get domain-specific instance description
-            InstanceDescriptionData = LocalDbService.GetInstanceDescription(requestHost);
-            
-            // If we found a domain-specific instance with custom HTML, use it
-            if (InstanceDescriptionData != null && !string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
-            {
-                // Check if we have it in cache first
-                if (!LandingPageCache.TryGetValue(requestHost, out var cachedHtml))
-                {
-                    // Add to cache for future requests
-                    LandingPageCache.Set(requestHost, InstanceDescriptionData.CustomLandingPageHtml);
-                }
-                else
-                {
-                    // Use cached version if it exists
-                    InstanceDescriptionData.CustomLandingPageHtml = cachedHtml;
-                }
-            }
-        }
-        else
-        {
-            // Initialize table and load primary instance description
-            LocalDbService.InitializeInstanceDescriptionTable();
-            InstanceDescriptionData = LocalDbService.GetInstanceDescription();
-        }
-        
-        // Load default content if no custom landing page HTML is available
-        if (string.IsNullOrEmpty(InstanceDescriptionData?.CustomLandingPageHtml))
-        {
-            try
-            {
-                Actors = LocalDbService.GetActors("Featured = TRUE AND IsMain = FALSE");
-                FollowedIssuers = LocalDbService.GetAllFollowedIssuers(true);
-                
-                HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
+            try {
+                // Load instance description to check landing page configuration
+                InstanceDescriptionData = db.GetInstanceDescription();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading data: {ex.Message}");
+                Console.WriteLine($"Error loading instance description: {ex.Message}");
+            }
+
+            // Handle different landing page types
+            if (InstanceDescriptionData != null)
+            {
+                switch (InstanceDescriptionData.LandingPageType)
+                {
+                    case "custom_html":
+                        if (!string.IsNullOrEmpty(InstanceDescriptionData.CustomLandingPageHtml))
+                        {
+                            // Check cache first
+                          /*  if (false && !LandingPageCache.TryGetValue($"{requestHost}_custom", out var cachedHtml))
+                            {
+                                LandingPageCache.Set($"{requestHost}_custom", InstanceDescriptionData.CustomLandingPageHtml);
+                                CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
+                            }
+                            else
+                            {
+                            */  //  CustomLandingPageHtmlContent = cachedHtml;
+                            //}
+                            CustomLandingPageHtmlContent = InstanceDescriptionData.CustomLandingPageHtml;
+                            return; // Exit early, don't load default content
+                        }
+                        break;
+                        
+                    case "static_page":
+                        if (!string.IsNullOrEmpty(InstanceDescriptionData.StaticPageFilename))
+                        {
+                            // Redirect to the static page
+                            var staticPageUrl = $"/pages/{InstanceDescriptionData.StaticPageFilename}";
+                            HttpContextAccessor.HttpContext?.Response.Redirect(staticPageUrl);
+                            return;
+                        }
+                        break;
+                        
+                    default: // "default" or any other value
+                        // Continue with normal flow below
+                        break;
+                }
             }
         }
+        
+        // Load default content for default landing page type
+        try
+        {
+            Actors = db.GetActors("Featured = TRUE AND IsMain = FALSE");
+            FollowedIssuers = db.GetAllFollowedIssuers(true);
+            
+            HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
     }
-
 }

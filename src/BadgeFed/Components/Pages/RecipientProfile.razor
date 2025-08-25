@@ -2,7 +2,7 @@
 @page "/wallet/{recipientUri}"
 @using BadgeFed.Models
 @using Microsoft.AspNetCore.Components.Web
-@inject LocalDbService LocalDbService
+@inject LocalScopedDb LocalDbService
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpContextAccessor
 @layout BadgeFed.Components.Layouts.MainLayout

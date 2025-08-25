@@ -44,6 +44,7 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         padding: 0.5rem;
     }
+
     .navbar-dropdown .navbar-item {
         color: #4a4a4a;
         padding: 0.5rem 1rem;
@@ -80,7 +81,7 @@
     <div class="container">
         <div class="navbar-brand">
             <a class="navbar-item navbar-logo" href="/admin">
-                <img src="logo.h.png" style="max-width: 400px" />
+                <Logo />
             </a>
             <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu" @onclick="ToggleMenu">
                 <span aria-hidden="true"></span>
@@ -184,11 +185,11 @@
                                 </span>
                                 <span>General</span>
                             </a>
-                            <a class="navbar-item" href="/settings/instance">
+                            <a class="navbar-item" href="/admin/settings/content">
                                 <span class="icon">
-                                    <i class="fas fa-home"></i>
+                                    <i class="fas fa-edit"></i>
                                 </span>
-                                <span>Instance Description</span>
+                                <span>Content Management</span>
                             </a>
                             <a class="navbar-item" href="/admin/settings/database">
                                 <span class="icon">
@@ -202,17 +203,17 @@
                                 </span>
                                 <span>Themes</span>
                             </a>
-                            <a class="navbar-item" href="/admin/settings/domains">
-                                <span class="icon">
-                                    <i class="fas fa-globe"></i>
-                                </span>
-                                <span>Domains</span>
-                            </a>
                             <a class="navbar-item" href="/admin/invitations">
                                 <span class="icon">
                                     <i class="fas fa-user-plus"></i>
                                 </span>
                                 <span>User Invitations</span>
+                            </a>
+                            <a class="navbar-item" href="/admin/registrations">
+                                <span class="icon">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </span>
+                                <span>User Registrations</span>
                             </a>
                             <a class="navbar-item" href="/admin/servers">
                                 <span class="icon">

@@ -9,6 +9,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject HttpClient Http
 @inject ProtectedSessionStorage ProtectedSessionStore
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <section class="section">
@@ -40,6 +41,22 @@
                                 </div>
                             </div>
                         }
+
+                        @if (IsGotoSocialConfigured)
+                        {
+                            <div class="field mb-3">
+                                <div class="control">
+                                    <button class="button is-fullwidth is-primary has-background-orange"
+                                            @onclick="SignInWithGotoSocial">
+                                        <span class="icon">
+                                            <i class="fab fa-gotosocial"></i>
+                                        </span>
+                                        <span>Sign In with GoToSocial</span>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
                         @if (IsLinkedInConfigured)
                         {
                             <div class="field mb-3">
@@ -82,6 +99,39 @@
     }
     .has-background-purple:hover {
         background-color: #5b009a !important;
+    }
+
+    .has-background-orange {
+        background-color: #ff8c00 !important;
+        color: white !important;
+    }
+
+    .has-background-orange:hover {
+        background-color: #e07b00 !important;
+    }
+
+    /* GoToSocial sloth */
+    .fab.fa-gotosocial::before {
+        content: "";
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        background: currentColor;
+        vertical-align: -0.125em;
+
+        /* Stylized sloth icon (Font-Awesome-like) encoded as a data URI.
+           White areas are visible; black areas create small cutouts (eyes/mouth). */
+        --gts-sloth: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="%23ffffff" d="M32 6c-7 0-12 4-16 9-6 7-6 16-4 22 2 6 7 11 13 14 6 3 27 6 31-1 4-7 1-18-3-24-4-6-9-12-21-20z"/><circle fill="%23000000" cx="23" cy="28" r="3"/><circle fill="%23000000" cx="41" cy="28" r="3"/><path fill="%23000000" d="M32 35c-3 0-6 3-6 4 0 1 3 2 6 2s6-1 6-2c0-1-3-4-6-4z"/></svg>');
+
+        -webkit-mask-image: var(--gts-sloth);
+        mask-image: var(--gts-sloth);
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+
     }
 </style>
 
@@ -207,8 +257,12 @@
     private string Avatar;
 
     private bool IsMastodonConfigured;
+    private bool IsGotoSocialConfigured;
     private bool IsLinkedInConfigured;
     private bool IsGoogleConfigured;
+
+    private string mastodonServer;
+    private string gotoSocialServer;
     
     protected override async Task OnInitializedAsync()
     {
@@ -225,6 +279,18 @@
                                    !string.IsNullOrEmpty(mastodonSection["ClientSecret"]) &&
                                    !string.IsNullOrEmpty(mastodonSection["Server"]);
 
+            if (IsMastodonConfigured) {
+                mastodonServer = mastodonSection["Server"];
+            }
+
+            // Check if GotoSocialConfig is present
+            var gotoSocialSection = Configuration.GetSection("GotoSocialConfig");
+            IsGotoSocialConfigured = !string.IsNullOrEmpty(gotoSocialSection["Server"]);
+
+            if (IsGotoSocialConfigured) {
+                gotoSocialServer = gotoSocialSection["Server"];
+            }
+
             // Check if LinkedInConfig is present
             var linkedInSection = Configuration.GetSection("LinkedInConfig");
             IsLinkedInConfigured = !string.IsNullOrEmpty(linkedInSection["ClientId"]) &&
@@ -234,6 +300,7 @@
             var googleSection = Configuration.GetSection("GoogleConfig");
             IsGoogleConfigured = !string.IsNullOrEmpty(googleSection["ClientId"]) &&
                                  !string.IsNullOrEmpty(googleSection["ClientSecret"]);
+
 
             if (User != null)
             {
@@ -290,14 +357,25 @@
         if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("invitationCode", out var invitationCode))
         {
             // Store the invitation code in session storage
-            await ProtectedSessionStore.SetAsync("invitationCode", invitationCode.ToString());
+            await JS.InvokeVoidAsync("setCookie", "invitationCode", invitationCode, 1);
         }
     }
 
     private async Task SignInWithMastodon()
     {
         var invitationCode = await GetInvitationCodeFromUrl();
-        var url = $"admin/login/mastodon?returnUrl=/admin/";
+        var url = $"admin/login/oauth/{mastodonServer}?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private async Task SignInWithGotoSocial()
+    {
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/oauth/{gotoSocialServer}?returnUrl=/admin/";
         if (!string.IsNullOrEmpty(invitationCode))
         {
             url += $"&invitationCode={invitationCode}";
