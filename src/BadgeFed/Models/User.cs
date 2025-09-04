@@ -19,5 +19,7 @@ namespace BadgeFed.Models
         public string Role { get; set; } = "manager";
 
         public bool IsActive { get; set; }
+        
+        public string GroupId { get; set; } = "system";
     }
 }

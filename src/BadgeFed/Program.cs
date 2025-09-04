@@ -93,6 +93,8 @@ builder.Services.AddScoped<InvitationService>();
 
 builder.Services.AddScoped<RegistrationService>();
 
+builder.Services.AddScoped<UserService>();
+
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
 var googleConfig = builder.Configuration.GetSection("GoogleConfig").Get<GoogleConfig>();
@@ -143,12 +145,16 @@ if (gotoSocialConfig != null)
         }
     }
 
-    auth.AddGotoSocial(adminConfig, gotoSocialConfig, o => {
-        o.Scope.Add("profile");
-        o.ClientId = gotoSocialConfig.ClientId;
-        o.ClientSecret = gotoSocialConfig.ClientSecret;
-        o.SaveTokens = true;
-    }, localDbFactory);
+    if (gotoSocialConfig != null && !string.IsNullOrEmpty(gotoSocialConfig.ClientId))
+    {
+        auth.AddGotoSocial(adminConfig, gotoSocialConfig, o =>
+        {
+            o.Scope.Add("profile");
+            o.ClientId = gotoSocialConfig.ClientId;
+            o.ClientSecret = gotoSocialConfig.ClientSecret;
+            o.SaveTokens = true;
+        }, localDbFactory);
+    }
 }
 
 if (linkedInConfig != null)
@@ -255,10 +261,10 @@ async Task SetupDefaultActor(IServiceProvider services)
             // Create the default actor
             var defaultActor = new Actor
             {
-                FullName = "Default Admin",
+                FullName = $"{domain.ToTitleCase()} Admin",
                 Username = defaultUsername,
                 Domain = domain,
-                Summary = "This is the default admin actor.",
+                Summary = $"BadgeFed instance for {domain}. This is the default administrative account.",
                 PublicKeyPem = keyPair.PublicKeyPem,
                 PrivateKeyPem = keyPair.PrivateKeyPem,
                 InformationUri = $"https://{domain}/about",
@@ -316,7 +322,7 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     };
 
     Console.WriteLine($"GotoSocial registration request to {url}: {System.Text.Json.JsonSerializer.Serialize(payload)}");
-    
+
     var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
     var resp = await http.PostAsync(url, content);
     resp.EnsureSuccessStatusCode();
@@ -332,7 +338,20 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     return (clientId, clientSecret);
 }
 
-public static class MastodonOAuthExtensions {
+
+public static class StringExtensions
+{
+    public static string ToTitleCase(this string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+}
+
+public static class MastodonOAuthExtensions
+{
     private static readonly HashSet<string> _hosts = new();
 
     public static IEnumerable<string> Hosts => _hosts;
@@ -348,10 +367,10 @@ public static class MastodonOAuthExtensions {
         _hosts.Add(hostname);
         return builder.AddOAuth(hostname, $"GotoSocial-{hostname}", o =>
         {
-           /* if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
-            {
-                throw new ArgumentException("Invalid hostname", nameof(hostname));
-            }*/
+            /* if (string.IsNullOrEmpty(hostname) || Uri.CheckHostName(hostname) == UriHostNameType.Unknown)
+             {
+                 throw new ArgumentException("Invalid hostname", nameof(hostname));
+             }*/
 
             o.AuthorizationEndpoint = $"https://{hostname}/oauth/authorize";
             o.TokenEndpoint = $"https://{hostname}/oauth/token";
@@ -406,7 +425,8 @@ public static class MastodonOAuthExtensions {
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:gotosocial:hostname", hostname),
-                            new Claim(ClaimTypes.Role, "admin")
+                            new Claim(ClaimTypes.Role, "admin"),
+                            new Claim("urn:badgefed:group", "system")
                         }));
                     }
                     else
@@ -432,11 +452,12 @@ public static class MastodonOAuthExtensions {
                                     CreatedAt = DateTime.UtcNow,
                                     Provider = "GotoSocial",
                                     Role = invitation.Role,
+                                    GroupId = invitation.GroupId,
                                     IsActive = true
                                 };
 
                                 invitationService.AcceptInvitation(invitationCode, registeredUser);
-                                Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                                Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
 
@@ -444,7 +465,8 @@ public static class MastodonOAuthExtensions {
 
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:gotosocial:hostname", hostname),
-                            new Claim(ClaimTypes.Role, role)
+                            new Claim(ClaimTypes.Role, role),
+                            new Claim("urn:badgefed:group", registeredUser?.GroupId ?? "system")
                         }));
                     }
                 },
@@ -531,7 +553,8 @@ public static class MastodonOAuthExtensions {
                     {
                         context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                             new Claim("urn:mastodon:hostname", hostname),
-                            new Claim(ClaimTypes.Role, "admin")
+                            new Claim(ClaimTypes.Role, "admin"),
+                            new Claim("urn:badgefed:group", "system")
                         }));
                     }
                     else
@@ -570,11 +593,12 @@ public static class MastodonOAuthExtensions {
                                         CreatedAt = DateTime.UtcNow,
                                         Provider = "Mastodon",
                                         Role = invitation.Role,
+                                        GroupId = invitation.GroupId,
                                         IsActive = true
                                     };
 
                                     invitationService.AcceptInvitation(invitationCode, registeredUser);
-                                    Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role}");
+                                    Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                                 }
                                 else
                                 {
@@ -586,14 +610,15 @@ public static class MastodonOAuthExtensions {
 
                             context.Principal.AddIdentity(new ClaimsIdentity(new[] {
                                 new Claim("urn:mastodon:hostname", hostname),
-                                new Claim(ClaimTypes.Role, role)
+                                new Claim(ClaimTypes.Role, role),
+                                new Claim("urn:badgefed:group", registeredUser?.GroupId ?? "system")
                             }));
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Error processing user {userId}: {ex.Message}");
                             throw;
-                        }                        
+                        }
                     }
                 },
                 OnRemoteFailure = context =>
@@ -667,6 +692,8 @@ public static class LinkedInOAuthExtensions
                         ? context.Properties.Items["invitationCode"]
                         : context.HttpContext.Request.Cookies["invitationCode"];
 
+                    var groupId = "system";
+
                     if (isAdmin)
                     {
                         role = "admin";
@@ -681,7 +708,7 @@ public static class LinkedInOAuthExtensions
                         {
                             var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
                             var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
-                            
+
                             if (invitation != null)
                             {
                                 // Create new user from invitation
@@ -694,11 +721,12 @@ public static class LinkedInOAuthExtensions
                                     CreatedAt = DateTime.UtcNow,
                                     Provider = "LinkedIn",
                                     Role = invitation.Role,
+                                    GroupId = invitation.GroupId,
                                     IsActive = true
                                 };
-                                
+
                                 invitationService.AcceptInvitation(invitationCode, registeredUser);
-                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role}");
+                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
                         else if (registeredUser == null)
@@ -719,6 +747,7 @@ public static class LinkedInOAuthExtensions
                         }
 
                         role = registeredUser != null ? registeredUser.Role : "user";
+                        groupId = registeredUser != null ? registeredUser.GroupId : "system";
                     }
 
                     var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
@@ -731,6 +760,7 @@ public static class LinkedInOAuthExtensions
                             new Claim(ClaimTypes.Role, role),
                             new Claim(ClaimTypes.NameIdentifier, userName),
                             new Claim(ClaimTypes.Email, userEmail ?? string.Empty),
+                            new Claim("urn:badgefed:group", groupId)
                         ], "LinkedIn"));
                 },
                 OnRemoteFailure = ctx =>
@@ -838,11 +868,12 @@ public static class GoogleOAuthExtensions
                                     CreatedAt = DateTime.UtcNow,
                                     Provider = "Google",
                                     Role = invitation.Role,
+                                    GroupId = invitation.GroupId,
                                     IsActive = true
                                 };
                                 
                                 invitationService.AcceptInvitation(invitationCode, registeredUser);
-                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role}");
+                                Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
                         else if (registeredUser == null)

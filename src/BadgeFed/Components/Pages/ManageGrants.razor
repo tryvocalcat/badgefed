@@ -194,8 +194,8 @@ else
         }
 
         if (!CurrentUser.IsAdmin()) {
-            whereClauses.Add("OwnerId = @UserId");
-            filter.Parameters.Add("UserId", CurrentUser.UserId);
+            whereClauses.Add("OwnerId = @OwnerId");
+            filter.Parameters.Add("OwnerId", CurrentUser.GetGroupId());
         }
 
         filter.Where = string.Join(" AND ", whereClauses);

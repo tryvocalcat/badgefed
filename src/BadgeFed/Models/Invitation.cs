@@ -24,6 +24,8 @@ namespace BadgeFed.Models
         
         public string? Notes { get; set; } // Optional notes about the invitation
         
+        public string GroupId { get; set; } = "system"; // Group to assign the invited user to
+        
         public string InvitationUrl => $"/admin/login?invitationCode={Id}";
         
         public bool IsExpired => DateTime.UtcNow > ExpiresAt;

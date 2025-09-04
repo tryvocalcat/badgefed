@@ -84,7 +84,7 @@
 
         if (!CurrentUser.IsAdmin())
         {
-            filter = $"a.OwnerId = '{CurrentUser.UserId}'";
+            filter = $"a.OwnerId = '{CurrentUser.GetGroupId()}'";
         }
 
         badges = LocalDbService.GetAllBadgeDefinitions(true, filter);
