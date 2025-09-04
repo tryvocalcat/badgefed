@@ -196,8 +196,7 @@
         }
         else
         {
-            var userId = CurrentUser.UserId;
-            actors = LocalDbService.GetActors($"OwnerId = '{userId}'");
+            actors = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
         }
     }
 
@@ -249,7 +248,7 @@
 
             Console.WriteLine($"Saving badge: {Model.Image}");
 
-            Model.OwnerId = CurrentUser.UserId;
+            Model.OwnerId = CurrentUser.GetGroupId();
 
             // TODO: Save actor to database
             LocalDbService.UpsertBadgeDefinition(Model);

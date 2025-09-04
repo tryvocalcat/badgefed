@@ -511,15 +511,16 @@ public class LocalDbService
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Users (id, email, givenName, surname, provider, role, isActive, createdAt)
-            VALUES (@Id, @Email, @GivenName, @Surname, @Provider, @Role, @IsActive, COALESCE(@CreatedAt, CURRENT_TIMESTAMP))
+            INSERT INTO Users (id, email, givenName, surname, provider, role, isActive, groupId, createdAt)
+            VALUES (@Id, @Email, @GivenName, @Surname, @Provider, @Role, @IsActive, @GroupId, COALESCE(@CreatedAt, CURRENT_TIMESTAMP))
             ON CONFLICT(id) DO UPDATE SET
                 email = excluded.email,
                 givenName = excluded.givenName,
                 surname = excluded.surname,
                 provider = excluded.provider,
                 role = excluded.role,
-                isActive = excluded.isActive;
+                isActive = excluded.isActive,
+                groupId = excluded.groupId;
         ";
 
         command.Parameters.AddWithValue("@Id", user.Id);
@@ -529,6 +530,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@Provider", user.Provider);
         command.Parameters.AddWithValue("@Role", user.Role ?? "user");
         command.Parameters.AddWithValue("@IsActive", user.IsActive);
+        command.Parameters.AddWithValue("@GroupId", user.GroupId ?? "system");
         command.Parameters.AddWithValue("@CreatedAt", user.CreatedAt == default ? (object)DBNull.Value : user.CreatedAt);
 
         command.ExecuteNonQuery();
@@ -558,7 +560,8 @@ public class LocalDbService
                 CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt")),
                 Provider = reader["provider"].ToString()!,
                 Role = reader["role"].ToString()!,
-                IsActive = reader["isActive"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("isActive"))
+                IsActive = reader["isActive"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("isActive")),
+                GroupId = reader["groupId"]?.ToString() ?? "system"
             };
         }
 
@@ -1837,8 +1840,8 @@ public class ActorStats
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Invitations (id, email, invitedBy, createdAt, expiresAt, acceptedBy, acceptedAt, isActive, role, notes)
-            VALUES (@Id, @Email, @InvitedBy, @CreatedAt, @ExpiresAt, @AcceptedBy, @AcceptedAt, @IsActive, @Role, @Notes)
+            INSERT INTO Invitations (id, email, invitedBy, createdAt, expiresAt, acceptedBy, acceptedAt, isActive, role, notes, groupId)
+            VALUES (@Id, @Email, @InvitedBy, @CreatedAt, @ExpiresAt, @AcceptedBy, @AcceptedAt, @IsActive, @Role, @Notes, @GroupId)
             ON CONFLICT(id) DO UPDATE SET
                 email = excluded.email,
                 invitedBy = excluded.invitedBy,
@@ -1847,7 +1850,8 @@ public class ActorStats
                 acceptedAt = excluded.acceptedAt,
                 isActive = excluded.isActive,
                 role = excluded.role,
-                notes = excluded.notes;
+                notes = excluded.notes,
+                groupId = excluded.groupId;
         ";
 
         command.Parameters.AddWithValue("@Id", invitation.Id);
@@ -1860,6 +1864,7 @@ public class ActorStats
         command.Parameters.AddWithValue("@IsActive", invitation.IsActive);
         command.Parameters.AddWithValue("@Role", invitation.Role);
         command.Parameters.AddWithValue("@Notes", invitation.Notes ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@GroupId", invitation.GroupId);
 
         command.ExecuteNonQuery();
         transaction.Commit();
@@ -1888,7 +1893,8 @@ public class ActorStats
                 AcceptedAt = reader["acceptedAt"] == DBNull.Value ? null : reader.GetDateTime(reader.GetOrdinal("acceptedAt")),
                 IsActive = reader.GetBoolean(reader.GetOrdinal("isActive")),
                 Role = reader["role"].ToString()!,
-                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString()
+                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString(),
+                GroupId = reader["groupId"] == DBNull.Value ? "system" : reader["groupId"].ToString()!
             };
         }
 
@@ -1928,7 +1934,8 @@ public class ActorStats
                 AcceptedAt = reader["acceptedAt"] == DBNull.Value ? null : reader.GetDateTime(reader.GetOrdinal("acceptedAt")),
                 IsActive = reader.GetBoolean(reader.GetOrdinal("isActive")),
                 Role = reader["role"].ToString()!,
-                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString()
+                Notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString(),
+                GroupId = reader["groupId"] == DBNull.Value ? "system" : reader["groupId"].ToString()!
             });
         }
 
@@ -2406,5 +2413,168 @@ public class ActorStats
 
         var rowsAffected = await command.ExecuteNonQueryAsync();
         return rowsAffected > 0;
+    }
+
+    // UserGroup management methods
+    public void UpsertUserGroup(UserGroup userGroup)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO UserGroups (id, name, description, createdAt)
+            VALUES (@Id, @Name, @Description, COALESCE(@CreatedAt, CURRENT_TIMESTAMP))
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                description = excluded.description;
+        ";
+
+        command.Parameters.AddWithValue("@Id", userGroup.Id);
+        command.Parameters.AddWithValue("@Name", userGroup.Name);
+        command.Parameters.AddWithValue("@Description", userGroup.Description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@CreatedAt", userGroup.CreatedAt == default ? (object)DBNull.Value : userGroup.CreatedAt);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public List<UserGroup> GetAllUserGroups()
+    {
+        var groups = new List<UserGroup>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM UserGroups ORDER BY createdAt DESC";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            groups.Add(new UserGroup
+            {
+                Id = reader["id"].ToString()!,
+                Name = reader["name"].ToString()!,
+                Description = reader["description"]?.ToString(),
+                CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt"))
+            });
+        }
+
+        return groups;
+    }
+
+    public UserGroup? GetUserGroupById(string id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM UserGroups WHERE id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new UserGroup
+            {
+                Id = reader["id"].ToString()!,
+                Name = reader["name"].ToString()!,
+                Description = reader["description"]?.ToString(),
+                CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt"))
+            };
+        }
+
+        return null;
+    }
+
+    public List<User> GetUsersByGroupId(string groupId)
+    {
+        var users = new List<User>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Users WHERE groupId = @GroupId ORDER BY createdAt DESC";
+        command.Parameters.AddWithValue("@GroupId", groupId);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            users.Add(new User
+            {
+                Id = reader["id"].ToString()!,
+                Email = reader["email"].ToString()!,
+                GivenName = reader["givenName"].ToString()!,
+                Surname = reader["surname"].ToString()!,
+                CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                Provider = reader["provider"].ToString()!,
+                Role = reader["role"].ToString()!,
+                IsActive = reader["isActive"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("isActive")),
+                GroupId = reader["groupId"]?.ToString() ?? "system"
+            });
+        }
+
+        return users;
+    }
+
+    public void DeleteUserGroup(string id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        // Check if group has users
+        var userCountCommand = connection.CreateCommand();
+        userCountCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE groupId = @Id";
+        userCountCommand.Parameters.AddWithValue("@Id", id);
+        var userCount = Convert.ToInt32(userCountCommand.ExecuteScalar());
+
+        if (userCount > 0)
+        {
+            throw new InvalidOperationException($"Cannot delete group '{id}' because it contains {userCount} user(s). Please move users to another group first.");
+        }
+
+        // Prevent deletion of system group
+        if (id == "system")
+        {
+            throw new InvalidOperationException("Cannot delete the system group.");
+        }
+
+        // Delete the group
+        var deleteCommand = connection.CreateCommand();
+        deleteCommand.CommandText = "DELETE FROM UserGroups WHERE id = @Id";
+        deleteCommand.Parameters.AddWithValue("@Id", id);
+        deleteCommand.ExecuteNonQuery();
+
+        transaction.Commit();
+    }
+
+    public int CountUsersInGroup(string groupId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Users WHERE groupId = @GroupId";
+        command.Parameters.AddWithValue("@GroupId", groupId);
+
+        var result = command.ExecuteScalar();
+        return Convert.ToInt32(result);
+    }
+
+    public void UpdateUserGroup(string userId, string groupId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Users SET groupId = @GroupId WHERE id = @UserId";
+        command.Parameters.AddWithValue("@GroupId", groupId);
+        command.Parameters.AddWithValue("@UserId", userId);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
     }
 }

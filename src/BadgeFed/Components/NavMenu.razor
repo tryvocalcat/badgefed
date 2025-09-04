@@ -90,7 +90,8 @@
             </a>
         </div>
         
-        <div id="navMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">            <div class="navbar-start">
+        <div id="navMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">            
+            <div class="navbar-start">
                 @if (CurrentUser.CanManage())
                 {
                     <div class="navbar-item has-dropdown is-hoverable">
@@ -115,7 +116,7 @@
                             </a>
                         </div>
                     </div>
-
+               
                     <div class="navbar-item has-dropdown is-hoverable">
                         <a class="navbar-link">
                             <span class="icon">
@@ -145,6 +146,10 @@
                         </div>
                     </div>
 
+                }
+
+                @if (CurrentUser.CanCollaborate())
+                {
                     <div class="navbar-item has-dropdown is-hoverable">
                         <a class="navbar-link">
                             <span class="icon">
@@ -169,82 +174,77 @@
                     </div>
                 }
 
-                <div class="navbar-item has-dropdown is-hoverable">
-                    <a class="navbar-link">
-                        <span class="icon">
-                            <i class="fas fa-cog"></i>
-                        </span>
-                        <span>Settings</span>
-                    </a>
-                    <div class="navbar-dropdown">
-                        @if (CurrentUser.IsAdmin())
-                        {
-                            <a class="navbar-item" href="/admin/settings/general">
-                                <span class="icon">
-                                    <i class="fas fa-sliders-h"></i>
-                                </span>
-                                <span>General</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/settings/content">
-                                <span class="icon">
-                                    <i class="fas fa-edit"></i>
-                                </span>
-                                <span>Content Management</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/settings/database">
-                                <span class="icon">
-                                    <i class="fas fa-database"></i>
-                                </span>
-                                <span>Database</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/settings/themes">
-                                <span class="icon">
-                                    <i class="fas fa-palette"></i>
-                                </span>
-                                <span>Themes</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/invitations">
-                                <span class="icon">
-                                    <i class="fas fa-user-plus"></i>
-                                </span>
-                                <span>User Invitations</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/registrations">
-                                <span class="icon">
-                                    <i class="fas fa-clipboard-list"></i>
-                                </span>
-                                <span>User Registrations</span>
-                            </a>
-                            <a class="navbar-item" href="/admin/servers">
-                                <span class="icon">
-                                    <i class="fas fa-user-plus"></i>
-                                </span>
-                                <span>Federation Discovery</span>
-                            </a>
+                @if (CurrentUser.IsAdmin())
+                {
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        <a class="navbar-link">
+                            <span class="icon">
+                                <i class="fas fa-cog"></i>
+                            </span>
+                            <span>Settings</span>
+                        </a>
+                        <div class="navbar-dropdown">
                             
-
-                        }
-                        <a class="navbar-item" href="/admin/settings/profile" style="display: none">
-                            <span class="icon">
-                                <i class="fas fa-user-circle"></i>
-                            </span>
-                            <span>Profile</span>
-                        </a>
-                        <a class="navbar-item" href="/admin/settings/federation" style="display: none">
-                            <span class="icon">
-                                <i class="fas fa-network-wired"></i>
-                            </span>
-                            <span>Federation</span>
-                        </a>
-                        <a class="navbar-item" href="/admin/settings/notifications" style="display: none">
-                            <span class="icon">
-                                <i class="fas fa-bell"></i>
-                            </span>
-                            <span>Notifications</span>
-                        </a>
+                                <a class="navbar-item" href="/admin/settings/general">
+                                    <span class="icon">
+                                        <i class="fas fa-sliders-h"></i>
+                                    </span>
+                                    <span>General</span>
+                                </a>
+                                <a class="navbar-item" href="/admin/settings/content">
+                                    <span class="icon">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                    <span>Content Management</span>
+                                </a>
+                                <a class="navbar-item" href="/admin/settings/database">
+                                    <span class="icon">
+                                        <i class="fas fa-database"></i>
+                                    </span>
+                                    <span>Database</span>
+                                </a>
+                                <a class="navbar-item" href="/admin/settings/themes">
+                                    <span class="icon">
+                                        <i class="fas fa-palette"></i>
+                                    </span>
+                                    <span>Themes</span>
+                                </a>
+                                <a class="navbar-item" href="/admin/users">
+                                    <span class="icon">
+                                        <i class="fas fa-users"></i>
+                                    </span>
+                                    <span>User Management</span>
+                                </a>
+                                <a class="navbar-item" href="/admin/servers">
+                                    <span class="icon">
+                                        <i class="fas fa-user-plus"></i>
+                                    </span>
+                                    <span>Federation Discovery</span>
+                                </a>
+                            }
+                            <a class="navbar-item" href="/admin/settings/profile" style="display: none">
+                                <span class="icon">
+                                    <i class="fas fa-user-circle"></i>
+                                </span>
+                                <span>Profile</span>
+                            </a>
+                            <a class="navbar-item" href="/admin/settings/federation" style="display: none">
+                                <span class="icon">
+                                    <i class="fas fa-network-wired"></i>
+                                </span>
+                                <span>Federation</span>
+                            </a>
+                            <a class="navbar-item" href="/admin/settings/notifications" style="display: none">
+                                <span class="icon">
+                                    <i class="fas fa-bell"></i>
+                                </span>
+                                <span>Notifications</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
+            
 
             <div class="navbar-end">
                 <div class="navbar-item">

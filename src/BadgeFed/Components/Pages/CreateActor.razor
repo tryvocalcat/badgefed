@@ -9,6 +9,8 @@
 @inject IConfiguration Configuration
 @inject FollowService FollowService
 @inject CurrentUser CurrentUser
+@inject IHttpContextAccessor HttpContextAccessor
+
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -135,6 +137,7 @@
             <div class="column is-6">
                 <div class="field">
                     <label class="field-label" for="username">Username</label>
+                    
                     <div class="control">
                         @if (!string.IsNullOrEmpty(ActorId))
                         {
@@ -144,8 +147,10 @@
                         else
                         {
                             <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" />
+                            <p class="help-text">This will be the actor's handle (e.g. username@@@Model.Domain)</p>
                         }
                     </div>
+                    
                     <ValidationMessage For="@(() => Model.Username)" class="help is-danger" />
                 </div>
             </div>
@@ -180,27 +185,6 @@
                     <p class="help">Choose a visual theme for your profile page</p>
                 </div>
             </div>
-
-            @if (string.IsNullOrEmpty(ActorId))
-            {
-                <div class="column is-6">
-                    <div class="field">
-                        <label class="field-label" for="domain">Domain</label>
-                        <div class="control">
-                            <div class="select is-fullwidth">
-                                <InputSelect id="domain" @bind-Value="Model!.Domain">
-                                    <option value="">-- Select a domain --</option>
-                                    @foreach (var domain in availableDomains)
-                                    {
-                                        <option value="@domain">@domain</option>
-                                    }
-                                </InputSelect>
-                            </div>
-                        </div>
-                        <ValidationMessage For="@(() => Model.Domain)" class="help is-danger" />
-                    </div>
-                </div>
-            }
 
             <div class="column is-6">
                 <div class="field">
@@ -360,7 +344,6 @@
     private string? imagePreview;
     private string? errorMessage;
     private bool isSubmitting = false;
-    private List<string> availableDomains = [];
     private ElementReference fileInput;
     private List<FollowedIssuer> FollowedIssuers = new();
     private string newIssuerUrl = string.Empty;
@@ -369,11 +352,16 @@
 
     protected override void OnInitialized()
     {
-        availableDomains = Configuration.GetSection("BadgesDomains").Get<string[]>().ToList();
-
         if (!string.IsNullOrEmpty(ActorId)) {
             var id = long.Parse(ActorId);
             Model = LocalDbService.GetActorById(id);
+
+            // initialize domain based on request host
+        }
+        
+        if (string.IsNullOrEmpty(Model.Domain))
+        {
+            Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
         }
     }
 
@@ -440,7 +428,7 @@
                 Model.AvatarPath = $"/uploads/avatars/{fileName}";
             }
 
-            Model.OwnerId = CurrentUser.UserId;
+            Model.OwnerId = CurrentUser.GetGroupId();
             
             LocalDbService.UpsertActor(Model);
             NavigationManager.NavigateTo("/admin/actors");
@@ -452,6 +440,7 @@
         catch (Exception ex)
         {
             errorMessage = $"Error creating actor: {ex.Message}";
+            Console.WriteLine(ex);
         }
         finally
         {

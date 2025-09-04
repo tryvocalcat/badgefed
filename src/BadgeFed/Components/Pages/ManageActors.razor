@@ -82,8 +82,7 @@ else
         }
         else
         {
-            var userId = CurrentUser.UserId;
-            actors = LocalDbService.GetActors($"OwnerId = '{userId}'");
+            actors = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
         }
     }
 
