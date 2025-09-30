@@ -1,9 +1,11 @@
 @page "/admin/"
 
 @using BadgeFed.Models
+@using System.IO
 
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
+@inject IWebHostEnvironment Environment
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -189,55 +191,8 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Tools Panel -->
-        <div class="column is-6">
-            <div class="box has-background-white-ter has-shadow">
-                <h2 class="subtitle has-text-weight-bold has-text-centered">
-                    <span class="icon-text">
-                        <span class="icon has-text-grey-dark">
-                            <i class="fas fa-toolbox"></i>
-                        </span>
-                        <span>Certification Tools</span>
-                    </span>
-                </h2>
-                
-                <div class="columns is-multiline">
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-magic"></i>
-                            </span>
-                            <span>Badge Designer</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-file-import"></i>
-                            </span>
-                            <span>Bulk Import</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-qrcode"></i>
-                            </span>
-                            <span>QR Generator</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-cogs"></i>
-                            </span>
-                            <span>System Settings</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+ 
+        @((MarkupString)adminResourcesHtml)
         
         <!-- Pending Tasks -->
         <div class="column is-6" style="display: none;">
@@ -322,10 +277,42 @@
     private InstanceStats stats = new InstanceStats();
 
     private List<RecentActivityLog> recentActivityLogs = [];
+    
+    private string adminResourcesHtml = "";
 
     protected override async Task OnInitializedAsync()
     {
         stats = LocalDbService.GetInstanceStats();
         recentActivityLogs = LocalDbService.GetRecentActivityLogs(5); // Fetch the last 5 logs
+        
+        // Load admin resources HTML from static file
+        await LoadAdminResourcesHtml();
+    }
+    
+    private async Task LoadAdminResourcesHtml()
+    {
+        try
+        {
+            var filePath = Path.Combine(Environment.ContentRootPath, "assets", "static", "admin-resources.html");
+            if (File.Exists(filePath))
+            {
+                adminResourcesHtml = await File.ReadAllTextAsync(filePath);
+            }
+            else
+            {
+                // Fallback HTML if file doesn't exist
+                adminResourcesHtml = @"
+                    <div class=""notification is-warning is-light"">
+                        <p>Admin resources file not found. Please check <code>assets/static/admin-resources.html</code></p>
+                    </div>";
+            }
+        }
+        catch (Exception ex)
+        {
+            adminResourcesHtml = $@"
+                <div class=""notification is-danger is-light"">
+                    <p>Error loading admin resources: {ex.Message}</p>
+                </div>";
+        }
     }
 }
