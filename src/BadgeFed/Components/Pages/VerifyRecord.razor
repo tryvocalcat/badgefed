@@ -265,11 +265,23 @@
         </div>
 
         <div class="badge-criteria">
-            <h3 class="criteria-title">Earning Criteria</h3>
-            <p>@((MarkupString)badgeRecord.EarningCriteria.Replace("\n", "<br />"))</p>
-        </div>
-
-        <div class="security-info">
+            <div class="criteria-title">
+                <i class="fas fa-graduation-cap" style="color: #1a1a2e;"></i>
+                Earning Criteria
+            </div>
+            <p>@badgeRecord.EarningCriteria</p>
+            @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
+            {
+                <div class="mt-3">
+                    <a href="@badgeRecord.Badge.InfoUri" target="_blank" class="button is-small is-outlined is-info">
+                        <span class="icon">
+                            <i class="fas fa-external-link-alt"></i>
+                        </span>
+                        <span>Learn More About This Program</span>
+                    </a>
+                </div>
+            }
+        </div>        <div class="security-info">
             <h3 class="security-title">
                 <span class="icon"><i class="fas fa-lock"></i></span>
                 <span>Security Verification</span>
@@ -451,7 +463,6 @@
 
         if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
         {
-
             NavManager.NavigateTo($"/grant/{NoteIdParam}");
         }
         

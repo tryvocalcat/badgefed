@@ -89,6 +89,8 @@ builder.Services.AddScoped<OpenBadgeService>();
 
 builder.Services.AddScoped<BadgeService>();
 
+builder.Services.AddScoped<BadgeGrantService>();
+
 builder.Services.AddScoped<InvitationService>();
 
 builder.Services.AddScoped<RegistrationService>();
@@ -200,8 +202,15 @@ builder.Services.Configure<StaticFileOptions>(options =>
 
 var app = builder.Build();
 
-// Setup default actor on first run
-await SetupDefaultActor(app.Services);
+try
+{
+    // Setup default actor on first run
+    await SetupDefaultActor(app.Services);
+}
+catch (Exception e)
+{
+    Console.WriteLine(e);
+}
 
 if (!app.Environment.IsDevelopment())
 {

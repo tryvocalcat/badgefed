@@ -15,10 +15,24 @@ body {
     font-family: 'Courier New', 'Consolas', 'Monaco', monospace !important;
 }
 
-.issuer-header {
+.title {
+    color: #00FF91 !important;
+}
+
+.subtitle {
+    color: #dcdcdc;
+}
+
+.notification.is-info.is-light {
+    background-color: #0a0a0a;
+    box-shadow: 0 0 20px rgba(0, 255, 145, 0.3);
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 5px rgba(0, 255, 145, 0.5);
+}
+
+.issuer-header, .box {
     background: linear-gradient(135deg, #0a0a0a 0%, #111111 25%, #0a0a0a 50%, #1a1a1a 75%, #0a0a0a 100%);
     color: #00FF91;
-    padding: 3rem 0;
     margin-bottom: 2rem;
     border-radius: 25px;
     position: relative;
@@ -27,7 +41,7 @@ body {
     box-shadow: 0 0 30px rgba(0, 255, 145, 0.3);
 }
 
-.issuer-header::before {
+.issuer-header::before, .box::before {
     content: '';
     position: absolute;
     top: -50%;
@@ -37,6 +51,7 @@ body {
     background: radial-gradient(circle, rgba(0, 255, 145, 0.1) 0%, transparent 70%);
     animation: matrixShimmer 6s infinite linear;
     pointer-events: none;
+    z-index: 0;
 }
 
 @keyframes matrixShimmer {
@@ -45,7 +60,7 @@ body {
 }
 
 /* Matrix-style digital rain effect */
-.issuer-header::after {
+.issuer-header::after, .box::after {
     content: '';
     position: absolute;
     top: 0;
@@ -55,6 +70,7 @@ body {
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ctext x='50%25' y='50%25' font-family='monospace' font-size='12' fill='%2300FF91' fill-opacity='0.1' text-anchor='middle' dominant-baseline='central'%3E1%3C/text%3E%3C/svg%3E") repeat;
     z-index: 1;
     animation: digitalRain 10s infinite linear;
+    pointer-events: none;
 }
 
 @keyframes digitalRain {
@@ -72,6 +88,12 @@ body {
     position: relative;
     z-index: 2;
     filter: contrast(1.2) brightness(1.1);
+}
+
+.button {
+    background-color: #00FF91;
+    color: #0a0a0a;
+    border: none;    
 }
 
 .issuer-stats {
@@ -276,13 +298,13 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Links with hacker styling */
 a {
-    color: #00D4AA !important;
+    color: #00D4AA;
     text-decoration: none;
     transition: all 0.3s ease;
 }
 
 a:hover {
-    color: #00FF91 !important;
+    color: #00FF91;
     text-shadow: 0 0 5px rgba(0, 255, 145, 0.7);
 }
 

@@ -66,7 +66,8 @@ namespace BadgeFed.Services
                 };
 
                 // Check for existing grants
-                var sqlExisting = $"BadgeId = {request.BadgeId}";
+                var sqlExisting = $"BadgeId = {request.BadgeId} AND RevokedAt IS NULL";
+
                 if (string.IsNullOrEmpty(request.ProfileUri))
                 {
                     sqlExisting += $" AND IssuedToEmail = '{request.Email}'";

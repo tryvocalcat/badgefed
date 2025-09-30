@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace BadgeFed.Models
 {
     public class Badge
@@ -35,6 +37,9 @@ namespace BadgeFed.Models
                         .ToList();
             }
         }
+
+        [Url(ErrorMessage = "Please enter a valid URL")]
+        public string InfoUri { get; set; } = "";
 
         public string OwnerId { get; set; } = string.Empty;
     }

@@ -158,7 +158,7 @@
                                             <span class="icon is-small">
                                                 <i class="fas fa-users"></i>
                                             </span>
-                                            <span>Recipients</span>
+                                            <span>@(badgeStats.ContainsKey(badge.Id) ? badgeStats[badge.Id].IssuedCount.ToString() : string.Empty) Recipients</span>
                                         </a>
                                     </div>
                                 </div>
@@ -255,10 +255,19 @@
     private string? searchQuery;
     private string? selectedType;
 
+    private Dictionary<long, BadgeStats> badgeStats = new();
+
     protected override void OnInitialized()
     {
         badges = LocalDbService.GetAllBadgeDefinitions(true, "a.Featured = TRUE");
         filteredBadges = badges;
+
+        foreach (var badge in badges)
+        {
+            var stats = LocalDbService.GetBadgeStats(badge.Id);
+            badgeStats[badge.Id] = stats;
+        }
+
         otherIssuers = LocalDbService.GetAllFollowedIssuers(true);
     }
 

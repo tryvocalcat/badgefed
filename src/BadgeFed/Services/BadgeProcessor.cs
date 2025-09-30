@@ -194,6 +194,89 @@ public class BadgeProcessor
         }
     }
 
+    public async Task RevokeGrant(BadgeRecord record)
+    {
+        Console.WriteLine($"Revoking grant for badge record ID: {record.Id}");
+
+        try
+        {
+            // Get the actor who issued the badge
+            var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
+            var actor = _localDbService.GetActorById(badge.IssuedBy);
+
+            if (actor == null)
+            {
+                Console.WriteLine("Actor not found, cannot revoke badge grant");
+                return;
+            }
+
+            // The note ID that we want to delete/revoke
+            var noteId = record.NoteId;
+
+            if (string.IsNullOrEmpty(noteId))
+            {
+                Console.WriteLine("Note ID is missing, cannot revoke badge grant");
+                return;
+            }
+
+            // Create the Delete activity
+            var deleteId = $"{actor.Uri}/delete/{Guid.NewGuid()}";
+
+            // Create the Delete object following ActivityPub spec
+            var deleteActivity = new Dictionary<string, object>
+            {
+                ["@context"] = "https://www.w3.org/ns/activitystreams",
+                ["id"] = deleteId,
+                ["type"] = "Delete",
+                ["actor"] = actor.Uri.ToString(),
+                ["published"] = DateTime.UtcNow.ToString("o"),
+                ["to"] = new List<string> { "https://www.w3.org/ns/activitystreams#Public" },
+                ["cc"] = new List<string> { $"{actor.Uri}/followers" },
+                ["object"] = noteId
+            };
+
+            // Serialize the delete activity
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var serializedDelete = JsonSerializer.Serialize(deleteActivity, options);
+
+            Console.WriteLine($"Revoking badge grant: {noteId} by {actor.Uri}");
+
+            // Send the delete activity to all followers
+            await NotifyFollowersOfNote(serializedDelete, actor);
+
+            // Also notify the recipient directly if they have an inbox
+            if (!string.IsNullOrEmpty(record.IssuedToSubjectUri))
+            {
+                try
+                {
+                    var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
+                    var fediverseInfo = await actorHelper.FetchActorInformationAsync(record.IssuedToSubjectUri);
+                    
+                    if (fediverseInfo != null && !string.IsNullOrEmpty(fediverseInfo.Inbox))
+                    {
+                        await actorHelper.SendPostSignedRequest(serializedDelete, new Uri(fediverseInfo.Inbox));
+                        Console.WriteLine($"Sent revocation notice to recipient: {record.IssuedToSubjectUri}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Failed to notify recipient of revocation: {e.Message}");
+                }
+            }
+
+            Console.WriteLine($"Successfully revoked badge grant: {noteId}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to revoke badge grant: {e.Message}");
+            throw;
+        }
+    }
+
     private async Task _AnnounceGrantByMainActor(BadgeRecord record)
     {
         try

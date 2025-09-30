@@ -40,7 +40,7 @@
     </div>
 
     <div class="field">
-        <label class="label" for="avatar">Avatar</label>
+        <label class="label" for="avatar">Badge Image</label>
         <div class="control">
             <div class="file has-name">
                 <label class="file-label">
@@ -81,6 +81,23 @@
             <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" class="textarea" />
         </div>
         <ValidationMessage For="@(() => Model.EarningCriteria)" class="help is-danger" />
+    </div>
+
+    <div class="field">
+        <label class="label" for="infoUri">More Information URL</label>
+        <div class="control">
+            <InputText 
+                id="infoUri" 
+                @bind-Value="Model.InfoUri" 
+                class="input" 
+                placeholder="https://example.com/program-info" 
+                type="url"
+            />
+        </div>
+        <p class="help is-size-7 mt-1">
+            Optional: Add a URL where recipients can learn more about this badge or the program behind it.
+        </p>
+        <ValidationMessage For="@(() => Model.InfoUri)" class="help is-danger" />
     </div>
 
     <div class="field">
@@ -206,8 +223,10 @@
     {
         errorMessage = null;
         selectedFile = e.File;
-        
-        if (selectedFile.Size > 2 * 1024 * 1024) // 2MB limit
+
+        var maxAllowedSize = 5 * 1024 * 1024;
+
+        if (selectedFile.Size > maxAllowedSize) // 2MB limit
         {
             errorMessage = "File size exceeds 2MB limit.";
             selectedFile = null;
@@ -217,7 +236,7 @@
         var format = "image/jpeg";
         var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
         var buffer = new byte[resizedImage.Size];
-        await resizedImage.OpenReadStream().ReadAsync(buffer);
+        await resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize).ReadAsync(buffer);
         
         imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
     }
@@ -235,9 +254,11 @@
                 // Ensure directory exists
                 Directory.CreateDirectory(path);
                 
+                var maxAllowedSize = 5 * 1024 * 1024;
+
                 var fullPath = Path.Combine(path, fileName);
                 
-                using var stream = selectedFile.OpenReadStream();
+                using var stream = selectedFile.OpenReadStream(maxAllowedSize: maxAllowedSize);
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
 

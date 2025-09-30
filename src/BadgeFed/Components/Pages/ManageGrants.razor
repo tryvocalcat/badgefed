@@ -82,6 +82,14 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="notification is-danger">
+        <button class="delete" @onclick="() => errorMessage = null"></button>
+        @errorMessage
+    </div>
+}
+
 @if (records == null)
 {
     <p>Loading...</p>
@@ -100,7 +108,7 @@ else
                 <th>Issued By</th>
                 <th>Issued On</th>
                 <th>Accepted On</th>
-                <th>Accept Link</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -113,7 +121,12 @@ else
                 <tr class="@GetRowClass(record)">
                     <td>@record.Id</td>
                     <td>@record.Title</td>
-                    <td><a href="@record.IssuedToSubjectUri">@(string.IsNullOrEmpty(record.IssuedToName) ? record.IssuedToSubjectUri : record.IssuedToName)</a></td>
+                    <td><a href="@record.IssuedToSubjectUri">@(
+                        string.IsNullOrEmpty(record.IssuedToName) ?
+                            string.IsNullOrEmpty(record.IssuedToSubjectUri) ?
+                                MaskEmail(record.IssuedToEmail) :
+                                record.IssuedToSubjectUri
+                                : record.IssuedToName)</a></td>
                     <td><a href="@record.IssuedBy">@actorName</a></td>
                     <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
                     <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
@@ -124,7 +137,7 @@ else
                             if (string.IsNullOrEmpty(record.FingerPrint)) {
                                 <a href="/admin/grant/@record.Id/process" class="button is-primary is-small">Process</a>
                             } else {
-                                <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Broadcast</a>
+                                <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Propagate</a>
 
                                 <a href="@record.NoteId" class="button is-info is-small">View</a>
 
@@ -144,28 +157,117 @@ else
                                 </div>
                             }
                         } else {
-                            <a href="/accept/grant/@record.Id/@record.AcceptKey">Accept link</a>
-                            
+                            <a href="/accept/grant/@record.Id/@record.AcceptKey" class="button is-link is-small">
+                                <span class="icon">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span>Accept Link</span>
+                            </a>
+
                             <div class="buttons">
                                 <a href="/admin/grant/@record.Id/notify/activitypub" class="button is-light is-small" title="Notify via ActivityPub">
                                     <span class="icon">
                                         <i class="fas fa-broadcast-tower"></i>
                                     </span>
-                                    <span>ActivityPub</span>
+                                    <span>Notify via ActivityPub</span>
                                 </a>
                                 <a href="/admin/grant/@record.Id/notify/email" class="button is-light is-small" title="Notify via Email">
                                     <span class="icon">
                                         <i class="fas fa-envelope"></i>
                                     </span>
-                                    <span>Email</span>
+                                    <span>Notify via Email</span>
                                 </a>
                             </div>
+                        }
+               
+                        @{
+                            bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint));
+                        }
+
+                        @if (!record.IsExternal)
+                        {
+                            if (canDelete) {
+                                <button class="button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)">
+                                    <span class="icon">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                    <span>Delete</span>
+                                </button>
+                            } else {
+                                <button class="button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)">
+                                    <span class="icon">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                    <span>Revoke</span>
+                                </button>
+                            }
+
                         }
                     </td>
                 </tr>
             }
         </tbody>
     </table>
+}
+
+@if (showRevokeConfirmation && recordToDelete != null)
+{
+     <div class="modal is-active">
+        <div class="modal-background" @onclick="HideRevokeConfirmation"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Revocation</p>
+                <button class="delete" aria-label="close" @onclick="HideRevokeConfirmation"></button>
+            </header>
+            <section class="modal-card-body">
+                <p>Are you sure you want to revoke the badge grant "<strong>@recordToDelete.Title</strong>" issued to <strong>@recordToDelete.IssuedToName</strong>?</p>
+                    <p class="has-text-danger mt-3">
+                        <strong>This action cannot be undone.</strong> 
+                        The grant will be revoked immediately on this server.
+                        A notification will be sent to the network to initiate revocation on other sites.
+                        However, due to the decentralized nature of the system, the revocation on other sites may not be immediate and depends on their processing schedules.
+                    </p>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" @onclick="ConfirmRevoke">Revoke</button>
+                <button class="button" @onclick="HideRevokeConfirmation">Cancel</button>
+            </footer>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteConfirmation && recordToDelete != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="HideDeleteConfirmation"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Delete</p>
+                <button class="delete" aria-label="close" @onclick="HideDeleteConfirmation"></button>
+            </header>
+            <section class="modal-card-body">
+                @if (recordToDelete.IsExternal)
+                {
+                    <div class="notification is-warning">
+                        <strong>Warning:</strong> This is an external badge grant. Deleting it locally will not remove the grant from the original server. 
+                        This action only removes the record from your local database and will not affect the original badge on the issuing server.
+                    </div>
+                }
+                <p>Are you sure you want to delete the badge grant "<strong>@recordToDelete.Title</strong>" issued to <strong>@recordToDelete.IssuedToName</strong>?</p>
+                @if (!recordToDelete.IsExternal)
+                {
+                    <p class="has-text-danger mt-3">
+                        <strong>This action cannot be undone.</strong> The grant will be permanently removed and the recipient will no longer be able to accept it.
+                    </p>
+                }
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" @onclick="ConfirmDelete">Delete</button>
+                <button class="button" @onclick="HideDeleteConfirmation">Cancel</button>
+            </footer>
+        </div>
+    </div>
 }
 
 @code {
@@ -183,17 +285,34 @@ else
     private DateTime? dateFromFilter;
     private DateTime? dateToFilter;
 
+    // Delete confirmation modal properties
+    private bool showDeleteConfirmation = false;
+
+    private bool showRevokeConfirmation = false;
+    private BadgeRecord? recordToDelete = null;
+
+    private string MaskEmail(string email) {
+        if (string.IsNullOrEmpty(email)) return "";
+
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 1) return "****" + email.Substring(atIndex);
+
+        return email.Substring(0, 1) + "****" + email.Substring(atIndex - 1);
+    }
+
     private void PerformSearch() {
         var filter = new LocalDbService.Filter();
 
-        var whereClauses = new List<string>();
+        var whereClauses = new List<string>() {
+            "RevokedAt IS NULL"
+        };
 
         if (!string.IsNullOrEmpty(searchTerm)) {
             whereClauses.Add("(Title LIKE @Term OR IssuedToSubjectUri LIKE @Term OR IssuedBy LIKE @Term)");
             filter.Parameters.Add("Term", $"%{searchTerm}%");
         }
 
-        if (!CurrentUser.IsAdmin()) {
+        if (!CurrentUser.IsAdmin() && false) { //FIXME
             whereClauses.Add("OwnerId = @OwnerId");
             filter.Parameters.Add("OwnerId", CurrentUser.GetGroupId());
         }
@@ -263,5 +382,72 @@ else
         PerformSearch();
 
         filteredRecords = new List<BadgeRecord?>(records);
+    }
+
+    private void ShowDeleteConfirmation(BadgeRecord record)
+    {
+        recordToDelete = record;
+        showDeleteConfirmation = true;  
+    }
+
+    private void ShowRevokeConfirmation(BadgeRecord record)
+    {
+        // For simplicity, using the same modal for revoke confirmation
+        recordToDelete = record;
+        showRevokeConfirmation = true;
+    }
+
+    private void HideRevokeConfirmation()
+    {
+        recordToDelete = null;
+        showRevokeConfirmation = false;
+    }
+
+    private void HideDeleteConfirmation()
+    {
+        recordToDelete = null;
+        showDeleteConfirmation = false;
+    }
+
+    private void ConfirmRevoke()
+    {
+        if (recordToDelete != null)
+        {
+            try
+            {
+                LocalDbService.RevokeGrantById(recordToDelete.Id);
+                
+                // Refresh the data
+                PerformSearch();
+                ApplyFilters();
+                
+                HideRevokeConfirmation();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error revoking badge record: {ex.Message}";
+            }
+        }
+    }
+
+    private void ConfirmDelete()
+    {
+        if (recordToDelete != null)
+        {
+            try
+            {
+                LocalDbService.DeleteBadgeRecord(recordToDelete.Id);
+                
+                // Refresh the data
+                PerformSearch();
+                ApplyFilters();
+                
+                HideDeleteConfirmation();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting badge record: {ex.Message}";
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
-@inject BadgeService BadgeService
+@inject BadgeGrantService BadgeGrantService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -158,47 +158,29 @@
         errorMessage = string.Empty;
         notificationMessage = string.Empty;
 
-        var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
-
-        var recipient = new Recipient() { ProfileUri = ProfileUri, Name = Name, Email = Email };
-
-        //FIXME: sec issue
-        if (string.IsNullOrEmpty(ProfileUri) && string.IsNullOrEmpty(Email))
+        var request = new BadgeGrantService.BadgeGrantRequest
         {
-            errorMessage = "Either Profile URI or Email must be provided.";
+            BadgeId = Model.BadgeId,
+            ProfileUri = ProfileUri,
+            Name = Name,
+            Email = Email,
+            Evidence = Model.Evidence
+        };
+
+        var result = BadgeGrantService.GrantBadge(request);
+
+        if (!result.Success)
+        {
+            errorMessage = result.ErrorMessage;
             return;
         }
 
-        var sqlExisting = $"BadgeId = {Model.BadgeId}";
-
-        if (string.IsNullOrEmpty(ProfileUri))
-        {
-            sqlExisting += $" AND IssuedToEmail = '{Email}'";
-        }
-        else
-        {
-            sqlExisting += $" AND IssuedToSubjectUri = '{ProfileUri}'";
-        }
-
-        var existing = LocalDbService.GetBadgeRecords(sqlExisting);
-
-        if (existing != null && existing.Count > 0)
-        {
-            errorMessage = $"Badge {badge.Title} has already been granted to {recipient.ProfileUri}";
-            return;
-        }
-
-        var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
-
-        badgeRecord.EarningCriteria = Model.Evidence;
-
-        LocalDbService.CreateBadgeRecord(badgeRecord);
-
-        notificationMessage = $"Badge {badgeRecord.Title} granted to {recipient.Name} ({recipient.ProfileUri})";
+        notificationMessage = result.Message;
         
         // Clear form fields
         Email = string.Empty;
         ProfileUri = string.Empty;
         Name = string.Empty;
+        Model.Evidence = string.Empty;
     }
 }

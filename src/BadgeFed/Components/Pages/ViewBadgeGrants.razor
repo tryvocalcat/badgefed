@@ -34,13 +34,24 @@ else
                 <div class="media">
                     <div class="media-left">
                         <figure class="image is-96x96">
-                            <img src="@badge.Image" alt="@badge.ImageAltText" class="is-rounded">
+                            <img src="@badge.Image" alt="@badge.ImageAltText">
                         </figure>
                     </div>
                     <div class="media-content">
                         
                         <h2 class="subtitle is-4 is-5-mobile">@badge.Title</h2>
                         <p class="subtitle is-6 is-7-mobile">@badge.Description</p>
+                        @if (!string.IsNullOrEmpty(badge.InfoUri))
+                        {
+                            <div class="mb-3">
+                                <a href="@badge.InfoUri" target="_blank" class="button is-small is-outlined is-info">
+                                    <span class="icon">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </span>
+                                    <span>Learn More</span>
+                                </a>
+                            </div>
+                        }
                         <div class="tags">
                             <span class="tag is-info">@badge.BadgeType</span>
                             @if (!string.IsNullOrEmpty(badge.Hashtags))
@@ -48,7 +59,7 @@ else
                                 @foreach (var hashtag in badge.HashtagsList)
                                 {
                                     <span class="tag is-light">#@hashtag</span>
-                                }
+                            }
                             }
                         </div>
                     </div>
@@ -72,26 +83,11 @@ else
                     <p class="title is-5">@publicGrants.Count</p>
                     <p class="subtitle is-7">Public Recipients</p>
                 </div>
-                @if (privateGrantsCount > 0)
-                {
-                    <div class="column is-4-mobile">
-                        <p class="title is-5">@privateGrantsCount</p>
-                        <p class="subtitle is-7">Private Recipients</p>
-                    </div>
-                }
                 <div class="column is-4-mobile">
-                    <p class="title is-5">@(publicGrants.Count + privateGrantsCount)</p>
-                    <p class="subtitle is-7">Total Recipients</p>
+                    <p class="title is-5">@stats.IssuedCount</p>
+                    <p class="subtitle is-7">Total Issued</p>
                 </div>
             </div>
-
-            @if (privateGrantsCount > 0)
-            {
-                <div class="notification is-light">
-                    <span class="icon"><i class="fas fa-lock"></i></span>
-                    <strong>@privateGrantsCount private recipients</strong> are not publicly visible.
-                </div>
-            }
 
             @if (publicGrants.Any())
             {
@@ -164,8 +160,10 @@ else
     private Badge? badge;
     private Actor? actor;
     private List<BadgeRecord> publicGrants = new();
-    private int privateGrantsCount = 0;
+    
     private bool isLoading = true;
+
+    private BadgeStats stats = new BadgeStats();
 
     protected override async Task OnInitializedAsync()
     {
@@ -188,22 +186,17 @@ else
             if (badge != null)
             {
                 actor = DbService.GetActorById(badge.IssuedBy);
-                
-                var publicGrantsFilter = new LocalDbService.Filter
+
+                 var publicGrantsFilter = new LocalDbService.Filter
                 {
-                    Where = "BadgeId = @BadgeId AND (Visibility = 'Public' OR Visibility IS NULL) AND AcceptedOn IS NOT NULL",
+                    Where = "BadgeId = @BadgeId AND (Visibility = 'Public' OR Visibility IS NULL) AND AcceptedOn IS NOT NULL AND RevokedAt IS NULL",
                     Parameters = new Dictionary<string, object> { { "@BadgeId", badgeIdValue } }
                 };
                 publicGrants = DbService.GetBadgeRecords(publicGrantsFilter, true)
                     .OrderByDescending(g => g.AcceptedOn ?? g.IssuedOn)
                     .ToList();
-
-                var privateGrantsFilter = new LocalDbService.Filter
-                {
-                    Where = "BadgeId = @BadgeId AND Visibility = 'Unlisted' AND AcceptedOn IS NOT NULL",
-                    Parameters = new Dictionary<string, object> { { "@BadgeId", badgeIdValue } }
-                };
-                privateGrantsCount = DbService.GetBadgeRecords(privateGrantsFilter, false).Count;
+                
+                stats = DbService.GetBadgeStats(badge.Id);
             }
         }
         

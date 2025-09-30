@@ -382,6 +382,54 @@ public class LocalDbService
 
 
 
+    private string? SerializeSocialUri(SocialUri? socialUri)
+    {
+        if (socialUri == null)
+            return null;
+
+        try
+        {
+            return JsonSerializer.Serialize(socialUri);
+        }
+        catch (Exception ex)
+        {
+            Log(LogLevel.Warning, "Failed to serialize social URI: {Exception}", ex.Message);
+            return null;
+        }
+    }
+
+    private SocialUri? DeserializeSocialUri(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<SocialUri>(json);
+        }
+        catch (Exception ex)
+        {
+            Log(LogLevel.Warning, "Failed to deserialize social URI from JSON: {Json}, Exception: {Exception}", json, ex.Message);
+            return null;
+        }
+    }
+
+    private List<SocialUri> GetSocialsFromDbFields(string? social1, string? social2, string? social3)
+    {
+        var socials = new List<SocialUri>();
+
+        var social1Obj = DeserializeSocialUri(social1);
+        if (social1Obj != null) socials.Add(social1Obj);
+
+        var social2Obj = DeserializeSocialUri(social2);
+        if (social2Obj != null) socials.Add(social2Obj);
+
+        var social3Obj = DeserializeSocialUri(social3);
+        if (social3Obj != null) socials.Add(social3Obj);
+
+        return socials;
+    }
+
     public void UpsertActor(Actor actor)
     {
         using var connection = GetConnection();
@@ -390,11 +438,22 @@ public class LocalDbService
 
         var command = connection.CreateCommand();
 
+        // Serialize social URIs for database storage
+        string? socialUri1 = null, socialUri2 = null, socialUri3 = null;
+
+        if (actor.Socials != null && actor.Socials.Count > 0)
+        {
+            socialUri1 = SerializeSocialUri(actor.Socials.ElementAtOrDefault(0));
+            socialUri2 = SerializeSocialUri(actor.Socials.ElementAtOrDefault(1));
+            socialUri3 = SerializeSocialUri(actor.Socials.ElementAtOrDefault(2));
+            Console.WriteLine($"Serialized Social URIs: {socialUri1}, {socialUri2}, {socialUri3}");
+        }
+
         if (actor.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId, Theme)
-                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId, @Theme);
+                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId, Theme, SocialUri1, SocialUri2, SocialUri3, ShowFollowers)
+                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId, @Theme, @SocialUri1, @SocialUri2, @SocialUri3, @ShowFollowers);
                 SELECT last_insert_rowid();
             ";
         }
@@ -421,7 +480,11 @@ public class LocalDbService
                     LinkedInOrganizationId = @LinkedInOrganizationId,
                     IsMain = @IsMain,
                     OwnerId = @OwnerId,
-                    Theme = @Theme
+                    Theme = @Theme,
+                    SocialUri1 = @SocialUri1,
+                    SocialUri2 = @SocialUri2,
+                    SocialUri3 = @SocialUri3,
+                    ShowFollowers = @ShowFollowers
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", actor.Id);
@@ -440,6 +503,10 @@ public class LocalDbService
         command.Parameters.AddWithValue("@IsMain", actor.IsMain);
         command.Parameters.AddWithValue("@OwnerId", actor.OwnerId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@Theme", actor.Theme ?? "default");
+        command.Parameters.AddWithValue("@SocialUri1", socialUri1 ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@SocialUri2", socialUri2 ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@SocialUri3", socialUri3 ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ShowFollowers", actor.ShowFollowers);
 
         if (actor.Id == 0)
         {
@@ -483,7 +550,7 @@ public class LocalDbService
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
-            actors.Add(new Actor
+            var actor = new Actor
             {
                 Id = int.Parse(reader["Id"].ToString()!),
                 FullName = reader["Name"].ToString()!,
@@ -496,8 +563,19 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
-                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
-            });
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
+                ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
+            };
+
+           if (reader.GetOrdinal("SocialUri1") != -1) {
+                // Deserialize social URIs
+                var social1 = reader["SocialUri1"] == DBNull.Value ? null : reader["SocialUri1"].ToString();
+                var social2 = reader["SocialUri2"] == DBNull.Value ? null : reader["SocialUri2"].ToString();
+                var social3 = reader["SocialUri3"] == DBNull.Value ? null : reader["SocialUri3"].ToString();
+                actor.Socials = GetSocialsFromDbFields(social1, social2, social3);
+            }
+            
+            actors.Add(actor);
         }
 
         return actors;
@@ -568,6 +646,40 @@ public class LocalDbService
         return null;
     }
 
+    public User? ValidateApiKey(string apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return null;
+        }
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Users WHERE ApiKey = @ApiKey AND IsActive = 1";
+        command.Parameters.AddWithValue("@ApiKey", apiKey);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new User
+            {
+                Id = reader["id"].ToString()!,
+                Email = reader["email"].ToString()!,
+                GivenName = reader["givenName"].ToString()!,
+                Surname = reader["surname"].ToString()!,
+                CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt")),
+                Provider = reader["provider"].ToString()!,
+                Role = reader["role"].ToString()!,
+                IsActive = reader["isActive"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("isActive")),
+                GroupId = reader["groupId"]?.ToString() ?? "system"
+            };
+        }
+
+        return null;
+    }
+
     public Actor? GetActorById(long id)
     {
         using var connection = GetConnection();
@@ -580,7 +692,7 @@ public class LocalDbService
         using var reader = command.ExecuteReader();
         if (reader.Read())
         {
-            return new Actor
+            var actor = new Actor
             {
                 Id = int.Parse(reader["Id"].ToString()!),
                 FullName = reader["Name"].ToString()!,
@@ -593,8 +705,19 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
-                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
+                ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
             };
+
+            if (reader.GetOrdinal("SocialUri1") != -1) {
+                // Deserialize social URIs
+                var social1 = reader["SocialUri1"] == DBNull.Value ? null : reader["SocialUri1"].ToString();
+                var social2 = reader["SocialUri2"] == DBNull.Value ? null : reader["SocialUri2"].ToString();
+                var social3 = reader["SocialUri3"] == DBNull.Value ? null : reader["SocialUri3"].ToString();
+                actor.Socials = GetSocialsFromDbFields(social1, social2, social3);
+            }
+            
+            return actor;
         }
 
         return null;
@@ -616,7 +739,7 @@ public class LocalDbService
         using var reader = command.ExecuteReader();
         if (reader.Read())
         {
-            return new Actor
+            var actor = new Actor
             {
                 Id = int.Parse(reader["Id"].ToString()!),
                 FullName = reader["Name"].ToString()!,
@@ -629,8 +752,20 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
-                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString()
+                Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
+                ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
             };
+
+            if (reader.GetOrdinal("SocialUri1") != -1)
+            {
+                // Deserialize social URIs
+                var social1 = reader["SocialUri1"] == DBNull.Value ? null : reader["SocialUri1"].ToString();
+                var social2 = reader["SocialUri2"] == DBNull.Value ? null : reader["SocialUri2"].ToString();
+                var social3 = reader["SocialUri3"] == DBNull.Value ? null : reader["SocialUri3"].ToString();
+                actor.Socials = GetSocialsFromDbFields(social1, social2, social3);
+            }
+            
+            return actor;
         }
 
         return null;
@@ -740,8 +875,8 @@ public class LocalDbService
         if (badge.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, OwnerId)
-                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @OwnerId);
+                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, InfoUri, OwnerId)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @InfoUri, @OwnerId);
                 SELECT last_insert_rowid();
             ";
         }
@@ -758,6 +893,7 @@ public class LocalDbService
                     UpdatedAt = datetime('now'),
                     BadgeType = @BadgeType,
                     Hashtags = @Hashtags,
+                    InfoUri = @InfoUri,
                     OwnerId = @OwnerId
                 WHERE Id = @Id;
             ";
@@ -774,6 +910,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@EarningCriteria", badge.EarningCriteria ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@BadgeType", badge.BadgeType);
         command.Parameters.AddWithValue("@Hashtags", badge.Hashtags ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@InfoUri", badge.InfoUri ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@OwnerId", badge.OwnerId ?? (object)DBNull.Value);
 
         if (badge.Id == 0)
@@ -852,6 +989,7 @@ public class LocalDbService
                     EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                     BadgeType = reader["BadgeType"].ToString(),
                     Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                    InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
                     Issuer = actor
                 });
             } 
@@ -1002,7 +1140,39 @@ public class ActorStats
 
         return stats;
     }
-    
+
+    public BadgeStats GetBadgeStats(long badgeId)
+    {
+        var stats = new BadgeStats()
+        {
+            BadgeId = badgeId
+        };
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT 
+                COUNT(*) AS IssuedCount,
+                COUNT(AcceptedOn) AS AcceptedCount,
+                COUNT(RevokedAt) AS RevokedCount
+            FROM BadgeRecord 
+            WHERE BadgeId = @BadgeId;
+        ";
+        command.Parameters.AddWithValue("@BadgeId", badgeId);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            stats.IssuedCount = reader.GetInt32(0);
+            stats.AcceptedCount = reader.GetInt32(1);
+            stats.RevokedCount = reader.GetInt32(2);
+        }
+
+        return stats;
+    }
+
     public ActorStats GetIssuerStats(Actor actor)
     {
         var stats = new ActorStats()
@@ -1016,7 +1186,16 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.CommandText = @"
             SELECT COUNT(*) AS followerCount FROM Follower WHERE ActorId = @ActorId;
-            SELECT COUNT(*) AS issuedCount, COUNT(DISTINCT IssuedToSubjectUri) AS memberCount FROM BadgeRecord WHERE IssuedBy = @ActorUrl;
+            SELECT COUNT(*) AS issuedCount, 
+            COUNT(
+                DISTINCT
+                    CASE 
+                        WHEN IssuedToSubjectUri IS NOT NULL AND IssuedToSubjectUri != '' THEN IssuedToSubjectUri
+                        WHEN IssuedToEmail IS NOT NULL AND IssuedToEmail != '' THEN IssuedToEmail
+                        ELSE IssuedToName
+                    END
+                ) AS memberCount
+                FROM BadgeRecord WHERE IssuedBy = @ActorUrl;
             SELECT COUNT(*) AS badgeCount FROM Badge WHERE IssuedBy = @ActorId;
         ";
         command.Parameters.AddWithValue("@ActorId", actor.Id);
@@ -1067,7 +1246,8 @@ public class ActorStats
                 ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
-                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
             });
         }
 
@@ -1177,7 +1357,8 @@ public class ActorStats
                 ImageAltText = reader["ImageAltText"] == DBNull.Value ? null : reader["ImageAltText"].ToString(),
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
-                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString()
+                Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
             };
         }
 
@@ -1260,6 +1441,22 @@ public class ActorStats
         command.Parameters.AddWithValue("@Id", id);
 
         command.ExecuteNonQuery();
+    }
+
+    public void DeleteBadgeRecord(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM BadgeRecord WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
+        transaction.Commit();
+
+        InsertRecentActivityLog("Badge record deleted", $"Badge record {id} has been deleted");
     }
 
     public void AcceptBadgeRecord(BadgeRecord badgeRecord)
@@ -1412,6 +1609,7 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
             };
         }
 
@@ -1466,6 +1664,19 @@ public class ActorStats
         return null;
     }
 
+    public void RevokeGrantById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = connection.CreateCommand();
+
+        command.CommandText = "UPDATE BadgeRecord SET RevokedAt = @RevokedAt WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@RevokedAt", DateTime.UtcNow);
+
+        command.ExecuteNonQuery();  
+    }
+
     public BadgeRecord? GetGrantByNoteId(string noteId)
     {
         Log(LogLevel.Debug, "GetGrantByNoteId: {NoteId}", noteId);
@@ -1475,7 +1686,7 @@ public class ActorStats
         connection.Open();
         var command = connection.CreateCommand();
 
-        command.CommandText = "SELECT * FROM BadgeRecord WHERE NoteId = @NoteId OR NoteId LIKE 'https://%/' || @NoteId";	
+        command.CommandText = "SELECT * FROM BadgeRecord WHERE RevokedAt IS NULL AND (NoteId = @NoteId OR NoteId LIKE 'https://%/' || @NoteId)";
         command.Parameters.AddWithValue("@NoteId", noteId);
         using var reader = command.ExecuteReader();
 
@@ -1653,7 +1864,8 @@ public class ActorStats
                        b.ImageAltText AS Badge_ImageAltText,
                        b.EarningCriteria AS Badge_EarningCriteria,
                        b.BadgeType AS Badge_BadgeType,
-                       b.Hashtags AS Badge_Hashtags
+                       b.Hashtags AS Badge_Hashtags,
+                       b.InfoUri AS Badge_InfoUri
                 FROM BadgeRecord br
                 LEFT JOIN Badge b ON br.BadgeId = b.Id";
         }
@@ -1688,7 +1900,8 @@ public class ActorStats
                     ImageAltText = reader["Badge_ImageAltText"] == DBNull.Value ? null : reader["Badge_ImageAltText"].ToString(),
                     EarningCriteria = reader["Badge_EarningCriteria"] == DBNull.Value ? null : reader["Badge_EarningCriteria"].ToString(),
                     BadgeType = reader["Badge_BadgeType"] == DBNull.Value ? null : reader["Badge_BadgeType"].ToString(),
-                    Hashtags = reader["Badge_Hashtags"] == DBNull.Value ? null : reader["Badge_Hashtags"].ToString()
+                    Hashtags = reader["Badge_Hashtags"] == DBNull.Value ? null : reader["Badge_Hashtags"].ToString(),
+                    InfoUri = reader["Badge_InfoUri"] == DBNull.Value ? null : reader["Badge_InfoUri"].ToString()
                 };
             }
             else

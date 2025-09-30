@@ -1,0 +1,2 @@
+ALTER TABLE BadgeRecord ADD COLUMN RevokedAt DATETIME NULL;
+ALTER TABLE BadgeRecord ADD COLUMN RevocationReason TEXT NULL;

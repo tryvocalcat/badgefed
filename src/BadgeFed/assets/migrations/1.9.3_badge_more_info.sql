@@ -1,0 +1,1 @@
+ALTER TABLE Badge ADD COLUMN InfoUri TEXT;
