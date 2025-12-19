@@ -1,0 +1,24 @@
+{
+  "name": "badgefed-fosdem-presentation",
+  "version": "1.0.0",
+  "description": "FOSDEM presentation about BadgeFed - Decentralised Badges with ActivityPub",
+  "main": "index.js",
+  "scripts": {
+    "build": "marp badgefed-fosdem.md --pdf",
+    "build-html": "marp badgefed-fosdem.md -o badgefed-fosdem.html",
+    "serve": "marp -s .",
+    "watch": "marp -w badgefed-fosdem.md"
+  },
+  "keywords": [
+    "badgefed",
+    "activitypub",
+    "openbadges",
+    "fosdem",
+    "presentation"
+  ],
+  "author": "BadgeFed Community",
+  "license": "LGPL-3.0",
+  "devDependencies": {
+    "@marp-team/marp-cli": "^3.4.0"
+  }
+}

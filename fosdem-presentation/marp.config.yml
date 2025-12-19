@@ -1,0 +1,7 @@
+# Marp Configuration
+inputDir: .
+output: build/
+pdf: true
+html: true
+allowLocalFiles: true
+theme: badgefed-theme
