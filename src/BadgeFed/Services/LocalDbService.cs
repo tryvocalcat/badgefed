@@ -14,6 +14,27 @@ public class LocalDbService
 
     public readonly string DbPath;
 
+    /// <summary>
+    /// Constructs a database file path using the DB_DATA environment variable if set,
+    /// otherwise uses the current directory.
+    /// </summary>
+    /// <param name="dbFileName">The database filename (without directory path)</param>
+    /// <returns>Full path to the database file</returns>
+    public static string GetDbPath(string dbFileName)
+    {
+        var dbDataDir = Environment.GetEnvironmentVariable("DB_DATA");
+        
+        if (!string.IsNullOrEmpty(dbDataDir))
+        {
+            // Ensure the directory exists
+            Directory.CreateDirectory(dbDataDir);
+            return Path.Combine(dbDataDir, dbFileName);
+        }
+        
+        // Fall back to current directory
+        return dbFileName;
+    }
+
     public LocalDbService(string dbPath, ILogger<LocalDbService>? logger = null)
     {
         _logger = logger;
@@ -25,9 +46,19 @@ public class LocalDbService
         }
       //  Log(LogLevel.Information, "Initializing LocalDbService with path: {dbPath}", dbPath);
 
-        dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
-
-        this.DbPath = dbPath;
+        // Check if dbPath is already a full path or just a filename
+        if (Path.IsPathRooted(dbPath))
+        {
+            // It's already a full path, use it as-is
+            this.DbPath = dbPath;
+        }
+        else
+        {
+            // It's just a filename, apply transformations and use GetDbPath
+            dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
+            this.DbPath = GetDbPath(dbPath);
+        }
+        
         this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
