@@ -35,29 +35,14 @@ To run BadgeFed in a Docker container, follow these steps:
    docker build -t badgefed .
    ```
 
-2. **Run the Container:**
+2. **Run the Container (with persistence for data storage):**
    ```sh
-   docker run -d -p 5000:80 --name badgefed -e SQLITE_DB_FILENAME="badgefed.db" badgefed
+   docker run -d -p 8080:8080 --name badgefed \q
+    -v $(pwd)/badgefed/data:/app/data \
+    -v $(pwd)/badgefed/config:/app/config \
+    -e DB_DATA="/app/data" \
+    badgefed
    ```
-
-3. **Environment Variables:**
-   - Pass environment variables using the `-e` flag.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -e SQLITE_DB_FILENAME="badgefed.db" \
-       -e ASPNETCORE_ENVIRONMENT="Development" \
-       badgefed
-     ```
-
-4. **Volume Mounts:**
-   - Mount volumes for persistent data storage.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -v $(pwd)/data:/app/data \
-       badgefed
-     ```
 
 A fully docker example would be:
 
