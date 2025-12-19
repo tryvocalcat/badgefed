@@ -30,9 +30,10 @@ public class ImageService
 
             var newFilePath = Path.Combine(
                 Path.GetDirectoryName(filePath),
-                Path.GetFileNameWithoutExtension(filePath) + "-share" + Path.GetExtension(filePath)
+                Path.GetFileNameWithoutExtension(filePath) + "-share.png"
             );
 
+            image.Format = MagickFormat.Png;
             image.Write(newFilePath);
         }
     }

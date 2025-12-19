@@ -38,6 +38,8 @@
         padding: 2rem;
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
     .verification-header::before {
         content: '';
@@ -48,6 +50,61 @@
         bottom: 0;
         background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
         opacity: 0.1;
+    }
+    .verification-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 2rem;
+        position: relative;
+        z-index: 2;
+    }
+    .verification-header-main {
+        flex: 1;
+    }
+    .verification-header-actions {
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-start;
+        margin-top: 0.5rem;
+    }
+    .certificate-button-header {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        backdrop-filter: blur(10px);
+        font-size: 0.9rem;
+        min-width: auto;
+        white-space: nowrap;
+    }
+    .certificate-button-header:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+    @@media (max-width: 768px) {
+        .verification-header-content {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .verification-header-actions {
+            align-self: flex-end;
+            margin-top: 0;
+        }
+        .certificate-button-header {
+            font-size: 0.85rem;
+            padding: 0.6rem 1rem;
+        }
     }
     .verification-badge {
         display: inline-flex;
@@ -143,25 +200,36 @@
     }
     .share-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 1rem;
         margin-top: 2rem;
+        align-items: flex-start;
     }
     .share-button {
-        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 1rem;
+        padding: 1rem 1.5rem;
         border-radius: 8px;
         font-weight: 500;
         transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+        min-height: 48px;
+        flex: 1;
+        min-width: 200px;
     }
     .share-button:hover {
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    .linkedin-button {
+    .linkedin-post-button {
         background: #0a66c2;
+        color: white;
+    }
+    .linkedin-profile-button {
+        background: #0077b5;
         color: white;
     }
     .mastodon-button {
@@ -171,6 +239,130 @@
     .openbadge-button {
         background: #f59e0b;
         color: white;
+    }
+    .verification-button {
+        background: #10b981;
+        color: white;
+    }
+    .owner-actions-section {
+        margin-top: 2rem;
+        border-top: 2px solid #f3f4f6;
+        padding-top: 2rem;
+    }
+    .owner-actions-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .owner-actions-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .owner-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 16px;
+        font-weight: 500;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .owner-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .owner-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+        min-height: 48px;
+        border: 2px solid;
+        background: white;
+    }
+    .owner-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .owner-button.linkedin {
+        border-color: #0077b5;
+        color: #0077b5;
+    }
+    .owner-button.linkedin:hover {
+        background: #0077b5;
+        color: white;
+    }
+    .owner-button.openbadge {
+        border-color: #f59e0b;
+        color: #f59e0b;
+    }
+    .owner-button.openbadge:hover {
+        background: #f59e0b;
+        color: white;
+    }
+    .owner-button.copy {
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+    .owner-button.copy:hover {
+        background: #6366f1;
+        color: white;
+    }
+    .owner-button.settings {
+        border-color: #6b7280;
+        color: #6b7280;
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .owner-button.settings:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    .toggle-button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        color: #475569;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+    .toggle-button:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+    }
+    .toggle-button.expanded {
+        background: #1a1a2e;
+        color: white;
+        border-color: #1a1a2e;
+    }
+    .owner-actions-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease-out;
+    }
+    .owner-actions-content.show {
+        max-height: 300px;
     }
     .comments-section {
         margin-top: 3rem;
@@ -207,17 +399,455 @@
         font-size: 0.875rem;
         color: #6b7280;
     }
+    
+    @@media (max-width: 768px) {
+        .share-actions {
+            grid-template-columns: 1fr;
+        }
+        .badge-meta {
+            flex-direction: column;
+        }
+    }
+
+    /* Certificate/Diploma Styles */
+    .certificate-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        background: url('/img/certificate-background.png') center center / contain;
+        background-color: #f8f9ff;
+        border: 8px solid #1a1a2e;
+        border-radius: 0;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+    .certificate-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(248, 249, 255, 0.85);
+        pointer-events: none;
+        z-index: 1;
+    }
+    .certificate-container::after {
+        content: '';
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        right: 30px;
+        bottom: 30px;
+        border: 1px solid #1a1a2e;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .certificate-header {
+        text-align: center;
+        padding: 3rem 4rem 2rem;
+        position: relative;
+        z-index: 2;
+        font-size: 2rem;
+         font-family: 'Times New Roman', serif;
+    }
+    .certificate-header text {
+        fill: #FF9800;
+    }
+    .certificate-header path {
+        fill: transparent;
+    }
+    .certificate-title {
+        font-family: 'Times New Roman', serif;
+        font-size: 4rem;
+        font-weight: normal;
+        color: #1a1a2e;
+        margin-bottom: 0.2rem;
+        margin-top: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        position: relative;
+        display: inline-block;
+        letter-spacing: 0.1em;
+        transform-style: preserve-3d;
+    }
+ 
+    .certificate-subtitle {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.5rem;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+        font-style: italic;
+    }
+    .certificate-content {
+        text-align: center;
+        padding: 0.5rem 2rem;
+        position: relative;
+        z-index: 2;
+    }
+    .certificate-recipient {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.3rem;
+        color: #2d3748;
+        margin-bottom: 0.2rem;
+    }
+    .certificate-recipient-name {
+        font-family: 'Times New Roman', serif;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1a1a2e;
+        margin: 0.3rem 0 0.5rem;
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 8px;
+    }
+    .certificate-achievement {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.3rem;
+        color: #2d3748;
+        margin-bottom: 0.3rem;
+        line-height: 1.6;
+    }
+    .certificate-badge-title {
+        font-family: 'Times New Roman', serif;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #1a1a2e;
+        margin: 0.5rem 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    .certificate-description {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.1rem;
+        color: #4a5568;
+        margin: 1rem auto;
+        max-width: 820px;
+        line-height: 1.6;
+    }
+    .certificate-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        padding: 1rem 4rem;
+        margin-top: 0.1rem;
+        position: relative;
+        z-index: 2;
+    }
+    .certificate-issuer {
+        text-align: left;
+        flex: 1;
+    }
+    .certificate-date {
+        text-align: right;
+        flex: 1;
+    }
+    .certificate-seal {
+        text-align: center;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .certificate-issuer-name,
+    .certificate-date-value {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #1a1a2e;
+        margin-bottom: 0.3rem;
+        border-bottom: 2px solid #1a1a2e;
+        padding-bottom: 5px;
+        display: inline-block;
+    }
+    .certificate-issuer-title,
+    .certificate-date-label {
+        font-family: 'Times New Roman', serif;
+        font-size: 0.9rem;
+        color: #4a5568;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .certificate-seal-image {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid #1a1a2e;
+        object-fit: cover;
+        background: white;
+        padding: 10px;
+        display: block;
+        margin: 0 auto;
+    }
+    .certificate-ornament {
+        position: absolute;
+        font-size: 2rem;
+        color: #1a1a2e;
+        opacity: 0.4;
+    }
+    .certificate-ornament.top-left {
+        top: 50px;
+        left: 50px;
+    }
+    .certificate-ornament.top-right {
+        top: 50px;
+        right: 50px;
+    }
+    .certificate-ornament.bottom-left {
+        bottom: 50px;
+        left: 50px;
+    }
+    .certificate-ornament.bottom-right {
+        bottom: 50px;
+        right: 50px;
+    }
+    .certificate-verification {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 0.4rem 1.5rem;
+        margin: 3rem 6rem;
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+    .certificate-verification-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 0.3rem;
+    }
+    .certificate-verification-text {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.3rem;
+    }
+    .certificate-fingerprint {
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: #1a1a2e;
+        color: #10b981;
+        padding: 0.5rem;
+        border-radius: 4px;
+        word-break: break-all;
+    }
+    .certificate-qr-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+    }
+    .certificate-qr-code {
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .certificate-qr-image {
+        width: 80px;
+        height: 80px;
+        border: 2px solid #1a1a2e;
+        border-radius: 4px;
+        background: white;
+        padding: 4px;
+    }
+    .certificate-qr-label {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+        font-family: 'Times New Roman', serif;
+    }
+    .certificate-fingerprint-section {
+        flex: 1;
+    }
+    
+    @@media (max-width: 768px) {
+        .certificate-container {
+            margin: 1rem;
+            border-width: 4px;
+        }
+        .certificate-header,
+        .certificate-content,
+        .certificate-footer {
+            padding: 2rem;
+        }
+        .certificate-title {
+            font-size: 2.5rem;
+        }
+        .certificate-title-arced {
+            height: 80px;
+            margin: 0.5rem 0 1.5rem 0;
+        }
+        .certificate-recipient-name {
+            font-size: 2rem;
+        }
+        .certificate-badge-title {
+            font-size: 1.5rem;
+        }
+        .certificate-footer {
+            flex-direction: column;
+            gap: 2rem;
+            text-align: center;
+        }
+        .certificate-verification {
+            margin: 2rem 1rem;
+        }
+        .certificate-qr-section {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        .certificate-qr-code {
+            order: -1;
+        }
+    }
+
+    /* Modal Styles */
+    .certificate-modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        overflow: auto;
+    }
+    .certificate-modal.show {
+        display: block;
+    }
+    .modal-content {
+        position: relative;
+        background-color: white;
+        margin: 2% auto;
+        padding: 0;
+        width: 95%;
+        max-width: 1200px;
+        border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        background: #1a1a2e;
+        color: white;
+        border-radius: 8px 8px 0 0;
+    }
+    .modal-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .modal-button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+    .print-button {
+        background: #10b981;
+        color: white;
+    }
+    .print-button:hover {
+        background: #059669;
+        color: white;
+    }
+    .close-button {
+        background: transparent;
+        color: white;
+        border: 2px solid white;
+    }
+    .close-button:hover {
+        background: white;
+        color: #1a1a2e;
+    }
+    .modal-body {
+        padding: 0;
+    }
+    
+    /* Print-specific styles */
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+        .certificate-modal, .certificate-modal * {
+            visibility: visible;
+        }
+        .certificate-modal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: white !important;
+            display: block !important;
+        }
+        .modal-content {
+            margin: 0;
+            width: 100%;
+            max-width: none;
+            box-shadow: none;
+            border-radius: 0;
+            max-height: none;
+            overflow: visible;
+        }
+        .modal-header {
+            display: none !important;
+        }
+        .modal-body {
+            padding: 0;
+        }
+        .certificate-container {
+            margin: 0;
+            box-shadow: none;
+            max-width: none;
+            page-break-inside: avoid;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .certificate-qr-image {
+            width: 60px;
+            height: 60px;
+        }
+    }
 </style>
 
 <div class="badge-container">
     <div class="verification-header">
-        <div class="verification-badge">
-            <span class="icon"><i class="fas fa-shield-alt"></i></span>
-            <span>Verified Badge</span>
+        <div class="verification-header-content">
+            <div class="verification-header-main">
+                <div class="verification-badge">
+                    <span class="icon"><i class="fas fa-shield-alt"></i></span>
+                    <span>Verified Badge</span>
+                </div>
+                <h1 class="title is-3 has-text-white">@badgeRecord.Title</h1>
+                <p class="subtitle is-5 has-text-white-bis">Issued to <a href="@badgeRecord.IssuedToSubjectUri">@badgeRecord.IssuedToName</a> on @badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</p>
+            </div>
+            @if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
+            {
+                <div class="verification-header-actions">
+                    <button class="certificate-button-header" onclick="openCertificateModal()">
+                        <span class="icon"><i class="fas fa-award"></i></span>
+                        <span>View as Certificate</span>
+                    </button>
+                </div>
+            }
         </div>
-        <h1 class="title is-3 has-text-white">@badgeRecord.Title</h1>
-        <p class="subtitle is-5 has-text-white-bis">Issued to <a href="@badgeRecord.IssuedToSubjectUri">@badgeRecord.IssuedToName</a> on @badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</p>
     </div>
+
 
     <div class="badge-content">
         <div class="badge-image-container">
@@ -281,7 +911,9 @@
                     </a>
                 </div>
             }
-        </div>        <div class="security-info">
+        </div>
+
+        <div class="security-info">
             <h3 class="security-title">
                 <span class="icon"><i class="fas fa-lock"></i></span>
                 <span>Security Verification</span>
@@ -293,35 +925,32 @@
         </div>
 
         <div class="share-actions">
+           
+
+            <!-- Public Sharing Options -->
+            <!-- Mastodon Share -->
             <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
-               class="share-button mastodon-button">
+               class="share-button mastodon-button"
+               target="_blank">
                 <span class="icon"><i class="fab fa-mastodon"></i></span>
                 <span>Share on Mastodon</span>
             </a>
 
+            <!-- LinkedIn Share as Post -->
             @{
-                var linkedinShareLink = ShareHelper.GetLinkedInShareLink(badgeRecord);
+                var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord);
             }
-            @if(!string.IsNullOrEmpty(linkedinShareLink))
+            @if(!string.IsNullOrEmpty(linkedinPostShareLink))
             {
-                <a href="@ShareHelper.GetLinkedInShareLink(badgeRecord)" 
-                class="share-button linkedin-button">
+                <a href="@linkedinPostShareLink" 
+                   class="share-button linkedin-post-button"
+                   target="_blank">
                     <span class="icon"><i class="fab fa-linkedin"></i></span>
                     <span>Share on LinkedIn</span>
                 </a>
             }
 
-            @{
-                var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
-            }
-            <a href="/openbadge/@badgeId" 
-               class="share-button openbadge-button"
-               download="openbadge_@(badgeId).json">
-                <span class="icon"><i class="fas fa-certificate"></i></span>
-                <span>Download OpenBadge</span>
-            </a>
-
-            @* Independent Verification Button *@
+            <!-- Independent Verification Button -->
             @{
                 var openBadgeUrl = $"{NavManager.BaseUri.TrimEnd('/')}/openbadge/{badgeRecord.NoteId.Split('/').LastOrDefault()}";
                 var recipientUrl = badgeRecord.IssuedToSubjectUri;
@@ -333,9 +962,240 @@
                 <span class="icon"><i class="fas fa-check-circle"></i></span>
                 <span>Verify Independently</span>
             </a>
+
         </div>
+
+        <!-- Owner Actions Section -->
+        <div class="owner-actions-section">
+            <div class="owner-actions-header">
+                <div class="owner-actions-title">
+                    <i class="fas fa-user-shield"></i>
+                    Owner Actions
+                </div>
+                <div class="owner-badge">
+                    <i class="fas fa-crown"></i>
+                    Badge Owner Only
+                </div>
+                <button class="toggle-button" onclick="toggleOwnerActions()" id="toggleBtn">
+                    <i class="fas fa-chevron-down" id="chevronIcon"></i>
+                    <span id="toggleText">Show Actions</span>
+                </button>
+            </div>
+            
+            <div class="owner-actions-content" id="ownerActionsContent">
+                <div class="owner-actions-grid">
+                    @{
+                        var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
+                        var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
+                    }
+                    
+                    @if(!string.IsNullOrEmpty(linkedinProfileLink))
+                    {
+                        <a href="@linkedinProfileLink" 
+                           class="owner-button linkedin"
+                           target="_blank">
+                            <span class="icon"><i class="fab fa-linkedin"></i></span>
+                            <span>Add to LinkedIn Profile</span>
+                        </a>
+                    }
+                    
+                    <a href="/openbadge/@badgeId" 
+                       class="owner-button openbadge"
+                       download="openbadge_@(badgeId).json">
+                        <span class="icon"><i class="fas fa-certificate"></i></span>
+                        <span>Download OpenBadge</span>
+                    </a>
+                    
+                    <a href="javascript:void(0)" 
+                       class="owner-button copy"
+                       onclick="copyBadgeUrl()">
+                        <span class="icon"><i class="fas fa-copy"></i></span>
+                        <span>Copy Badge URL</span>
+                    </a>
+                    
+                    <a href="javascript:void(0)" 
+                       class="owner-button settings"
+                       title="Coming soon - manage badge settings">
+                        <span class="icon"><i class="fas fa-cog"></i></span>
+                        <span>Badge Settings</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function toggleOwnerActions() {
+                const content = document.getElementById('ownerActionsContent');
+                const toggleBtn = document.getElementById('toggleBtn');
+                const chevron = document.getElementById('chevronIcon');
+                const toggleText = document.getElementById('toggleText');
+                
+                content.classList.toggle('show');
+                toggleBtn.classList.toggle('expanded');
+                
+                if (content.classList.contains('show')) {
+                    chevron.style.transform = 'rotate(180deg)';
+                    toggleText.textContent = 'Hide Actions';
+                } else {
+                    chevron.style.transform = 'rotate(0deg)';
+                    toggleText.textContent = 'Show Actions';
+                }
+            }
+            
+            function copyBadgeUrl() {
+                navigator.clipboard.writeText(window.location.href).then(function() {
+                    // Create a simple toast notification
+                    const toast = document.createElement('div');
+                    toast.textContent = 'Badge URL copied to clipboard!';
+                    toast.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: #10b981;
+                        color: white;
+                        padding: 12px 20px;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        z-index: 10000;
+                        animation: slideInRight 0.3s ease-out;
+                    `;
+                    document.body.appendChild(toast);
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                }).catch(function() {
+                    alert('Failed to copy URL to clipboard');
+                });
+            }
+
+            function openCertificateModal() {
+                document.getElementById('certificateModal').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeCertificateModal() {
+                document.getElementById('certificateModal').classList.remove('show');
+                document.body.style.overflow = 'auto';
+            }
+
+            function printCertificate() {
+                window.print();
+            }
+
+            // Close modal when clicking outside of it
+            window.onclick = function(event) {
+                const modal = document.getElementById('certificateModal');
+                if (event.target === modal) {
+                    closeCertificateModal();
+                }
+            }
+
+            // Close modal with escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeCertificateModal();
+                }
+            });
+        </script>
     </div>
 </div>
+
+<!-- Certificate Modal -->
+@if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
+{
+    <div id="certificateModal" class="certificate-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Certificate View</h3>
+                <div class="modal-actions">
+                    <button class="modal-button print-button" onclick="printCertificate()">
+                        <i class="fas fa-print"></i>
+                        <span>Print Certificate</span>
+                    </button>
+                    <button class="modal-button close-button" onclick="closeCertificateModal()">
+                        <i class="fas fa-times"></i>
+                        <span>Close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Certificate Content -->
+                <div class="certificate-container">
+                    <!-- Decorative ornaments -->
+                    <div class="certificate-ornament top-left">❦</div>
+                    <div class="certificate-ornament top-right">❦</div>
+                    <div class="certificate-ornament bottom-left">❦</div>
+                    <div class="certificate-ornament bottom-right">❦</div>
+                    
+                    <div class="certificate-header">
+                        <div class="verification-badge" style="display: inline-flex; margin-bottom: 2rem;">
+                            <span class="icon"><i class="fas fa-shield-alt"></i></span>
+                            <span>Verified Certificate</span>
+                        </div>
+                        <div class="certificate-title-arced">
+                            <h1 class="certificate-title" data-text="Certificate of Achievement">Certificate of Achievement</h1>
+                        </div>
+                    </div>
+
+                    <div class="certificate-content">
+                        <div class="certificate-recipient">
+                            <p class="certificate-recipient">Presented to:</p>
+                            <h2 class="certificate-recipient-name">@badgeRecord.IssuedToName</h2>
+                        </div>
+                        
+                        <p class="certificate-achievement">for successfully completing the requirements and earning the</p>
+                        
+                        <h3 class="certificate-badge-title">@badgeRecord.Title</h3>
+                        
+                        <div class="certificate-description">
+                            @badgeRecord.Description
+                        </div>
+                        
+                     </div>
+
+                    <div class="certificate-footer">
+                        <div class="certificate-issuer">
+                            <div class="certificate-issuer-name">@actorName</div>
+                            <div class="certificate-issuer-title">Authorized Issuer</div>
+                        </div>
+                        
+                        <div class="certificate-seal">
+                            @if (!string.IsNullOrEmpty(badgeRecord.FullImageUrl))
+                            {
+                                <img src="@badgeRecord.FullImageUrl" alt="@badgeRecord.ImageAltText" class="certificate-seal-image">
+                            }
+                        </div>
+                        
+                        <div class="certificate-date">
+                            <div class="certificate-date-value">@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</div>
+                            <div class="certificate-date-label">Date Issued</div>
+                        </div>
+                    </div>
+
+                    <div class="certificate-verification">
+                        <div class="certificate-verification-title">Digital Verification</div>
+                        <div class="certificate-qr-section">
+                            <div class="certificate-fingerprint-section">
+                            <div class="certificate-verification-text">
+                                This certificate has been cryptographically verified and is securely recorded on the decentralized web.
+                            </div>
+                           
+                                <div class="certificate-fingerprint">
+                                    @badgeRecord.FingerPrint.ToUpper()
+                                </div>
+                            </div>
+                            <div class="certificate-qr-code">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=@Uri.EscapeDataString(NavManager.Uri)" 
+                                     alt="QR Code to verify certificate" 
+                                     class="certificate-qr-image">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (badgeRecord.IsExternal)
 {

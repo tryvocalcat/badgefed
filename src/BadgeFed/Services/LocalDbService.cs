@@ -875,8 +875,8 @@ public class LocalDbService
         if (badge.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, InfoUri, OwnerId)
-                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @InfoUri, @OwnerId);
+                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, InfoUri, IsCertificate, OwnerId)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @InfoUri, @IsCertificate, @OwnerId);
                 SELECT last_insert_rowid();
             ";
         }
@@ -894,6 +894,7 @@ public class LocalDbService
                     BadgeType = @BadgeType,
                     Hashtags = @Hashtags,
                     InfoUri = @InfoUri,
+                    IsCertificate = @IsCertificate,
                     OwnerId = @OwnerId
                 WHERE Id = @Id;
             ";
@@ -911,6 +912,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@BadgeType", badge.BadgeType);
         command.Parameters.AddWithValue("@Hashtags", badge.Hashtags ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@InfoUri", badge.InfoUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IsCertificate", badge.IsCertificate);
         command.Parameters.AddWithValue("@OwnerId", badge.OwnerId ?? (object)DBNull.Value);
 
         if (badge.Id == 0)
@@ -990,6 +992,7 @@ public class LocalDbService
                     BadgeType = reader["BadgeType"].ToString(),
                     Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                     InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                    IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"]),
                     Issuer = actor
                 });
             } 
@@ -1247,7 +1250,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             });
         }
 
@@ -1358,7 +1362,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             };
         }
 
@@ -1609,7 +1614,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             };
         }
 
@@ -1865,7 +1871,8 @@ public class ActorStats
                        b.EarningCriteria AS Badge_EarningCriteria,
                        b.BadgeType AS Badge_BadgeType,
                        b.Hashtags AS Badge_Hashtags,
-                       b.InfoUri AS Badge_InfoUri
+                       b.InfoUri AS Badge_InfoUri,
+                       b.IsCertificate AS Badge_IsCertificate
                 FROM BadgeRecord br
                 LEFT JOIN Badge b ON br.BadgeId = b.Id";
         }
@@ -1901,7 +1908,8 @@ public class ActorStats
                     EarningCriteria = reader["Badge_EarningCriteria"] == DBNull.Value ? null : reader["Badge_EarningCriteria"].ToString(),
                     BadgeType = reader["Badge_BadgeType"] == DBNull.Value ? null : reader["Badge_BadgeType"].ToString(),
                     Hashtags = reader["Badge_Hashtags"] == DBNull.Value ? null : reader["Badge_Hashtags"].ToString(),
-                    InfoUri = reader["Badge_InfoUri"] == DBNull.Value ? null : reader["Badge_InfoUri"].ToString()
+                    InfoUri = reader["Badge_InfoUri"] == DBNull.Value ? null : reader["Badge_InfoUri"].ToString(),
+                    IsCertificate = reader["Badge_IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["Badge_IsCertificate"])
                 };
             }
             else

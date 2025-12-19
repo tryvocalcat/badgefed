@@ -153,6 +153,18 @@
         </div>
     </div>
 
+    <div class="field">
+        <div class="control">
+            <label class="checkbox">
+                <InputCheckbox @bind-Value="Model.IsCertificate" />
+                Display as Certificate/Diploma
+            </label>
+        </div>
+        <p class="help is-size-7 mt-1">
+            Check this option if you want this badge to be displayed as a certificate or diploma format instead of a regular badge.
+        </p>
+    </div>
+
     <div class="field is-grouped mt-5">
         <div class="control">
             <button type="submit" class="button is-primary" disabled="@isSubmitting">
@@ -233,7 +245,7 @@
             return;
         }
 
-        var format = "image/jpeg";
+        var format = "image/png";
         var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
         var buffer = new byte[resizedImage.Size];
         await resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize).ReadAsync(buffer);
@@ -248,7 +260,7 @@
         {
             if (selectedFile != null)
             {
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
+                var fileName = $"{Guid.NewGuid()}.png";
                 var path = Path.Combine(Environment.WebRootPath, "uploads", "badges");
                 
                 // Ensure directory exists
@@ -258,7 +270,10 @@
 
                 var fullPath = Path.Combine(path, fileName);
                 
-                using var stream = selectedFile.OpenReadStream(maxAllowedSize: maxAllowedSize);
+                // Convert and save as PNG
+                var format = "image/png";
+                var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+                using var stream = resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize);
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
 

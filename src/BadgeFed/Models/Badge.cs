@@ -41,6 +41,8 @@ namespace BadgeFed.Models
         [Url(ErrorMessage = "Please enter a valid URL")]
         public string InfoUri { get; set; } = "";
 
+        public bool IsCertificate { get; set; } = false;
+
         public string OwnerId { get; set; } = string.Empty;
     }
 }
