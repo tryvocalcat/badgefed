@@ -378,7 +378,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
         
-        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}");
+        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}", "badgeRecord", badgeRecordId.ToString());
     }
 
     public List<string> GetBadgeComments(long? badgeRecordId = null)
@@ -826,7 +826,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}");
+        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}", "follower", follower.FollowerUri);
     }
 
     public List<Follower> GetFollowersToProcess()
@@ -1087,19 +1087,21 @@ public class ActorStats
         return result;
     }
 
-    public void InsertRecentActivityLog(string title, string? description = null)
+    public void InsertRecentActivityLog(string title, string? description = null, string? entity = null, string? entityId = null)
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO RecentActivityLog (Title, Description)
-            VALUES (@Title, @Description);
+            INSERT INTO RecentActivityLog (Title, Description, Entity, EntityId)
+            VALUES (@Title, @Description, @Entity, @EntityId);
         ";
 
         command.Parameters.AddWithValue("@Title", title);
         command.Parameters.AddWithValue("@Description", description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Entity", entity ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@EntityId", entityId ?? (object)DBNull.Value);
 
         command.ExecuteNonQuery();
     }
@@ -1113,7 +1115,7 @@ public class ActorStats
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            SELECT Id, Title, Description, CreatedAt
+            SELECT Id, Title, Description, CreatedAt, Entity, EntityId
             FROM RecentActivityLog
             ORDER BY CreatedAt DESC
             LIMIT @Limit;
@@ -1128,7 +1130,9 @@ public class ActorStats
             {
                 Title = reader.GetString(reader.GetOrdinal("Title")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
-                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                Entity = reader["Entity"] == DBNull.Value ? null : reader["Entity"].ToString(),
+                EntityId = reader["EntityId"] == DBNull.Value ? null : reader["EntityId"].ToString()
             });
         }
 
@@ -1154,9 +1158,12 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.CommandText = @"
             SELECT COUNT(br.AcceptedOn) AS acceptedCount,
-                    COUNT(*) AS issuedCount
+                    COUNT(*) AS issuedCount,
+                    COUNT(CASE WHEN br.AcceptedOn IS NULL THEN 1 END) AS pendingCount
             FROM BadgeRecord AS br;
             SELECT COUNT(*) AS followerCount FROM Follower;
+            SELECT COUNT(*) AS followedInstancesCount FROM FollowedIssuer;
+            SELECT COUNT(*) FROM Badgerecord WHERE IsExternal = TRUE;
             ";
 
         using var reader = command.ExecuteReader();
@@ -1165,11 +1172,22 @@ public class ActorStats
         {
             stats.AcceptedCount = reader.GetInt32(0);
             stats.IssuedCount = reader.GetInt32(1);
+            stats.PendingCount = reader.GetInt32(2);
         }
 
         if (reader.NextResult() && reader.Read())
         {
             stats.FollowerCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.FollowedInstancesCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.ExternalBadgesCount = reader.GetInt32(0);
         }
 
         return stats;
@@ -1441,7 +1459,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}");
+        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}", "badgeRecord", id.ToString());
     }
 
     public long PeekProcessGrantId()
@@ -1492,7 +1510,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge record deleted", $"Badge record {id} has been deleted");
+        InsertRecentActivityLog("Badge record deleted", $"Badge record {id} has been deleted", "badgeRecord", id.ToString());
     }
 
     public void AcceptBadgeRecord(BadgeRecord badgeRecord)
@@ -1519,7 +1537,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}");
+        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}", "badgeRecord", badgeRecord.Id.ToString());
     }
 
 
@@ -1564,7 +1582,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers");
+        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers", "badgeRecord", badgeRecordId.ToString());
     }
 
     public void CreateBadgeRecord(BadgeRecord record)
@@ -1613,11 +1631,11 @@ public class ActorStats
 
         if (record.IsExternal)
         {
-            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}");
+            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", "badgeRecord", record.Id.ToString());
         }
         else
         {
-            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}");
+            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}", "badgeRecord", record.Id.ToString());
         }
     }
 

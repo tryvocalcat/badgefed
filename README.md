@@ -40,6 +40,7 @@ To run BadgeFed in a Docker container, follow these steps:
    docker run -d -p 8080:8080 --name badgefed \q
     -v $(pwd)/badgefed/data:/app/data \
     -v $(pwd)/badgefed/config:/app/config \
+    -v $(pwd)/badgefed/custom-assets:/app/wwwroot/custom-assets \
     -e DB_DATA="/app/data" \
     badgefed
    ```

@@ -3,9 +3,11 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.IO
 @using Microsoft.JSInterop
+@using BadgeFed.Services
 
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @inject HttpClient HttpClient
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -287,7 +289,7 @@
     private async Task LoadCustomThemes()
     {
         customThemes.Clear();
-        var themesPath = Path.Combine(Environment.WebRootPath, "css", "themes");
+        var themesPath = CustomAssetPathService.GetThemesPath();
         
         if (Directory.Exists(themesPath))
         {
@@ -357,7 +359,7 @@
                 return;
             }
 
-            var themesPath = Path.Combine(Environment.WebRootPath, "css", "themes");
+            var themesPath = CustomAssetPathService.GetThemesPath();
             Directory.CreateDirectory(themesPath);
 
             var fileName = $"{sanitizedName}.css";
@@ -395,7 +397,7 @@
     {
         try
         {
-            var themesPath = Path.Combine(Environment.WebRootPath, "css", "themes");
+            var themesPath = CustomAssetPathService.GetThemesPath();
             var filePath = Path.Combine(themesPath, $"{themeName}.css");
             
             if (File.Exists(filePath))

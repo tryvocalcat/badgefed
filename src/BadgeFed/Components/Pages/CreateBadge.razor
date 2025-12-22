@@ -1,6 +1,8 @@
 @page "/admin/badges/create"
 @page "/admin/badges/edit/{badgeId}"
+@using BadgeFed.Services
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
@@ -261,7 +263,7 @@
             if (selectedFile != null)
             {
                 var fileName = $"{Guid.NewGuid()}.png";
-                var path = Path.Combine(Environment.WebRootPath, "uploads", "badges");
+                var path = CustomAssetPathService.GetBadgesPath();
                 
                 // Ensure directory exists
                 Directory.CreateDirectory(path);
@@ -279,7 +281,7 @@
 
                 ImageService.ModifyImageForPageShare(fullPath);
                 
-                Model.Image = $"/uploads/badges/{fileName}";
+                Model.Image = CustomAssetPathService.GetBadgeUrl(fileName);
             }
 
             Console.WriteLine($"Saving badge: {Model.Image}");

@@ -1,10 +1,12 @@
 @page "/view/grant/{noteIdParam}"
 @using ActivityPubDotNet.Core
 @using System.Text.Json
+@using Markdig
 
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
 @inject LocalScopedDb DbService
+@inject BadgeImageService BadgeImageService
 @layout BadgeFed.Components.Layouts.MinimalLayout
 @inject IJSRuntime JSRuntime
 
@@ -24,6 +26,34 @@
         position: relative;
         z-index: 10;
     }
+    .tag {
+        margin: 0.5rem;
+    }
+    
+    .badge-image-info {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 5;
+    }
+
+    .badge-metadata-indicator {
+        background: rgba(16, 185, 129, 0.9);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .badge-image-container {
+        position: relative;
+    }
+    
     .badge-container {
         max-width: 1000px;
         margin: 2rem auto;
@@ -161,6 +191,7 @@
         line-height: 1.6;
         color: #4b5563;
         margin-bottom: 2rem;
+        margin-top: 2rem;
     }
     .badge-criteria {
         background: #f3f4f6;
@@ -244,6 +275,85 @@
         background: #10b981;
         color: white;
     }
+    
+    .metadata-info-section {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .metadata-info-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    .metadata-info-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+    
+    .metadata-info-title .icon {
+        color: #10b981;
+    }
+    
+    .metadata-info-section p {
+        margin-bottom: 1rem;
+        color: #4a5568;
+        line-height: 1.6;
+    }
+    
+    .metadata-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .metadata-action-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-radius: 8px;
+        background: #10b981;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    
+    .metadata-action-button:hover {
+        background: #059669;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    }
+    
+    .metadata-action-button.secondary {
+        background: #6b7280;
+        box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
+    }
+    
+    .metadata-action-button.secondary:hover {
+        background: #4b5563;
+        box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+    }
+    
     .owner-actions-section {
         margin-top: 2rem;
         border-top: 2px solid #f3f4f6;
@@ -851,7 +961,12 @@
 
     <div class="badge-content">
         <div class="badge-image-container">
-            <img src="@badgeRecord.FullImageUrl" alt="@badgeRecord.ImageAltText" class="badge-image">
+            <img src="@GetBadgeImageWithMetadataUrl()" alt="@badgeRecord.ImageAltText" class="badge-image">
+            <div class="badge-image-info">
+                <span class="badge-metadata-indicator" title="This image contains embedded OpenBadge metadata for verification">
+                    <i class="fas fa-certificate"></i> Verifiable Image
+                </span>
+            </div>
         </div>
 
         <div class="badge-meta">
@@ -885,7 +1000,7 @@
             <div class="hashtags mt-2">
                 @foreach (var hashtag in badgeRecord.HashtagsList)
                 {
-                    <span class="tag is-small is-light">#@hashtag.Trim()</span>
+                    <span class="tag is-small @GetRandomTagColor(hashtag)">#@hashtag.Trim()</span>
                 }
             </div>
         }
@@ -899,7 +1014,7 @@
                 <i class="fas fa-graduation-cap" style="color: #1a1a2e;"></i>
                 Earning Criteria
             </div>
-            <p>@badgeRecord.EarningCriteria</p>
+            @((MarkupString)Markdown.ToHtml(badgeRecord.EarningCriteria ?? string.Empty))
             @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
             {
                 <div class="mt-3">
@@ -923,6 +1038,27 @@
                 @badgeRecord.FingerPrint.ToUpper()
             </div>
         </div>
+
+        @if (!badgeRecord.IsExternal)
+        {
+            <div class="metadata-info-section">
+                <h4 class="metadata-info-title">
+                    <span class="icon"><i class="fas fa-certificate"></i></span>
+                    <span>Verifiable Badge Image</span>
+                </h4>
+                <p>This badge image contains embedded OpenBadge metadata. Right-click and save the image above to download a self-contained, verifiable badge file that includes all verification data. <a href="/badge-verification-help" target="_blank">Learn more about verification</a>.</p>
+                <div class="metadata-actions">
+                    <a href="@GetBadgeImageWithMetadataUrl()" download="verified-badge-@(NoteIdParam).png" class="metadata-action-button">
+                        <span class="icon"><i class="fas fa-download"></i></span>
+                        <span>Download Verifiable Image</span>
+                    </a>
+                    <a href="/badge-image/@(NoteIdParam)/metadata" target="_blank" class="metadata-action-button secondary">
+                        <span class="icon"><i class="fas fa-code"></i></span>
+                        <span>View Embedded JSON</span>
+                    </a>
+                </div>
+            </div>
+        }
 
         <div class="share-actions">
            
@@ -998,13 +1134,6 @@
                             <span>Add to LinkedIn Profile</span>
                         </a>
                     }
-                    
-                    <a href="/openbadge/@badgeId" 
-                       class="owner-button openbadge"
-                       download="openbadge_@(badgeId).json">
-                        <span class="icon"><i class="fas fa-certificate"></i></span>
-                        <span>Download OpenBadge</span>
-                    </a>
                     
                     <a href="javascript:void(0)" 
                        class="owner-button copy"
@@ -1309,6 +1438,38 @@
 
     private string actorName = string.Empty;
     private string ogImage = string.Empty;
+
+    private static readonly string[] TagColors = {
+        "is-primary", "is-link", "is-info", "is-success", "is-warning", "is-danger",
+        "is-light", "is-dark", "is-primary is-light", "is-link is-light", 
+        "is-info is-light", "is-success is-light", "is-warning is-light"
+    };
+
+    private string GetRandomTagColor(string hashtag)
+    {
+        // Use hashtag's hash code to ensure consistent color for same hashtag
+        var hash = hashtag.GetHashCode();
+        var index = Math.Abs(hash) % TagColors.Length;
+        return TagColors[index];
+    }
+
+    private string GetBadgeImageWithMetadataUrl()
+    {
+        if (badgeRecord == null || string.IsNullOrEmpty(NoteIdParam))
+        {
+            return badgeRecord?.FullImageUrl ?? "";
+        }
+
+        // For external badges, use the original image URL
+        if (badgeRecord.IsExternal)
+        {
+            return badgeRecord.FullImageUrl;
+        }
+
+        // For local badges, use the image with embedded metadata
+        var noteId = NoteIdParam.Trim();
+        return BadgeImageService.GetBadgeImageWithMetadataUrl(NavManager.BaseUri, noteId);
+    }
 
     private async Task CopyToClipboard()
     {

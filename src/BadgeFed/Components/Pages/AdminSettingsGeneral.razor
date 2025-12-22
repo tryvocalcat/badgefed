@@ -1,9 +1,11 @@
 @page "/admin/settings/general"
 
 @using BadgeFed.Models
+@using BadgeFed.Services
 
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @inject LocalScopedDb LocalDbService
 @rendermode InteractiveServer
 
@@ -219,7 +221,7 @@
                 domain = domain.Replace(c, '_');
             }
             var logoFileName = $"logo.{domain}.png";
-            var logoPath = Path.Combine(Environment.WebRootPath, logoFileName);
+            var logoPath = CustomAssetPathService.GetCustomAssetPath(logoFileName);
             
             using (var stream = SelectedLogoFile.OpenReadStream(5 * 1024 * 1024)) // 5MB max
             using (var fs = File.Create(logoPath))
@@ -243,7 +245,7 @@
         CssError = string.Empty;
         try
         {
-            var cssPath = Path.Combine(Environment.WebRootPath, "css", "custom.css");
+            var cssPath = CustomAssetPathService.GetCustomAssetPath("css", "custom.css");
             if (File.Exists(cssPath))
             {
                 CustomCssContent = await File.ReadAllTextAsync(cssPath);
@@ -269,7 +271,7 @@
         
         try
         {
-            var cssFolder = Path.Combine(Environment.WebRootPath, "css");
+            var cssFolder = CustomAssetPathService.GetCssPath();
             Directory.CreateDirectory(cssFolder); // Ensure directory exists
             var cssPath = Path.Combine(cssFolder, "custom.css");
             await File.WriteAllTextAsync(cssPath, CustomCssContent);

@@ -86,7 +86,36 @@
                     </span>
                 </h2>
                 
+                @if (!string.IsNullOrEmpty(statsError))
+                {
+                    <div class="notification is-danger is-light">
+                        <p>Error loading analytics: @statsError</p>
+                    </div>
+                }
+                else
+                {
                 <div class="level is-mobile">
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Issued</p>
+                            <p class="title">@stats.IssuedCount</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Accepted</p>
+                            <p class="title">@stats.AcceptedCount</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Pending</p>
+                            <p class="title">@stats.PendingCount</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="level is-mobile mt-4">
                     <div class="level-item has-text-centered">
                         <div>
                             <p class="heading">Followers</p>
@@ -95,14 +124,14 @@
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Issued Grants</p>
-                            <p class="title">@stats.IssuedCount</p>
+                            <p class="heading">Followed Instances</p>
+                            <p class="title">@stats.FollowedInstancesCount</p>
                         </div>
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Accepted Grants</p>
-                            <p class="title">@stats.AcceptedCount</p>
+                            <p class="heading">External Badges</p>
+                            <p class="title">@stats.ExternalBadgesCount</p>
                         </div>
                     </div>
                 </div>
@@ -121,6 +150,7 @@
                         <span>Export Report</span>
                     </button>
                 </div>
+                }
             </div>
         </div>
         
@@ -136,7 +166,13 @@
                     </span>
                 </h2>
                 
-                @if (recentActivityLogs.Count == 0)
+                @if (!string.IsNullOrEmpty(recentActivityError))
+                {
+                    <div class="notification is-danger is-light">
+                        <p>Error loading recent activity: @recentActivityError</p>
+                    </div>
+                }
+                else if (recentActivityLogs.Count == 0)
                 {
                     <div class="notification is-white p-2 mb-2">
                         <p class="is-size-7">No recent activity logs available.</p>
@@ -181,7 +217,14 @@
                             humanRelativeTime = $"{(int)(timeSpan.TotalDays / 365)} yr ago";
                         }
                         <div class="notification is-white p-2 mb-2">
-                            <p class="is-size-7"><strong>@log.Title:</strong> @log.Description <span class="tag is-small @colorTimeClass is-light">@humanRelativeTime</span></p>
+                            <p class="is-size-7">
+                                <strong>@log.Title:</strong> @log.Description 
+                                @if (!string.IsNullOrEmpty(log.Entity) && !string.IsNullOrEmpty(log.EntityId))
+                                {
+                                    <span class="tag is-small is-light ml-1">@log.Entity: @log.EntityId</span>
+                                }
+                                <span class="tag is-small @colorTimeClass is-light ml-1">@humanRelativeTime</span>
+                            </p>
                         </div>
                     }
                 }
@@ -275,15 +318,30 @@
 @code {
 
     private InstanceStats stats = new InstanceStats();
+    private string statsError = "";
 
     private List<RecentActivityLog> recentActivityLogs = [];
+    private string recentActivityError = "";
     
     private string adminResourcesHtml = "";
 
     protected override async Task OnInitializedAsync()
     {
-        stats = LocalDbService.GetInstanceStats();
-        recentActivityLogs = LocalDbService.GetRecentActivityLogs(5); // Fetch the last 5 logs
+        try {
+            stats = LocalDbService.GetInstanceStats();
+            statsError = ""; // Clear any previous errors
+        } catch (Exception ex) {
+            stats = new InstanceStats();
+            statsError = ex.Message;
+        }        
+
+        try {
+            recentActivityLogs = LocalDbService.GetRecentActivityLogs(7);
+            recentActivityError = ""; // Clear any previous errors
+        } catch (Exception ex) {
+            recentActivityLogs = new List<RecentActivityLog>();
+            recentActivityError = ex.Message;
+        }
         
         // Load admin resources HTML from static file
         await LoadAdminResourcesHtml();

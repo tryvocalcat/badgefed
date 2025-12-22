@@ -12,6 +12,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
@@ -603,7 +604,7 @@
         try
         {
             // Create pages directory if it doesn't exist
-            var pagesDir = Path.Combine(Environment.WebRootPath, "pages");
+            var pagesDir = CustomAssetPathService.GetPagesPath();
             Directory.CreateDirectory(pagesDir);
 
             // Use the original filename
@@ -650,7 +651,7 @@
         try
         {
             // Delete file from disk
-            var filePath = Path.Combine(Environment.WebRootPath, "pages", page.Filename);
+            var filePath = CustomAssetPathService.GetCustomAssetPath("pages", page.Filename);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -704,7 +705,7 @@
     {
         if (selectedStaticPageFile == null) return false;
         
-        var pagesDir = Path.Combine(Environment.WebRootPath, "pages");
+        var pagesDir = CustomAssetPathService.GetPagesPath();
         var filePath = Path.Combine(pagesDir, selectedStaticPageFile.Name);
         return File.Exists(filePath);
     }
@@ -749,7 +750,7 @@
         try
         {
             // Create img directory if it doesn't exist
-            var imgDir = Path.Combine(Environment.WebRootPath, "img");
+            var imgDir = CustomAssetPathService.GetImagesPath();
             Directory.CreateDirectory(imgDir);
 
             // Use the original filename
@@ -782,14 +783,14 @@
     {
         if (selectedImageFile == null) return false;
         
-        var imgDir = Path.Combine(Environment.WebRootPath, "img");
+        var imgDir = CustomAssetPathService.GetImagesPath();
         var filePath = Path.Combine(imgDir, selectedImageFile.Name);
         return File.Exists(filePath);
     }
 
     private async Task CopyImageUrl(UploadedImage image)
     {
-        var url = $"/img/{image.Filename}";
+        var url = CustomAssetPathService.GetImageUrl(image.Filename);
         await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
         imageUploadMessage = $"URL copied to clipboard: {url}";
         StateHasChanged();
@@ -800,7 +801,7 @@
         try
         {
             // Delete file from disk
-            var filePath = Path.Combine(Environment.WebRootPath, "img", image.Filename);
+            var filePath = CustomAssetPathService.GetCustomAssetPath("img", image.Filename);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -823,7 +824,7 @@
         try
         {
             uploadedImages.Clear();
-            var imgDir = Path.Combine(Environment.WebRootPath, "img");
+            var imgDir = CustomAssetPathService.GetImagesPath();
             
             if (Directory.Exists(imgDir))
             {

@@ -87,6 +87,8 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<OpenBadgeService>();
 
+builder.Services.AddScoped<BadgeImageService>();
+
 builder.Services.AddScoped<BadgeService>();
 
 builder.Services.AddScoped<BadgeGrantService>();
@@ -96,6 +98,9 @@ builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<RegistrationService>();
 
 builder.Services.AddScoped<UserService>();
+
+// Add custom asset path service
+builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
 
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
@@ -220,6 +225,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseStaticFiles();
+
 app.UseCors("EmbedPolicy");
 app.UseCookiePolicy();
 app.UseAuthentication();
@@ -254,7 +260,7 @@ async Task SetupDefaultActor(IServiceProvider services)
 
     // Get all domains from configuration
     var domains = configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "example.com" };
-    var defaultUsername = "admin";
+    var defaultUsername = "badgerelay";
 
     foreach (var domain in domains)
     {
@@ -270,10 +276,10 @@ async Task SetupDefaultActor(IServiceProvider services)
             // Create the default actor
             var defaultActor = new Actor
             {
-                FullName = $"{domain.ToTitleCase()} Admin",
+                FullName = $"{domain.ToTitleCase()} Relay Bot",
                 Username = defaultUsername,
                 Domain = domain,
-                Summary = $"BadgeFed instance for {domain}. This is the default administrative account.",
+                Summary = $"Official relay bot for badge announcements on {domain}. Automatically boosts badge grants and credential updates to help spread the word about achievements across the ActivityPub network.",
                 PublicKeyPem = keyPair.PublicKeyPem,
                 PrivateKeyPem = keyPair.PrivateKeyPem,
                 InformationUri = $"https://{domain}/about",

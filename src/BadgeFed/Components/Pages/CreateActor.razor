@@ -3,9 +3,11 @@
 @using System.IO
 @using System.Linq
 @using BadgeFed.Models
+@using BadgeFed.Services
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
@@ -508,7 +510,7 @@
             if (selectedFile != null)
             {
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
-                var path = Path.Combine(Environment.WebRootPath, "uploads", "avatars");
+                var path = CustomAssetPathService.GetAvatarsPath();
                 
                 Directory.CreateDirectory(path);
                 
@@ -518,7 +520,7 @@
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
                 
-                Model.AvatarPath = $"/uploads/avatars/{fileName}";
+                Model.AvatarPath = CustomAssetPathService.GetAvatarUrl(fileName);
             }
 
             // Clean up empty social entries before saving
@@ -596,7 +598,7 @@
     private Dictionary<string, string> GetCustomThemes()
     {
         var customThemes = new Dictionary<string, string>();
-        var themesPath = Path.Combine(Environment.WebRootPath, "css", "themes");
+        var themesPath = CustomAssetPathService.GetThemesPath();
         
         if (Directory.Exists(themesPath))
         {
