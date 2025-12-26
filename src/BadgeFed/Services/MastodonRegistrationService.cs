@@ -14,15 +14,16 @@ namespace BadgeFed.Services
         private readonly HttpClient _httpClient;
         private readonly string _clientName;
         private readonly string _website;
-        private readonly string _scopes = "read";
-        private readonly string _redirectUri;
+        private readonly string[] _scopes;
+        private readonly string[] _redirectUris;
 
-        public MastodonRegistrationService(HttpClient httpClient, string clientName, string website, string redirectUri)
+        public MastodonRegistrationService(HttpClient httpClient, string clientName, string website, string[] redirectUris, string[] scopes = null)
         {
             _httpClient = httpClient;
             _clientName = clientName;
             _website = website;
-            _redirectUri = redirectUri;
+            _redirectUris = redirectUris ?? throw new ArgumentNullException(nameof(redirectUris));
+            _scopes = scopes ?? new[] { "profile", "read", "read:accounts", "read:statuses" };
         }
 
         public async Task<JsonDocument> RegisterApplicationAsync(string instanceUrl)
@@ -30,8 +31,8 @@ namespace BadgeFed.Services
             var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("client_name", _clientName),
-                new KeyValuePair<string, string>("redirect_uris", _redirectUri),
-                new KeyValuePair<string, string>("scopes", _scopes),
+                new KeyValuePair<string, string>("redirect_uris", string.Join("\n", _redirectUris)),
+                new KeyValuePair<string, string>("scopes", string.Join(" ", _scopes)),
                 new KeyValuePair<string, string>("website", _website)
             });
 
@@ -78,9 +79,9 @@ namespace BadgeFed.Services
             query["client_id"] = clientId;
             query["code_challenge_method"] = "S256";
             query["code_challenge"] = codeChallenge;
-            query["redirect_uri"] = _redirectUri;
+            query["redirect_uri"] = _redirectUris[0];
             query["response_type"] = "code";
-            query["scope"] = _scopes;
+            query["scope"] = string.Join(" ", _scopes);
             if (forceLogin) query["force_login"] = "true";
             return $"https://{instanceUrl}/oauth/authorize?{query}";
         }
@@ -89,8 +90,8 @@ namespace BadgeFed.Services
         {
             var query = HttpUtility.ParseQueryString(string.Empty);
             query["client_id"] = clientId;
-            query["scope"] = _scopes;
-            query["redirect_uri"] = _redirectUri;
+            query["scope"] = string.Join(" ", _scopes);
+            query["redirect_uri"] = _redirectUris[0];
             query["response_type"] = "code";
             if (forceLogin) query["force_login"] = "true";
             return $"https://{instanceUrl}/oauth/authorize?{query}";
@@ -101,7 +102,7 @@ namespace BadgeFed.Services
             var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("client_id", clientId),
-                new KeyValuePair<string, string>("redirect_uri", _redirectUri),
+                new KeyValuePair<string, string>("redirect_uri", _redirectUris[0]),
                 new KeyValuePair<string, string>("grant_type", "authorization_code"),
                 new KeyValuePair<string, string>("code", code)
             });
