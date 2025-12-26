@@ -219,9 +219,9 @@
                         <div class="notification is-white p-2 mb-2">
                             <p class="is-size-7">
                                 <strong>@log.Title:</strong> @log.Description 
-                                @if (!string.IsNullOrEmpty(log.Entity) && !string.IsNullOrEmpty(log.EntityId))
+                                @if (!string.IsNullOrEmpty(log.EntityUrl))
                                 {
-                                    <span class="tag is-small is-light ml-1">@log.Entity: @log.EntityId</span>
+                                    <a href="@log.EntityUrl" class="tag is-small is-light ml-1 is-link">View</a>
                                 }
                                 <span class="tag is-small @colorTimeClass is-light ml-1">@humanRelativeTime</span>
                             </p>

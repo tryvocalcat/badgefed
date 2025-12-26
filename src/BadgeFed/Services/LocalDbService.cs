@@ -378,7 +378,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
         
-        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}", "badgeRecord", badgeRecordId.ToString());
+        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}", $"/verify/{noteId}");
     }
 
     public List<string> GetBadgeComments(long? badgeRecordId = null)
@@ -826,7 +826,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}", "follower", follower.FollowerUri);
+        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}", follower.FollowerUri);
     }
 
     public List<Follower> GetFollowersToProcess()
@@ -1087,21 +1087,20 @@ public class ActorStats
         return result;
     }
 
-    public void InsertRecentActivityLog(string title, string? description = null, string? entity = null, string? entityId = null)
+    public void InsertRecentActivityLog(string title, string? description = null, string? entityUrl = null)
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO RecentActivityLog (Title, Description, Entity, EntityId)
-            VALUES (@Title, @Description, @Entity, @EntityId);
+            INSERT INTO RecentActivityLog (Title, Description, EntityUrl)
+            VALUES (@Title, @Description, @EntityUrl);
         ";
 
         command.Parameters.AddWithValue("@Title", title);
         command.Parameters.AddWithValue("@Description", description ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@Entity", entity ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@EntityId", entityId ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@EntityUrl", entityUrl ?? (object)DBNull.Value);
 
         command.ExecuteNonQuery();
     }
@@ -1115,7 +1114,7 @@ public class ActorStats
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            SELECT Id, Title, Description, CreatedAt, Entity, EntityId
+            SELECT Id, Title, Description, CreatedAt, EntityUrl
             FROM RecentActivityLog
             ORDER BY CreatedAt DESC
             LIMIT @Limit;
@@ -1131,8 +1130,7 @@ public class ActorStats
                 Title = reader.GetString(reader.GetOrdinal("Title")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                Entity = reader["Entity"] == DBNull.Value ? null : reader["Entity"].ToString(),
-                EntityId = reader["EntityId"] == DBNull.Value ? null : reader["EntityId"].ToString()
+                EntityUrl = reader["EntityUrl"] == DBNull.Value ? null : reader["EntityUrl"].ToString()
             });
         }
 
@@ -1447,6 +1445,12 @@ public class ActorStats
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
+        // First get the noteId for the EntityUrl
+        var selectCommand = connection.CreateCommand();
+        selectCommand.CommandText = "SELECT NoteId FROM BadgeRecord WHERE Id = @Id";
+        selectCommand.Parameters.AddWithValue("@Id", id);
+        var noteId = selectCommand.ExecuteScalar()?.ToString();
+
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
@@ -1459,7 +1463,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}", "badgeRecord", id.ToString());
+        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}", !string.IsNullOrEmpty(noteId) ? $"/verify/{noteId}" : null);
     }
 
     public long PeekProcessGrantId()
@@ -1510,7 +1514,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge record deleted", $"Badge record {id} has been deleted", "badgeRecord", id.ToString());
+        InsertRecentActivityLog("Badge record deleted", $"Badge record {id} has been deleted");
     }
 
     public void AcceptBadgeRecord(BadgeRecord badgeRecord)
@@ -1537,7 +1541,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}", "badgeRecord", badgeRecord.Id.ToString());
+        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}", $"/verify/{badgeRecord.NoteId}");
     }
 
 
@@ -1569,6 +1573,12 @@ public class ActorStats
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
+        // First get the noteId for the EntityUrl
+        var selectCommand = connection.CreateCommand();
+        selectCommand.CommandText = "SELECT NoteId FROM BadgeRecord WHERE Id = @Id";
+        selectCommand.Parameters.AddWithValue("@Id", badgeRecordId);
+        var noteId = selectCommand.ExecuteScalar()?.ToString();
+
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
@@ -1582,7 +1592,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers", "badgeRecord", badgeRecordId.ToString());
+        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers", !string.IsNullOrEmpty(noteId) ? $"/verify/{noteId}" : null);
     }
 
     public void CreateBadgeRecord(BadgeRecord record)
@@ -1631,11 +1641,11 @@ public class ActorStats
 
         if (record.IsExternal)
         {
-            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", "badgeRecord", record.Id.ToString());
+            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", $"/verify/{record.NoteId}");
         }
         else
         {
-            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}", "badgeRecord", record.Id.ToString());
+            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}", $"/verify/{record.NoteId}");
         }
     }
 

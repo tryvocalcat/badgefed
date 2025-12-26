@@ -79,7 +79,7 @@
                                                                 <strong>@server.Domain</strong>
                                                                 <small class="has-text-grey">@server.Description</small>
                                                             </div>
-                                                            <span class="tag is-light">@server.Users users</span>
+                                                            <span class="tag is-light">-</span>
                                                         </div>
                                                     }
                                                 </div>
@@ -401,15 +401,15 @@
     // Popular Mastodon servers for suggestions
     private List<MastodonServer> popularMastodonServers = new()
     {
-        new("mastodon.social", "The original server run by the Mastodon team", "786K"),
-        new("mastodon.world", "A general-purpose Mastodon server", "156K"),
-        new("mas.to", "A safe, friendly community", "47K"),
-        new("fosstodon.org", "A community for free and open source software", "32K"),
-        new("mstdn.social", "A general-purpose community server", "28K"),
-        new("infosec.exchange", "InfoSec community on Mastodon", "25K"),
-        new("hachyderm.io", "Safe space for tech workers and enthusiasts", "24K"),
-        new("techhub.social", "Technology professionals and enthusiasts", "18K"),
-        new("mastodon.online", "A fast, secure and up-to-date instance", "15K")
+        new("mastodon.social", "The original server run by the Mastodon team"),
+        new("mastodon.world", "A general-purpose Mastodon server"),
+        new("mas.to", "A safe, friendly community"),
+        new("fosstodon.org", "A community for free and open source software"),
+        new("mstdn.social", "A general-purpose community server"),
+        new("infosec.exchange", "InfoSec community on Mastodon"),
+        new("hachyderm.io", "Safe space for tech workers and enthusiasts"),
+        new("techhub.social", "Technology professionals and enthusiasts"),
+        new("mastodon.online", "A fast, secure and up-to-date instance")
     };
     
     private List<MastodonServer> filteredMastodonServers => 
@@ -420,7 +420,7 @@
                 s.Description.Contains(selectedMastodonServer, StringComparison.OrdinalIgnoreCase)
               ).ToList();
 
-    public record MastodonServer(string Domain, string Description, string Users);
+    public record MastodonServer(string Domain, string Description);
     
     protected override async Task OnInitializedAsync()
     {
