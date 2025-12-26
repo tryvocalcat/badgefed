@@ -53,10 +53,7 @@ docker run -d \
     --name badgefed \
     -e SQLITE_DB_FILENAME="badgefed.db" \
     -e ASPNETCORE_ENVIRONMENT="Production" \
-    -e "MastodonConfig__ClientId=your-client-id" \
-    -e "MastodonConfig__ClientSecret=your-client-secret" \
-    -e "MastodonConfig__Server=hachyderm.io" \
-    -e "AdminAuthentication__AdminUsers__0__Id=mymastodonusername" \
+    -e "AdminAuthentication__AdminUsers__0__Id=mapache@hachyderm.io" \
     -e "AdminAuthentication__AdminUsers__0__Type=Mastodon" \
     -v $(pwd)/data:/app/data \
     badgefed
@@ -125,7 +122,7 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
         "Type": "LinkedIn"
       },
       {
-        "Id": "mastodon_user",
+        "Id": "username@mastodoninstance.com",
         "Type": "Mastodon"
       }
     ]
@@ -134,17 +131,10 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
 - **Usage:** Add admin users with their IDs and authentication types (`LinkedIn` or `Mastodon`). LinkedIn uses email as IDs, and Mastodon uses usernames. If only Mastodon users are specified or only LinkedIn users are specified, only the corresponding login button will appear. For example, if no Mastodon users are specified, the Mastodon login button will not appear.
 
 #### 5. **Mastodon Configuration**
-- **Purpose:** Configures Mastodon OAuth for authentication.
-- **Location:** `appsettings.json` and `appsettings.Development.json`
-- **Example:**
-  ```json
-  "MastodonConfig": {
-    "ClientId": "your-client-id",
-    "ClientSecret": "your-client-secret",
-    "Server": "hachyderm.io"
-  }
-  ```
-- **Usage:** Replace `ClientId`, `ClientSecret`, and `Server` with your Mastodon app credentials. For more details, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
+- **Purpose:** Mastodon OAuth authentication is supported out-of-the-box.
+- **Location:** No configuration required.
+- **Example:** N/A
+- **Usage:** Mastodon authentication works with any Mastodon server without requiring any configuration. The system automatically registers OAuth applications dynamically when users log in from their Mastodon instances. For more details about Mastodon authentication, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
 
 #### 6. **LinkedIn Configuration**
 - **Purpose:** Configures LinkedIn OAuth for authentication.

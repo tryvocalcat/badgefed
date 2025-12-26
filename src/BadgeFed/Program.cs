@@ -246,6 +246,51 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseStaticFiles();
 
+// Add middleware to handle dynamic Mastodon OAuth endpoints
+app.Use(async (context, next) =>
+{
+    // Check if this is a dynamic Mastodon OAuth callback
+    if (context.Request.Path == "/signin-mastodon-dynamic" && context.Request.Query.ContainsKey("state"))
+    {
+        try
+        {
+            // Get the authentication options for the DynamicMastodon scheme
+            var authService = context.RequestServices.GetService<IAuthenticationSchemeProvider>();
+            var scheme = await authService.GetSchemeAsync("DynamicMastodon");
+            if (scheme != null)
+            {
+                var options = context.RequestServices.GetService<IOptionsMonitor<OAuthOptions>>();
+                var oauthOptions = options.Get("DynamicMastodon");
+                
+                // Unprotect the state to get the stored hostname and credentials
+                var stateValue = context.Request.Query["state"];
+                var properties = oauthOptions.StateDataFormat.Unprotect(stateValue);
+                
+                if (properties != null && properties.Items.TryGetValue("mastodon_hostname", out var hostname))
+                {
+                    // Dynamically override the OAuth endpoints
+                    oauthOptions.TokenEndpoint = $"https://{hostname}/oauth/token";
+                    oauthOptions.UserInformationEndpoint = $"https://{hostname}/api/v1/accounts/verify_credentials";
+                    
+                    // Override client credentials
+                    if (properties.Items.TryGetValue("mastodon_client_id", out var clientId))
+                        oauthOptions.ClientId = clientId;
+                    if (properties.Items.TryGetValue("mastodon_client_secret", out var clientSecret))
+                        oauthOptions.ClientSecret = clientSecret;
+                        
+                    Console.WriteLine($"Dynamic Mastodon OAuth: Set endpoints for {hostname}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in dynamic Mastodon middleware: {ex.Message}");
+        }
+    }
+    
+    await next();
+});
+
 app.UseCors("EmbedPolicy");
 app.UseCookiePolicy();
 app.UseAuthentication();
@@ -534,6 +579,7 @@ public static class MastodonOAuthExtensions
             o.AuthorizationEndpoint = "https://placeholder.invalid/oauth/authorize";
             o.TokenEndpoint = "https://placeholder.invalid/oauth/token";
             o.UserInformationEndpoint = "https://placeholder.invalid/api/v1/accounts/verify_credentials";
+         
             o.CallbackPath = new Microsoft.AspNetCore.Http.PathString("/signin-mastodon-dynamic");
 
             // Placeholder credentials - will be set dynamically
@@ -560,6 +606,7 @@ public static class MastodonOAuthExtensions
                     // Store credentials for the callback
                     context.Properties.Items["mastodon_client_id"] = clientId;
                     context.Properties.Items["mastodon_client_secret"] = clientSecret;
+                    context.Properties.Items["mastodon_hostname"] = hostname;
                     
                     // Build authorization URL with real credentials
                     var authUrl = $"https://{hostname}/oauth/authorize";
@@ -576,17 +623,15 @@ public static class MastodonOAuthExtensions
                         ["scope"] = string.Join(" ", context.Options.Scope)
                     };
                     
-                    // Add state parameter if present
-                    if (context.Properties.Items.TryGetValue(".xsrf", out var state))
-                    {
-                        queryParams["state"] = state;
-                    }
+                    // Add state parameter - use the same state that the framework would use
+                    var state = context.Options.StateDataFormat.Protect(context.Properties);
+                    queryParams["state"] = state;
                     
                     var newRedirectUri = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(authUrl, queryParams);
                     
                     context.Response.Redirect(newRedirectUri);
                 },
-                
+
                 OnCreatingTicket = async context =>
                 {
                     // Get the server and credentials from stored properties
@@ -594,7 +639,9 @@ public static class MastodonOAuthExtensions
                         ? storedServer 
                         : throw new InvalidOperationException("Mastodon server not found in properties");
 
-                    // Dynamically set endpoints for this specific server
+                    // At this point, the token has already been exchanged, so we need to make sure
+                    // the endpoints were set correctly. This should be handled in OnRemoteAuthenticateAsync
+                    // but let's also make sure we have the right user info endpoint
                     var userInfoEndpoint = $"https://{hostname}/api/v1/accounts/verify_credentials";
 
                     var localDbService = localDbFactory.GetInstance(context.HttpContext);
@@ -622,7 +669,7 @@ public static class MastodonOAuthExtensions
                     // Check if this user is an admin for any Mastodon server
                     var isAdmin = adminConfig?.AdminUsers?.Any(a =>
                         a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) &&
-                        a.Id == username) ?? false;
+                        a.Id == $"{username}@{hostname}") ?? false;
 
                     Console.WriteLine($"Dynamic Mastodon login - Server: {hostname}, User: {username}, Is admin: {isAdmin}");
 
