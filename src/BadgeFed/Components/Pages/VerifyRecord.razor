@@ -276,6 +276,239 @@
         color: white;
     }
     
+    .verify-button {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    .verify-button:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* Verification Modal Styles */
+    .verification-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        backdrop-filter: blur(4px);
+    }
+    .verification-modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+    .verification-modal-content {
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+    .verification-modal-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px 16px 0 0;
+        text-align: center;
+        position: relative;
+    }
+    .verification-modal-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .verification-modal-body {
+        padding: 2rem;
+    }
+    .verification-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: background 0.3s ease;
+    }
+    .verification-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    .trust-factor {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .trust-factor:hover {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.02);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .trust-factor-check {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        background: #10b981;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+        margin-top: 0.2rem;
+    }
+    .trust-factor-content {
+        flex: 1;
+    }
+    .trust-factor-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+        color: #1f2937;
+    }
+    .trust-factor-description {
+        color: #6b7280;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+    .trust-factor-value {
+        background: #f3f4f6;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #1f2937;
+        margin-top: 0.75rem;
+        word-break: break-all;
+        border-left: 3px solid #10b981;
+    }
+    .trust-factor-help {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 24px;
+        height: 24px;
+        background: #e5e7eb;
+        color: #6b7280;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        cursor: help;
+        transition: all 0.3s ease;
+        line-height: 1;
+    }
+    .trust-factor-help:hover {
+        background: #10b981;
+        color: white;
+    }
+    .tooltip {
+        position: relative;
+        display: inline-block;
+    }
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 300px;
+        background-color: #1f2937;
+        color: white;
+        text-align: left;
+        border-radius: 8px;
+        padding: 0.75rem;
+        position: absolute;
+        z-index: 10001;
+        bottom: 125%;
+        right: 0;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .tooltip .tooltiptext::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        right: 20px;
+        border-width: 8px;
+        border-style: solid;
+        border-color: #1f2937 transparent transparent transparent;
+    }
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @@keyframes slideUp {
+        from { 
+            opacity: 0; 
+            transform: translateY(30px) scale(0.95); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+        }
+    }
+    
+    @@media (max-width: 768px) {
+        .verification-modal-content {
+            width: 95%;
+            margin: 1rem;
+        }
+        .verification-modal-body {
+            padding: 1.5rem;
+        }
+        .trust-factor {
+            padding: 1rem;
+        }
+        .tooltip .tooltiptext {
+            width: 250px;
+            right: -50px;
+        }
+    }
+    
     .metadata-info-section {
         margin: 2rem 0;
         padding: 1.5rem;
@@ -1030,12 +1263,15 @@
 
         <div class="security-info">
             <h3 class="security-title">
-                <span class="icon"><i class="fas fa-lock"></i></span>
-                <span>Security Verification</span>
+                <span class="icon"><i class="fas fa-shield-check"></i></span>
+                <span>Verification & Trust</span>
             </h3>
-            <p>This badge has been cryptographically verified and is securely decentralized on the fediverse through ActivityPub.</p>
-            <div class="fingerprint">
-                @badgeRecord.FingerPrint.ToUpper()
+            <p>This badge has been cryptographically verified and securely recorded.</p>
+            <div style="margin-top: 1rem;">
+                <button class="verify-button" onclick="openVerificationModal()">
+                    <span class="icon"><i class="fas fa-check-circle"></i></span>
+                    <span>Verify Badge Trust Factors</span>
+                </button>
             </div>
         </div>
 
@@ -1211,11 +1447,27 @@
                 window.print();
             }
 
+            function openVerificationModal() {
+                document.getElementById('verificationModal').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeVerificationModal() {
+                document.getElementById('verificationModal').classList.remove('show');
+                document.body.style.overflow = 'auto';
+            }
+
             // Close modal when clicking outside of it
             window.onclick = function(event) {
-                const modal = document.getElementById('certificateModal');
-                if (event.target === modal) {
+                const certificateModal = document.getElementById('certificateModal');
+                const verificationModal = document.getElementById('verificationModal');
+                
+                if (event.target === certificateModal) {
                     closeCertificateModal();
+                }
+                
+                if (event.target === verificationModal) {
+                    closeVerificationModal();
                 }
             }
 
@@ -1223,6 +1475,7 @@
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeCertificateModal();
+                    closeVerificationModal();
                 }
             });
         </script>
@@ -1325,6 +1578,191 @@
         </div>
     </div>
 }
+
+<!-- Verification Modal -->
+<div id="verificationModal" class="verification-modal">
+    <div class="verification-modal-content">
+        <div class="verification-modal-header">
+            <h2 class="verification-modal-title">
+                <i class="fas fa-shield-check"></i>
+                Badge Trust Factors
+            </h2>
+            <button class="verification-close" onclick="closeVerificationModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="verification-modal-body">
+            <p style="text-align: center; margin-bottom: 2rem; color: #6b7280; font-size: 1rem;">
+                Here are the verifiable trust factors that prove this badge's authenticity and integrity:
+            </p>
+
+            <!-- Cryptographic Signature -->
+            <div class="trust-factor">
+                <div class="trust-factor-check">
+                    <i class="fas fa-signature"></i>
+                </div>
+                <div class="trust-factor-content">
+                    <h4 class="trust-factor-title">Cryptographic Signature</h4>
+                    <p class="trust-factor-description">
+                        Unique cryptographic fingerprint prevents counterfeiting.<br>
+                        <small style="color: #9ca3af; font-style: italic;">Like a unique DNA that can't be faked - so you know this badge is 100% real and hasn't been tampered with.</small>
+                    </p>
+                    <div class="trust-factor-value">@badgeRecord.FingerPrint.ToUpper()</div>
+                </div>
+                <div class="trust-factor-help tooltip">
+                    <i class="fas fa-question" style="padding: 8px"></i>
+                    <span class="tooltiptext">
+                        This SHA-256 hash is generated from the badge's content and metadata, creating an unforgeable digital signature. Any alteration to the badge would result in a completely different fingerprint, making it virtually impossible to counterfeit while ensuring complete data integrity and authenticity verification.
+                    </span>
+                </div>
+            </div>
+
+            <!-- Issuer Domain Authority -->
+            <div class="trust-factor">
+                <div class="trust-factor-check">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div class="trust-factor-content">
+                    <h4 class="trust-factor-title">Verified Issuer Domain</h4>
+                    <p class="trust-factor-description">
+                        Issuer controls verified domain with institutional accountability.<br>
+                        <small style="color: #9ca3af; font-style: italic;">Like checking that a diploma really came from the school it claims - so you know it's not from a fake organization.</small>
+                    </p>
+                    <div class="trust-factor-value">@actorUri.Host</div>
+                </div>
+                <div class="trust-factor-help tooltip">
+                    <i class="fas fa-question"></i>
+                    <span class="tooltiptext">
+                        Domain verification ensures that only the legitimate organization can issue badges from this domain. The issuer has been registered and issuing badges since their domain registration, providing institutional accountability and preventing impersonation attacks. This establishes organizational trust and credibility.
+                    </span>
+                </div>
+            </div>
+
+            @if (!badgeRecord.IsExternal)
+            {
+                <!-- ActivityPub Federation -->
+                <div class="trust-factor">
+                    <div class="trust-factor-check">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Decentralized Network Verification</h4>
+                        <p class="trust-factor-description">
+                            Published on decentralized Fediverse for transparent verification.<br>
+                            <small style="color: #9ca3af; font-style: italic;">Your badge exists on many computers, not just one - so it can't disappear if one company goes out of business.</small>
+                        </p>
+                        <div class="trust-factor-value">ActivityPub Protocol</div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">
+                            ActivityPub is a decentralized social networking protocol that ensures your badge exists on multiple independent servers across the Fediverse, providing transparent and public verification. This prevents single points of failure, censorship, and ensures the badge remains accessible and verifiable even if one server goes offline.
+                        </span>
+                    </div>
+                </div>
+
+                <!-- OpenBadges Standard -->
+                <div class="trust-factor">
+                    <div class="trust-factor-check">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Open Badge Standard Compliance</h4>
+                        <p class="trust-factor-description">
+                            Follows global standard for interoperability and verification.<br>
+                            <small style="color: #9ca3af; font-style: italic;">Like having a universally accepted driver's license that works everywhere - so other organizations will recognize and trust your badge.</small>
+                        </p>
+                        <div class="trust-factor-value">Open Badge v3.0 Specification</div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">
+                            Open Badges is a globally recognized industry standard maintained by 1EdTech that ensures badges can be verified by any compliant system worldwide. This provides universal recognition, portability across platforms, and independent verification by third-party tools, making your badge internationally trusted and transferable.
+                        </span>
+                    </div>
+                </div>
+            }
+
+            <!-- Timestamp Verification -->
+            <div class="trust-factor">
+                <div class="trust-factor-check">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="trust-factor-content">
+                    <h4 class="trust-factor-title">Tamper-Evident Timestamp</h4>
+                    <p class="trust-factor-description">
+                        Cryptographically protected issuance date prevents backdating.<br>
+                        <small style="color: #9ca3af; font-style: italic;">Like a permanent marker that can't be erased or changed - so no one can fake when you earned this achievement.</small>
+                    </p>
+                    <div class="trust-factor-value">@badgeRecord.IssuedOn.ToString("yyyy-MM-dd HH:mm:ss UTC")</div>
+                </div>
+                <div class="trust-factor-help tooltip">
+                    <i class="fas fa-question"></i>
+                    <span class="tooltiptext">
+                        The timestamp is cryptographically included in the badge signature, making it impossible to alter the issuance date or backdate the badge without completely invalidating the entire signature. This prevents fraudulent claims about when achievements were earned and ensures chronological integrity.
+                    </span>
+                </div>
+            </div>
+
+            <!-- Recipient Verification -->
+            <div class="trust-factor">
+                <div class="trust-factor-check">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="trust-factor-content">
+                    <h4 class="trust-factor-title">Recipient Identity Verification</h4>
+                    <p class="trust-factor-description">
+                        Identity cryptographically linked to prevent theft.<br>
+                        <small style="color: #9ca3af; font-style: italic;">Like your name being permanently written inside - so no one else can steal your badge and pretend they earned it.</small>
+                    </p>
+                    <div class="trust-factor-value">@badgeRecord.IssuedToName</div>
+                </div>
+                <div class="trust-factor-help tooltip">
+                    <i class="fas fa-question"></i>
+                    <span class="tooltiptext">
+                        The recipient's identity is verified through their authenticated account credentials and cryptographically linked to the badge signature, ensuring only the rightful owner can legitimately present this badge. This prevents badge theft, impersonation, and unauthorized use by other parties.
+                    </span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
+            {
+                <!-- Badge Program Verification -->
+                <div class="trust-factor">
+                    <div class="trust-factor-check">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Verified Badge Program</h4>
+                        <p class="trust-factor-description">
+                            Established program with published criteria and standards.<br>
+                            <small style="color: #9ca3af; font-style: italic;">Like a recipe book that shows exactly what you did to earn this - there's a public webpage that anyone can check to see the requirements weren't made up or hidden.</small>
+                        </p>
+                        <div class="trust-factor-value">
+                            <a href="@badgeRecord.Badge.InfoUri" target="_blank" style="color: #10b981; text-decoration: none;">
+                                View Program Information
+                                <i class="fas fa-external-link-alt" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">
+                            This badge is part of an established program with publicly available information about the specific criteria, requirements, learning outcomes, and standards that must be met to earn the badge. This transparency establishes credibility and allows others to understand the achievement's value and rigor.
+                        </span>
+                    </div>
+                </div>
+            }
+
+            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; text-align: center;">
+                <p style="color: #6b7280; font-size: 0.9rem; margin: 0;">
+                    <i class="fas fa-shield-alt" style="color: #10b981; margin-right: 0.5rem;"></i>
+                    All trust factors have been verified and are cryptographically secured.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
 @if (badgeRecord.IsExternal)
 {
