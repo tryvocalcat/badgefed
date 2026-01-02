@@ -1168,6 +1168,19 @@
     }
 </style>
 
+@if(badgeRecord == null)
+{
+    <div class="notification is-danger">
+        <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+        <span>Badge record not found, was revoked, has expired, or went for a vacation.</span>
+        <br />
+        <span>But hey, at least you found this message! That's something, right? 😊
+            Go and <a href="/explore" class="has-text-weight-bold">browse available badges</a> instead.
+        </span>
+    </div>
+}
+else
+{
 <div class="badge-container">
     <div class="verification-header">
         <div class="verification-header-content">
@@ -1764,6 +1777,7 @@
     </div>
 </div>
 
+
 @if (badgeRecord.IsExternal)
 {
     <div class="notification is-warning">
@@ -1865,6 +1879,7 @@
             
         }
     </div>
+}
 }
 
 @code {

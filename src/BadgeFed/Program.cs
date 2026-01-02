@@ -10,6 +10,7 @@ using System.Text.Json;
 using BadgeFed.Services;
 using BadgeFed;
 using BadgeFed.Models;
+using BadgeFed.Core;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,6 +75,7 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
 builder.Services.AddScoped<CreateNoteService>();
+builder.Services.AddScoped<QuoteRequestService>();
 builder.Services.AddScoped<ServerDiscoveryService>();
 
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();

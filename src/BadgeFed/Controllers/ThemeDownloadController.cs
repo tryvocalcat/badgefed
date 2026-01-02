@@ -21,12 +21,15 @@ namespace BadgeFed.Controllers
         [HttpGet("{themeName}")]
         public IActionResult DownloadTheme(string themeName)
         {
+            _logger.LogInformation("[{RequestHost}] Requesting theme download: {ThemeName}", Request.Host, themeName);
+            
             try
             {
                 // Validate theme name
                 if (string.IsNullOrWhiteSpace(themeName) || 
                     !IsValidThemeName(themeName))
                 {
+                    _logger.LogWarning("[{RequestHost}] Invalid theme name requested: {ThemeName}", Request.Host, themeName);
                     return BadRequest("Invalid theme name");
                 }
 
@@ -36,9 +39,11 @@ namespace BadgeFed.Controllers
 
                 if (!System.IO.File.Exists(filePath))
                 {
+                    _logger.LogWarning("[{RequestHost}] Theme file not found: {ThemeName} at path {FilePath}", Request.Host, themeName, filePath);
                     return NotFound($"Theme '{themeName}' not found");
                 }
 
+                _logger.LogInformation("[{RequestHost}] Successfully serving theme: {ThemeName}", Request.Host, themeName);
                 var fileBytes = System.IO.File.ReadAllBytes(filePath);
                 var contentType = "text/css";
 
@@ -46,7 +51,7 @@ namespace BadgeFed.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading theme {ThemeName}", themeName);
+                _logger.LogError(ex, "[{RequestHost}] Error downloading theme {ThemeName}", Request.Host, themeName);
                 return StatusCode(500, "Error downloading theme");
             }
         }

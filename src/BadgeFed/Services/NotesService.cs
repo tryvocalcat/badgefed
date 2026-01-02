@@ -65,6 +65,11 @@ public class NotesService
 
     public static string GetMention(string name, string link, List<ActivityPubNote.Tag> tags)
     {
+        if (string.IsNullOrEmpty(name))
+        {
+            name = link.Split('/').Last();
+        }
+
         if (name.StartsWith("@"))
             name = name.Substring(1);
 
@@ -263,6 +268,8 @@ public class NotesService
             to: to,
             cc: cc,
             tags: tags);
+
+       // note.InteractionPolicy.CanQuote.AutomaticApproval = new List<string> { record.IssuedToSubjectUri };
 
         // Document type does not show in mastodon
         note.Type = "Note";

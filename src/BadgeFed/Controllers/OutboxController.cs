@@ -27,10 +27,13 @@ namespace BadgeFed.Controllers
         [Route("outbox")]
         public IActionResult GetDomainOutbox([FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null)
         {
+            _logger.LogInformation("[{RequestHost}] Domain outbox request - page: {Page}, maxId: {MaxId}, minId: {MinId}", Request.Host, page, maxId, minId);
+            
             var accept = Request.Headers["Accept"].ToString();
 
             if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
+                _logger.LogWarning("[{RequestHost}] Non-ActivityPub request rejected for domain outbox", Request.Host);
                 return BadRequest("This endpoint only supports ActivityPub requests");
             }
 
@@ -41,6 +44,8 @@ namespace BadgeFed.Controllers
             {
                 // Return the main OrderedCollection for the entire domain
                 var totalItems = GetTotalGrantsForDomain();
+                
+                _logger.LogInformation("[{RequestHost}] Returning domain outbox main collection with {TotalItems} items", Request.Host, totalItems);
                 
                 var outboxCollection = new ActivityPubCollection
                 {
@@ -122,10 +127,13 @@ namespace BadgeFed.Controllers
         [Route("actors/{domain}/{actorName}/outbox")]
         public IActionResult GetActorOutbox(string domain, string actorName, [FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null)
         {
+            _logger.LogInformation("[{RequestHost}] Actor outbox request for {ActorName}@{Domain} - page: {Page}, maxId: {MaxId}, minId: {MinId}", Request.Host, actorName, domain, page, maxId, minId);
+            
             var accept = Request.Headers["Accept"].ToString();
 
             if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
+                _logger.LogWarning("[{RequestHost}] Non-ActivityPub request rejected for actor outbox: {ActorName}@{Domain}", Request.Host, actorName, domain);
                 return BadRequest("This endpoint only supports ActivityPub requests");
             }
 
@@ -133,6 +141,7 @@ namespace BadgeFed.Controllers
 
             if (actor == null)
             {
+                _logger.LogWarning("[{RequestHost}] Actor not found for outbox request: {ActorName}@{Domain}", Request.Host, actorName, domain);
                 return NotFound("Actor not found on this domain");
             }
 
@@ -142,6 +151,8 @@ namespace BadgeFed.Controllers
             {
                 // Return the main OrderedCollection
                 var totalItems = GetTotalGrantsForActor(actor.Uri.ToString());
+                
+                _logger.LogInformation("[{RequestHost}] Returning actor outbox main collection for {ActorName}@{Domain} with {TotalItems} items", Request.Host, actorName, domain, totalItems);
                 
                 var outboxCollection = new ActivityPubCollection
                 {
@@ -207,6 +218,8 @@ namespace BadgeFed.Controllers
                         collectionPage.Next = $"{baseOutboxUrl}?page=true&max_id={lastGrant.Id}";
                     }
                 }
+                
+                _logger.LogInformation("[{RequestHost}] Returning actor outbox page for {ActorName}@{Domain} with {ItemCount} items", Request.Host, actorName, domain, collectionPage.OrderedItems.Count);
 
                 return new JsonResult(collectionPage)
                 {

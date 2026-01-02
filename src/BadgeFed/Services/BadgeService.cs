@@ -88,6 +88,8 @@ public class BadgeService
 
     public ActivityPubNote GetNoteFromBadgeRecord(BadgeRecord record)
     {
+        Console.WriteLine("Generating ActivityPub note from BadgeRecord ID: {0}", record.Id);
+
         var note = NotesService.GetBadgeNote(record);
 
         try

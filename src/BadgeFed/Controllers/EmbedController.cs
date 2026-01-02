@@ -143,6 +143,8 @@ namespace BadgeFed.Controllers
         [HttpGet("widget.js")]
         public IActionResult GetWidget()
         {
+            _logger.LogInformation("[{RequestHost}] Generating widget JavaScript", Request.Host);
+            
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
             var widgetJs = GetWidgetJavaScript(baseUrl);
             
@@ -151,6 +153,7 @@ namespace BadgeFed.Controllers
             Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type");
             Response.Headers.Append("Cache-Control", "public, max-age=3600");
             
+            _logger.LogInformation("[{RequestHost}] Widget JavaScript generated successfully", Request.Host);
             return Content(widgetJs, "application/javascript");
         }
 
@@ -159,6 +162,8 @@ namespace BadgeFed.Controllers
         {
             try
             {
+                _logger.LogInformation("[{RequestHost}] Test endpoint accessed", Request.Host);
+                
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
                 var testData = new
                 {
@@ -174,6 +179,7 @@ namespace BadgeFed.Controllers
                 };
 
                 Response.Headers.Append("Access-Control-Allow-Origin", "*");
+                _logger.LogInformation("[{RequestHost}] Test endpoint executed successfully", Request.Host);
                 return new JsonResult(testData);
             }
             catch (Exception ex)

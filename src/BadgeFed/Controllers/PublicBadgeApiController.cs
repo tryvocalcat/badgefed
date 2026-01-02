@@ -172,6 +172,7 @@ namespace BadgeFed.Controllers
         [HttpGet("{badgeId}")]
         public IActionResult GetBadge(long badgeId)
         {
+            _logger.LogInformation("[{RequestHost}] API request to get badge: {BadgeId}", Request.Host, badgeId);
             // This would be handled by your existing LocalScopedDb service
             // You might want to inject it here if needed for badge lookup
             return Ok(new { message = "Badge lookup endpoint - implement as needed" });

@@ -10,22 +10,27 @@ namespace BadgeFed.Controllers
     {
         private readonly LocalScopedDb _localDbService;
         private readonly OpenBadgeService _openBadgeService;
+        private readonly ILogger<BadgeImageController> _logger;
 
-        public BadgeImageController(LocalScopedDb localDbService, OpenBadgeService openBadgeService)
+        public BadgeImageController(LocalScopedDb localDbService, OpenBadgeService openBadgeService, ILogger<BadgeImageController> logger)
         {
             _localDbService = localDbService;
             _openBadgeService = openBadgeService;
+            _logger = logger;
         }
 
         [HttpGet("{noteId}")]
         public async Task<IActionResult> GetBadgeImageWithMetadata(string noteId)
         {
+            _logger.LogInformation("[{RequestHost}] Generating badge image with metadata for noteId: {NoteId}", Request.Host, noteId);
+            
             try
             {
                 // Get the badge record
                 var badgeRecord = _openBadgeService.GetOpenBadgeFromBadgeRecord(noteId);
                 if (badgeRecord == null)
                 {
+                    _logger.LogWarning("[{RequestHost}] Badge record not found for noteId: {NoteId}", Request.Host, noteId);
                     return NotFound("Badge record not found");
                 }
 
@@ -36,14 +41,18 @@ namespace BadgeFed.Controllers
                 var badge = _localDbService.GetBadgeById(badgeRecord.Badge.Id);
                 if (badge == null)
                 {
+                    _logger.LogWarning("[{RequestHost}] Badge definition not found for badge ID: {BadgeId}", Request.Host, badgeRecord.Badge.Id);
                     return NotFound("Badge definition not found");
                 }
 
                 var originalImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", badge.Image.TrimStart('/'));
                 if (!System.IO.File.Exists(originalImagePath))
                 {
+                    _logger.LogError("[{RequestHost}] Badge image file not found at path: {ImagePath}", Request.Host, originalImagePath);
                     return NotFound("Badge image file not found");
                 }
+                
+                _logger.LogInformation("[{RequestHost}] Successfully generated badge image with metadata for noteId: {NoteId}", Request.Host, noteId);
 
                 // Create a temporary file with embedded metadata
                 var tempDir = Path.Combine(Path.GetTempPath(), "badgefed-images");
@@ -79,6 +88,7 @@ namespace BadgeFed.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestHost}] Error generating badge image for noteId: {NoteId}", Request.Host, noteId);
                 return StatusCode(500, $"Error generating badge image: {ex.Message}");
             }
         }
@@ -86,19 +96,24 @@ namespace BadgeFed.Controllers
         [HttpGet("{noteId}/metadata")]
         public IActionResult GetBadgeMetadata(string noteId)
         {
+            _logger.LogInformation("[{RequestHost}] Fetching badge metadata for noteId: {NoteId}", Request.Host, noteId);
+            
             try
             {
                 var badgeRecord = _openBadgeService.GetOpenBadgeFromBadgeRecord(noteId);
                 if (badgeRecord == null)
                 {
+                    _logger.LogWarning("[{RequestHost}] Badge record not found when fetching metadata for noteId: {NoteId}", Request.Host, noteId);
                     return NotFound("Badge record not found");
                 }
-
+                
+                _logger.LogInformation("[{RequestHost}] Successfully retrieved badge metadata for noteId: {NoteId}", Request.Host, noteId);
                 var openBadgeJson = _openBadgeService.GetOpenBadgeJson(badgeRecord);
                 return Content(openBadgeJson, "application/json");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestHost}] Error generating badge metadata for noteId: {NoteId}", Request.Host, noteId);
                 return StatusCode(500, $"Error generating badge metadata: {ex.Message}");
             }
         }
@@ -106,8 +121,11 @@ namespace BadgeFed.Controllers
         [HttpPost("extract-metadata")]
         public async Task<IActionResult> ExtractMetadataFromImage(IFormFile imageFile)
         {
+            _logger.LogInformation("[{RequestHost}] Extracting metadata from uploaded image file: {FileName}", Request.Host, imageFile?.FileName ?? "unknown");
+            
             if (imageFile == null || imageFile.Length == 0)
             {
+                _logger.LogWarning("[{RequestHost}] No image file provided for metadata extraction", Request.Host);
                 return BadRequest("No image file provided");
             }
 
@@ -128,13 +146,16 @@ namespace BadgeFed.Controllers
 
                 if (string.IsNullOrEmpty(metadata))
                 {
+                    _logger.LogWarning("[{RequestHost}] No OpenBadge metadata found in uploaded image: {FileName}", Request.Host, imageFile.FileName);
                     return NotFound("No OpenBadge metadata found in image");
                 }
 
+                _logger.LogInformation("[{RequestHost}] Successfully extracted metadata from image: {FileName}", Request.Host, imageFile.FileName);
                 return Content(metadata, "application/json");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestHost}] Error extracting metadata from image: {FileName}", Request.Host, imageFile?.FileName ?? "unknown");
                 return StatusCode(500, $"Error extracting metadata: {ex.Message}");
             }
         }

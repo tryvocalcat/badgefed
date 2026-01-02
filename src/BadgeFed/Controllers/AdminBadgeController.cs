@@ -12,13 +12,15 @@ namespace BadgeFed.Controllers
         private readonly BadgeProcessor _badgeProcessor;
         private readonly MailService _mailService;
         private readonly LocalScopedDb _localDbService;
+        private readonly ILogger<AdminBadgeController> _logger;
 
-        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, LocalScopedDb localDbService)
+        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, LocalScopedDb localDbService, ILogger<AdminBadgeController> logger)
         {
             _configuration = configuration;
             _badgeProcessor = badgeProcessor;
             _mailService = mailService;
             _localDbService = localDbService;
+            _logger = logger;
         }
 
         [HttpGet("{id}/broadcast")]
@@ -120,7 +122,7 @@ namespace BadgeFed.Controllers
 
             try
             {
-                Console.WriteLine($"Sending email to {recipientEmail} for badge {record.Title}");
+                _logger.LogInformation("[{RequestHost}] Sending processed badge email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
                 await _mailService.SendTemplatedEmailAsync(
                     recipientEmail,
@@ -130,13 +132,13 @@ namespace BadgeFed.Controllers
                     true
                 );
 
-                Console.WriteLine($"Email sent to {recipientEmail} for badge {record.Title}");
+                _logger.LogInformation("[{RequestHost}] Successfully sent processed badge email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
                 return Redirect("/admin/grants");
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.StackTrace);
+                _logger.LogError(ex, "[{RequestHost}] Failed to send processed badge email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
                 return StatusCode(500, $"Failed to send email notification: {ex.Message}");
             }
         }
@@ -198,7 +200,7 @@ namespace BadgeFed.Controllers
 
             try
             {
-                Console.WriteLine($"Sending email to {recipientEmail} for badge {record.Title}");
+                _logger.LogInformation("[{RequestHost}] Sending badge award email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
                 await _mailService.SendTemplatedEmailAsync(
                     recipientEmail,
@@ -208,13 +210,13 @@ namespace BadgeFed.Controllers
                     true
                 );
 
-                Console.WriteLine($"Email sent to {recipientEmail} for badge {record.Title}");
+                _logger.LogInformation("[{RequestHost}] Successfully sent badge award email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
                 return Redirect("/admin/grants");
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.StackTrace);
+                _logger.LogError(ex, "[{RequestHost}] Failed to send badge award email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
                 return StatusCode(500, $"Failed to send email notification: {ex.Message}");
                 
             }
@@ -226,15 +228,28 @@ namespace BadgeFed.Controllers
         {
             var recordId = long.Parse(id);
             
-            var record = _badgeProcessor.SignAndGenerateBadge(recordId);
+            _logger.LogInformation("[{RequestHost}] Starting badge processing for record ID: {RecordId}", Request.Host, recordId);
             
-            if (record == null)
+            try
             {
-                return NotFound("No badges to process");
-            }
+                var record = _badgeProcessor.SignAndGenerateBadge(recordId);
+                
+                if (record == null)
+                {
+                    _logger.LogWarning("[{RequestHost}] No badge found to process for record ID: {RecordId}", Request.Host, recordId);
+                    return NotFound("No badges to process");
+                }
 
-            // Redirect to the grants administration page after processing
-            return Redirect("/admin/grants");
+                _logger.LogInformation("[{RequestHost}] Successfully processed badge for record ID: {RecordId}", Request.Host, recordId);
+
+                // Redirect to the grants administration page after processing
+                return Redirect("/admin/grants");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{RequestHost}] Failed to process badge for record ID: {RecordId}", Request.Host, recordId);
+                return StatusCode(500, $"Failed to process badge: {ex.Message}");
+            }
         }
     }
 }

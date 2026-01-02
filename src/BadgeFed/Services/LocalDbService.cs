@@ -1744,7 +1744,8 @@ public class ActorStats
 
     public BadgeRecord? GetGrantByNoteId(string noteId)
     {
-        Log(LogLevel.Debug, "GetGrantByNoteId: {NoteId}", noteId);
+        Log(LogLevel.Debug, $"GetGrantByNoteId: {noteId}");
+        
         BadgeRecord? badgeRecord = null;
 
         using var connection = GetConnection();
