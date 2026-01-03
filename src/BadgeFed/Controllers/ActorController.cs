@@ -10,20 +10,25 @@ namespace BadgeFed.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly LocalScopedDb _localDbService;
+        private readonly ILogger<ActorController> _logger;
 
-        public ActorController(IConfiguration configuration, LocalScopedDb localDbService)
+        public ActorController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<ActorController> logger)
         {
             _configuration = configuration;
             _localDbService = localDbService;
+            _logger = logger;
         }
 
         [HttpGet]
         public IActionResult GetActor(string domain, string actorName)
         {
+            _logger.LogInformation("[{RequestHost}] Fetching actor {ActorName} for domain {Domain}", Request.Host, actorName, domain);
+            
             var accept = Request.Headers["Accept"].ToString();
 
             if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
             {
+                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for actor {ActorName}@{Domain}, redirecting to view", Request.Host, actorName, domain);
                 return Redirect($"/view/actor/{domain}/{actorName}");
             }
 
@@ -31,8 +36,11 @@ namespace BadgeFed.Controllers
 
             if (actor == null)
             {
+                _logger.LogWarning("[{RequestHost}] Actor {ActorName}@{Domain} not found", Request.Host, actorName, domain);
                 return NotFound("Account not found on this domain");
             }
+            
+            _logger.LogInformation("[{RequestHost}] Successfully retrieved actor {ActorName}@{Domain}", Request.Host, actorName, domain);
 
             var baseUrlId = $"https://{domain}/actors/{domain}/{actorName}";
 
@@ -81,12 +89,17 @@ namespace BadgeFed.Controllers
         [Route("followers")]
         public IActionResult GetFollowers(string domain, string actorName)
         {
+            _logger.LogInformation("[{RequestHost}] Fetching followers for actor {ActorName}@{Domain}", Request.Host, actorName, domain);
+            
             var actor = _localDbService.GetActorByFilter($"Username = \"{actorName}\" AND Domain = \"{domain}\"");
 
             if (actor == null)
             {
+                _logger.LogWarning("[{RequestHost}] Actor {ActorName}@{Domain} not found when fetching followers", Request.Host, actorName, domain);
                 return NotFound("Account not found on this domain");
             }
+            
+            _logger.LogInformation("[{RequestHost}] Successfully retrieved {FollowerCount} followers for actor {ActorName}@{Domain}", Request.Host, actor.Id, actorName, domain);
 
             var followers = _localDbService.GetFollowersByActorId(actor.Id);
 

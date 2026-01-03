@@ -14,6 +14,27 @@ public class LocalDbService
 
     public readonly string DbPath;
 
+    /// <summary>
+    /// Constructs a database file path using the DB_DATA environment variable if set,
+    /// otherwise uses the current directory.
+    /// </summary>
+    /// <param name="dbFileName">The database filename (without directory path)</param>
+    /// <returns>Full path to the database file</returns>
+    public static string GetDbPath(string dbFileName)
+    {
+        var dbDataDir = Environment.GetEnvironmentVariable("DB_DATA");
+        
+        if (!string.IsNullOrEmpty(dbDataDir))
+        {
+            // Ensure the directory exists
+            Directory.CreateDirectory(dbDataDir);
+            return Path.Combine(dbDataDir, dbFileName);
+        }
+        
+        // Fall back to current directory
+        return dbFileName;
+    }
+
     public LocalDbService(string dbPath, ILogger<LocalDbService>? logger = null)
     {
         _logger = logger;
@@ -25,9 +46,19 @@ public class LocalDbService
         }
       //  Log(LogLevel.Information, "Initializing LocalDbService with path: {dbPath}", dbPath);
 
-        dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
-
-        this.DbPath = dbPath;
+        // Check if dbPath is already a full path or just a filename
+        if (Path.IsPathRooted(dbPath))
+        {
+            // It's already a full path, use it as-is
+            this.DbPath = dbPath;
+        }
+        else
+        {
+            // It's just a filename, apply transformations and use GetDbPath
+            dbPath = dbPath.Replace(" ", "").Replace(":", "_").Trim().ToLowerInvariant();
+            this.DbPath = GetDbPath(dbPath);
+        }
+        
         this.connectionString = $"Data Source={DbPath};Version=3;";
 
         CreateDb();
@@ -347,7 +378,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
         
-        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}");
+        InsertRecentActivityLog("Badge comment added", $"Badge record {noteId}", $"/verify/{noteId}");
     }
 
     public List<string> GetBadgeComments(long? badgeRecordId = null)
@@ -795,7 +826,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}");
+        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}", follower.FollowerUri);
     }
 
     public List<Follower> GetFollowersToProcess()
@@ -875,8 +906,8 @@ public class LocalDbService
         if (badge.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, InfoUri, OwnerId)
-                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @InfoUri, @OwnerId);
+                INSERT INTO Badge (Title, Description, IssuedBy, Image, ImageAltText, EarningCriteria, CreatedAt, UpdatedAt, BadgeType, Hashtags, InfoUri, IsCertificate, OwnerId)
+                VALUES (@Title, @Description, @IssuedBy, @Image, @ImageAltText, @EarningCriteria, datetime('now'), datetime('now'), @BadgeType, @Hashtags, @InfoUri, @IsCertificate, @OwnerId);
                 SELECT last_insert_rowid();
             ";
         }
@@ -894,6 +925,7 @@ public class LocalDbService
                     BadgeType = @BadgeType,
                     Hashtags = @Hashtags,
                     InfoUri = @InfoUri,
+                    IsCertificate = @IsCertificate,
                     OwnerId = @OwnerId
                 WHERE Id = @Id;
             ";
@@ -911,6 +943,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@BadgeType", badge.BadgeType);
         command.Parameters.AddWithValue("@Hashtags", badge.Hashtags ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@InfoUri", badge.InfoUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IsCertificate", badge.IsCertificate);
         command.Parameters.AddWithValue("@OwnerId", badge.OwnerId ?? (object)DBNull.Value);
 
         if (badge.Id == 0)
@@ -990,6 +1023,7 @@ public class LocalDbService
                     BadgeType = reader["BadgeType"].ToString(),
                     Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                     InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                    IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"]),
                     Issuer = actor
                 });
             } 
@@ -1053,19 +1087,20 @@ public class ActorStats
         return result;
     }
 
-    public void InsertRecentActivityLog(string title, string? description = null)
+    public void InsertRecentActivityLog(string title, string? description = null, string? entityUrl = null)
     {
         using var connection = GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO RecentActivityLog (Title, Description)
-            VALUES (@Title, @Description);
+            INSERT INTO RecentActivityLog (Title, Description, EntityUrl)
+            VALUES (@Title, @Description, @EntityUrl);
         ";
 
         command.Parameters.AddWithValue("@Title", title);
         command.Parameters.AddWithValue("@Description", description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@EntityUrl", entityUrl ?? (object)DBNull.Value);
 
         command.ExecuteNonQuery();
     }
@@ -1079,7 +1114,7 @@ public class ActorStats
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            SELECT Id, Title, Description, CreatedAt
+            SELECT Id, Title, Description, CreatedAt, EntityUrl
             FROM RecentActivityLog
             ORDER BY CreatedAt DESC
             LIMIT @Limit;
@@ -1094,7 +1129,8 @@ public class ActorStats
             {
                 Title = reader.GetString(reader.GetOrdinal("Title")),
                 Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
-                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                EntityUrl = reader["EntityUrl"] == DBNull.Value ? null : reader["EntityUrl"].ToString()
             });
         }
 
@@ -1120,9 +1156,12 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.CommandText = @"
             SELECT COUNT(br.AcceptedOn) AS acceptedCount,
-                    COUNT(*) AS issuedCount
+                    COUNT(*) AS issuedCount,
+                    COUNT(CASE WHEN br.AcceptedOn IS NULL THEN 1 END) AS pendingCount
             FROM BadgeRecord AS br;
             SELECT COUNT(*) AS followerCount FROM Follower;
+            SELECT COUNT(*) AS followedInstancesCount FROM FollowedIssuer;
+            SELECT COUNT(*) FROM Badgerecord WHERE IsExternal = TRUE;
             ";
 
         using var reader = command.ExecuteReader();
@@ -1131,11 +1170,22 @@ public class ActorStats
         {
             stats.AcceptedCount = reader.GetInt32(0);
             stats.IssuedCount = reader.GetInt32(1);
+            stats.PendingCount = reader.GetInt32(2);
         }
 
         if (reader.NextResult() && reader.Read())
         {
             stats.FollowerCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.FollowedInstancesCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.ExternalBadgesCount = reader.GetInt32(0);
         }
 
         return stats;
@@ -1247,7 +1297,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             });
         }
 
@@ -1358,7 +1409,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             };
         }
 
@@ -1393,6 +1445,12 @@ public class ActorStats
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
+        // First get the noteId for the EntityUrl
+        var selectCommand = connection.CreateCommand();
+        selectCommand.CommandText = "SELECT NoteId FROM BadgeRecord WHERE Id = @Id";
+        selectCommand.Parameters.AddWithValue("@Id", id);
+        var noteId = selectCommand.ExecuteScalar()?.ToString();
+
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
@@ -1405,7 +1463,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}");
+        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}", !string.IsNullOrEmpty(noteId) ? $"/verify/{noteId}" : null);
     }
 
     public long PeekProcessGrantId()
@@ -1483,7 +1541,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}");
+        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}", $"/verify/{badgeRecord.NoteId}");
     }
 
 
@@ -1515,6 +1573,12 @@ public class ActorStats
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
+        // First get the noteId for the EntityUrl
+        var selectCommand = connection.CreateCommand();
+        selectCommand.CommandText = "SELECT NoteId FROM BadgeRecord WHERE Id = @Id";
+        selectCommand.Parameters.AddWithValue("@Id", badgeRecordId);
+        var noteId = selectCommand.ExecuteScalar()?.ToString();
+
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
@@ -1528,7 +1592,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers");
+        InsertRecentActivityLog("Badge boosted", $"Badge record {badgeRecordId} boosted to followers", !string.IsNullOrEmpty(noteId) ? $"/verify/{noteId}" : null);
     }
 
     public void CreateBadgeRecord(BadgeRecord record)
@@ -1577,11 +1641,11 @@ public class ActorStats
 
         if (record.IsExternal)
         {
-            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}");
+            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", $"/verify/{record.NoteId}");
         }
         else
         {
-            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}");
+            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}", $"/verify/{record.NoteId}");
         }
     }
 
@@ -1609,7 +1673,8 @@ public class ActorStats
                 EarningCriteria = reader["EarningCriteria"] == DBNull.Value ? null : reader["EarningCriteria"].ToString(),
                 BadgeType = reader["BadgeType"].ToString(),
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
-                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString()
+                InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
+                IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"])
             };
         }
 
@@ -1679,7 +1744,8 @@ public class ActorStats
 
     public BadgeRecord? GetGrantByNoteId(string noteId)
     {
-        Log(LogLevel.Debug, "GetGrantByNoteId: {NoteId}", noteId);
+        Log(LogLevel.Debug, $"GetGrantByNoteId: {noteId}");
+        
         BadgeRecord? badgeRecord = null;
 
         using var connection = GetConnection();
@@ -1865,7 +1931,8 @@ public class ActorStats
                        b.EarningCriteria AS Badge_EarningCriteria,
                        b.BadgeType AS Badge_BadgeType,
                        b.Hashtags AS Badge_Hashtags,
-                       b.InfoUri AS Badge_InfoUri
+                       b.InfoUri AS Badge_InfoUri,
+                       b.IsCertificate AS Badge_IsCertificate
                 FROM BadgeRecord br
                 LEFT JOIN Badge b ON br.BadgeId = b.Id";
         }
@@ -1901,7 +1968,8 @@ public class ActorStats
                     EarningCriteria = reader["Badge_EarningCriteria"] == DBNull.Value ? null : reader["Badge_EarningCriteria"].ToString(),
                     BadgeType = reader["Badge_BadgeType"] == DBNull.Value ? null : reader["Badge_BadgeType"].ToString(),
                     Hashtags = reader["Badge_Hashtags"] == DBNull.Value ? null : reader["Badge_Hashtags"].ToString(),
-                    InfoUri = reader["Badge_InfoUri"] == DBNull.Value ? null : reader["Badge_InfoUri"].ToString()
+                    InfoUri = reader["Badge_InfoUri"] == DBNull.Value ? null : reader["Badge_InfoUri"].ToString(),
+                    IsCertificate = reader["Badge_IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["Badge_IsCertificate"])
                 };
             }
             else

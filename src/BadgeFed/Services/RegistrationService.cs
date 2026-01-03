@@ -31,15 +31,6 @@ namespace BadgeFed.Services
                            ?? GetDefaultConfiguration();
                 }
 
-                // Fall back to default form.json in wwwroot
-                var defaultConfigPath = Path.Combine(_environment.WebRootPath, "form.json");
-                if (File.Exists(defaultConfigPath))
-                {
-                    var defaultJson = File.ReadAllText(defaultConfigPath);
-                    return JsonSerializer.Deserialize<FormConfiguration>(defaultJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                           ?? GetDefaultConfiguration();
-                }
-
                 return GetDefaultConfiguration();
             }
             catch (Exception ex)

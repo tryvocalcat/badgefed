@@ -1,10 +1,12 @@
 @page "/view/actor/{domain}/{username}"
 
 @using System.Linq
+@using BadgeFed.Services
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
 @inject LocalScopedDb DbService
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 
 @if (!string.IsNullOrEmpty(GetThemeCssPath()))
 {
@@ -372,8 +374,8 @@ else
     {
         if (actor?.Theme == null) return string.Empty;
         
-        var themePath = $"/css/themes/{actor.Theme}.css";
-        var physicalPath = Path.Combine(Environment.WebRootPath, "css", "themes", $"{actor.Theme}.css");
+        var themePath = CustomAssetPathService.GetThemeUrl(actor.Theme);
+        var physicalPath = CustomAssetPathService.GetCustomAssetPath("css", "themes", $"{actor.Theme}.css");
         
         if (File.Exists(physicalPath))
         {

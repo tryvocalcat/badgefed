@@ -8,11 +8,13 @@ public class BadgeProcessor
 {
     private readonly LocalScopedDb _localDbService;
     private readonly BadgeService _badgeService;
+    private readonly ILogger<BadgeProcessor>? _logger;
 
-    public BadgeProcessor(LocalScopedDb localDbService, BadgeService badgeService)
+    public BadgeProcessor(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeProcessor>? logger = null)
     {
         _localDbService = localDbService;
         _badgeService = badgeService;
+        _logger = logger;
     }
     
     private BadgeRecord? GetBadgeRecord(long recordId)
@@ -39,7 +41,7 @@ public class BadgeProcessor
 
     public async Task<BadgeRecord?> NotifyGrantAcceptLink(long recordId)
     {
-        Console.WriteLine($"NotifyGrantAcceptLink {recordId}");
+        _logger?.LogInformation("NotifyGrantAcceptLink for record ID: {RecordId}", recordId);
 
         var record = GetBadgeRecord(recordId);
 
@@ -63,7 +65,7 @@ public class BadgeProcessor
 
     public async Task<BadgeRecord?> NotifyProcessedGrant(long recordId)
     {
-        Console.WriteLine($"NotifyProcessedGrant {recordId}");
+        _logger?.LogInformation("NotifyProcessedGrant for record ID: {RecordId}", recordId);
 
         var record = GetBadgeRecord(recordId);
 
@@ -87,7 +89,7 @@ public class BadgeProcessor
     {
         // This method is called to process a follower
         // It can be used to send a welcome message or perform other actions
-        Console.WriteLine($"Processing follower: {follower.FollowerUri}");
+        _logger?.LogInformation("Processing follower: {FollowerUri}", follower.FollowerUri);
 
         if (string.IsNullOrEmpty(follower.DisplayName) || string.IsNullOrEmpty(follower.AvatarUri))
         {
@@ -106,7 +108,7 @@ public class BadgeProcessor
                 }
             } catch (Exception e)
             {
-                Console.WriteLine($"Failed to fetch actor information for {follower.FollowerUri}: {e.Message}");
+                _logger?.LogError(e, "Failed to fetch actor information for {FollowerUri}", follower.FollowerUri);
             }
 
             if (string.IsNullOrEmpty(follower.DisplayName))
@@ -135,7 +137,7 @@ public class BadgeProcessor
 
         await actorHelper.SendPostSignedRequest(serializedPayload, new Uri(fediverseInfo.Inbox));
 
-        Console.WriteLine($"Sent note to {record.IssuedToSubjectUri}");
+        _logger?.LogInformation("Sent note to {IssuedToSubjectUri}", record.IssuedToSubjectUri);
     }
 
     public async Task<BadgeRecord?> SignAndGenerateBadge(long recordId)
@@ -150,42 +152,57 @@ public class BadgeProcessor
 
         var record = records.FirstOrDefault()!;
        
-        Console.WriteLine($"Processing badge record: {System.Text.Json.JsonSerializer.Serialize(record)}");
+        _logger?.LogInformation("Processing badge record: {BadgeRecord}", System.Text.Json.JsonSerializer.Serialize(record));
 
         var badge = _localDbService.GetBadgeDefinitionById(record.Badge.Id);
 
-        Console.WriteLine($"Badge definition: {System.Text.Json.JsonSerializer.Serialize(badge)}");
+        _logger?.LogInformation("Badge definition: {BadgeDefinition}", System.Text.Json.JsonSerializer.Serialize(badge));
 
         if (badge == null)
         {
-            Console.WriteLine($"WARNING: Badge definition not found for ID: {record.Badge.Id}");
+            _logger?.LogWarning("Badge definition not found for ID: {BadgeId}", record.Badge.Id);
             return null;
         }
 
+
+        _logger?.LogInformation("Badge definition found for ID: {BadgeId}", record.Badge.Id);
+
         var actor = _localDbService.GetActorById(badge.IssuedBy);
+
+        _logger?.LogInformation("Actor found for ID: {ActorId}", badge.IssuedBy);
 
         record.Badge = badge;
         record.Actor = actor;
         // https://{record.Actor.Domain}/view/grant/
         var noteId = BadgeService.GetNoteIdForBadgeRecord(record);
 
+        _logger?.LogInformation("Generated note ID: {NoteId}", noteId);
+
         record.NoteId = $"https://{record.Actor.Domain}/grant/{noteId}";
 
+        _logger?.LogInformation("Full note URL: {NoteUrl}", record.NoteId);
+        
         // - generate activitypub note
         var note = _badgeService.GetNoteFromBadgeRecord(record);
+
+        _logger?.LogInformation("Generated ActivityPub note: {ActivityPubNote}", System.Text.Json.JsonSerializer.Serialize(note));
 
         // - generate/update fingerprint
         record.FingerPrint = _badgeService.GetFingerprint(note, record);
 
+        _logger?.LogInformation("Generated fingerprint: {FingerPrint}", record.FingerPrint);
+
         // - update record
         _localDbService.UpdateBadgeSignature(record);
+
+        _logger?.LogInformation("Updated badge record with signature for ID: {RecordId}", record.Id);
 
         return record;
     }
 
     public async Task AnnounceGrantByMainActor(BadgeRecord record)
     {
-        Console.WriteLine($"Is record boosted? {record.Id} -> {record.BoostedOn}");
+        _logger?.LogInformation("Checking if record is boosted - Record ID: {RecordId}, BoostedOn: {BoostedOn}", record.Id, record.BoostedOn);
 
         if (record.BoostedOn == null)
         {
@@ -196,7 +213,7 @@ public class BadgeProcessor
 
     public async Task RevokeGrant(BadgeRecord record)
     {
-        Console.WriteLine($"Revoking grant for badge record ID: {record.Id}");
+        _logger?.LogInformation("Revoking grant for badge record ID: {RecordId}", record.Id);
 
         try
         {
@@ -206,7 +223,7 @@ public class BadgeProcessor
 
             if (actor == null)
             {
-                Console.WriteLine("Actor not found, cannot revoke badge grant");
+                _logger?.LogWarning("Actor not found, cannot revoke badge grant for record ID: {RecordId}", record.Id);
                 return;
             }
 
@@ -215,7 +232,7 @@ public class BadgeProcessor
 
             if (string.IsNullOrEmpty(noteId))
             {
-                Console.WriteLine("Note ID is missing, cannot revoke badge grant");
+                _logger?.LogWarning("Note ID is missing, cannot revoke badge grant for record ID: {RecordId}", record.Id);
                 return;
             }
 
@@ -243,7 +260,7 @@ public class BadgeProcessor
 
             var serializedDelete = JsonSerializer.Serialize(deleteActivity, options);
 
-            Console.WriteLine($"Revoking badge grant: {noteId} by {actor.Uri}");
+            _logger?.LogInformation("Revoking badge grant: {NoteId} by {ActorUri}", noteId, actor.Uri);
 
             // Send the delete activity to all followers
             await NotifyFollowersOfNote(serializedDelete, actor);
@@ -259,20 +276,20 @@ public class BadgeProcessor
                     if (fediverseInfo != null && !string.IsNullOrEmpty(fediverseInfo.Inbox))
                     {
                         await actorHelper.SendPostSignedRequest(serializedDelete, new Uri(fediverseInfo.Inbox));
-                        Console.WriteLine($"Sent revocation notice to recipient: {record.IssuedToSubjectUri}");
+                        _logger?.LogInformation("Sent revocation notice to recipient: {IssuedToSubjectUri}", record.IssuedToSubjectUri);
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Failed to notify recipient of revocation: {e.Message}");
+                    _logger?.LogError(e, "Failed to notify recipient of revocation: {IssuedToSubjectUri}", record.IssuedToSubjectUri);
                 }
             }
 
-            Console.WriteLine($"Successfully revoked badge grant: {noteId}");
+            _logger?.LogInformation("Successfully revoked badge grant: {NoteId}", noteId);
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed to revoke badge grant: {e.Message}");
+            _logger?.LogError(e, "Failed to revoke badge grant for record ID: {RecordId}", record.Id);
             throw;
         }
     }
@@ -286,7 +303,7 @@ public class BadgeProcessor
 
             if (mainActor == null)
             {
-                Console.WriteLine("Main actor not found, cannot boost badge grant");
+                _logger?.LogWarning("Main actor not found, cannot boost badge grant");
             }
 
             // The original note ID that we want to boost
@@ -294,7 +311,7 @@ public class BadgeProcessor
 
             if (string.IsNullOrEmpty(originalNoteId))
             {
-                Console.WriteLine("Note ID is missing, cannot boost badge grant");
+                _logger?.LogWarning("Note ID is missing, cannot boost badge grant");
             }
 
             // Create the Announce activity
@@ -323,25 +340,25 @@ public class BadgeProcessor
 
             var serializedAnnouncement = JsonSerializer.Serialize(announceActivity, options);
 
-            Console.WriteLine($"Boosting badge grant: {originalNoteId} by {mainActor.Uri}");
+            _logger?.LogInformation("Boosting badge grant: {OriginalNoteId} by {MainActorUri}", originalNoteId, mainActor.Uri);
 
             await NotifyFollowersOfNote(serializedAnnouncement, mainActor);
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed to boost badge grant: {e.Message}");
+            _logger?.LogError(e, "Failed to boost badge grant");
         }
     }
 
     private async Task NotifyFollowersOfNote(string serializedActivityPubObject, Actor actor)
     {
-        Console.WriteLine($"NotifyFollowersOfNote {actor.Id}");
+        _logger?.LogInformation("NotifyFollowersOfNote for actor ID: {ActorId}", actor.Id);
         var followers = _localDbService.GetFollowersByActorId(actor.Id);
 
         var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId);
 
-        Console.WriteLine($"Serialized note: {serializedActivityPubObject}");
-        Console.WriteLine($"Followers: {followers.Count}");
+        _logger?.LogDebug("Serialized note: {SerializedNote}", serializedActivityPubObject);
+        _logger?.LogInformation("Followers count: {FollowersCount}", followers.Count);
 
         var endpointsAlreadySent = new List<string>();
 
@@ -351,14 +368,14 @@ public class BadgeProcessor
             {
                 var fediverseInfo = await actorHelper.FetchActorInformationAsync(follower.FollowerUri);
 
-                Console.WriteLine($"Follower: {follower.FollowerUri}");
+                _logger?.LogDebug("Processing follower: {FollowerUri}", follower.FollowerUri);
                 // Console.WriteLine($"Inbox: {System.Text.Json.JsonSerializer.Serialize(fediverseInfo)}");
 
                 var endpointUri = fediverseInfo.Endpoints?.SharedInbox ?? fediverseInfo.Inbox;
 
                 if (endpointsAlreadySent.Contains(endpointUri))
                 {
-                    Console.WriteLine($"Skipping {endpointUri}");
+                    _logger?.LogDebug("Skipping already sent endpoint: {EndpointUri}", endpointUri);
                     continue;
                 }
 
@@ -366,11 +383,11 @@ public class BadgeProcessor
 
                 await actorHelper.SendPostSignedRequest(serializedActivityPubObject, new Uri(fediverseInfo.Inbox));
 
-                Console.WriteLine($"Sent note to {follower.FollowerUri}");
+                _logger?.LogDebug("Sent note to {FollowerUri}", follower.FollowerUri);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"ERROR Failed to send note to {follower.FollowerUri} - {e.Message}");
+                _logger?.LogError(e, "Failed to send note to {FollowerUri}", follower.FollowerUri);
             }
         }
         
@@ -395,7 +412,7 @@ public class BadgeProcessor
         record.Badge = badge;
         record.Actor = actor;
 
-        Console.WriteLine("Badge found");
+        _logger?.LogInformation("Badge found for broadcast - Record ID: {RecordId}", record.Id);
 
         var note = _badgeService.GetNoteFromBadgeRecord(record);
 

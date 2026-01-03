@@ -11,6 +11,117 @@
 @rendermode InteractiveServer
 
 @attribute [Authorize(Roles = "admin, manager")]
+
+<style>
+    .table {
+        width: 100%;
+    }
+    
+    .actions-column {
+        min-width: 280px;
+        white-space: nowrap;
+    }
+    
+    .issued-to-column {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .issued-to-column a {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-decoration: underline;
+    }
+    
+    .issued-to-column a:hover {
+        text-decoration: none;
+        overflow: visible;
+        white-space: normal;
+        word-break: break-all;
+        position: relative;
+        z-index: 10;
+        background: white;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    
+    .action-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+    }
+    
+    .action-group:last-child {
+        margin-bottom: 0;
+    }
+    
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        line-height: 1.25;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .action-btn .icon {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
+    
+    .btn-group .action-btn {
+        border-radius: 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-group .action-btn:first-child {
+        border-top-left-radius: 0.375rem;
+        border-bottom-left-radius: 0.375rem;
+    }
+    
+    .btn-group .action-btn:last-child {
+        border-top-right-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+        border-right: none;
+    }
+    
+    .status-tabs {
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #dbdbdb;
+    }
+    
+    .status-tabs .tabs {
+        margin-bottom: -1px;
+    }
+    
+    .status-tabs .tabs ul {
+        border-bottom: none;
+    }
+    
+    .status-tabs .tabs li.is-active a {
+        border-bottom-color: #3273dc;
+        color: #3273dc;
+    }
+    
+    .status-tab-content {
+        min-height: 400px;
+    }
+</style>
 <h1>Manage Badge Grant Records</h1>
 
 <div class="box">
@@ -20,22 +131,6 @@
                 <label class="label">Search:</label>
                 <div class="control">
                     <input class="input" @bind="searchTerm" placeholder="Search title, recipient, issuer..." />
-                </div>
-            </div>
-        </div>
-        <div class="column">
-            <div class="field">
-                <label class="label">Status:</label>
-                <div class="control">
-                    <div class="select is-fullwidth">
-                        <select @bind="statusFilter">
-                            <option value="">All</option>
-                            <option value="pending">Pending Acceptance</option>
-                            <option value="accepted">Accepted</option>
-                            <option value="processed">Processed</option>
-                            <option value="external">External</option>
-                        </select>
-                    </div>
                 </div>
             </div>
         </div>
@@ -82,6 +177,37 @@
     </div>
 </div>
 
+<div class="status-tabs">
+    <div class="tabs is-boxed">
+        <ul>
+            <li class="@(activeTab == "pending" ? "is-active" : "")">
+                <a @onclick="SetActiveTabPending">
+                    <span class="icon is-small"><i class="fas fa-clock"></i></span>
+                    <span>Pending (@GetStatusCount("pending"))</span>
+                </a>
+            </li>
+            <li class="@(activeTab == "accepted" ? "is-active" : "")">
+                <a @onclick="SetActiveTabAccepted">
+                    <span class="icon is-small"><i class="fas fa-check"></i></span>
+                    <span>Accepted (@GetStatusCount("accepted"))</span>
+                </a>
+            </li>
+            <li class="@(activeTab == "processed" ? "is-active" : "")">
+                <a @onclick="SetActiveTabProcessed">
+                    <span class="icon is-small"><i class="fas fa-cogs"></i></span>
+                    <span>Processed (@GetStatusCount("processed"))</span>
+                </a>
+            </li>
+            <li class="@(activeTab == "external" ? "is-active" : "")">
+                <a @onclick="SetActiveTabExternal">
+                    <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                    <span>External (@GetStatusCount("external"))</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="notification is-danger">
@@ -96,10 +222,11 @@
 }
 else
 {
-    <div class="box">
-        <p>Showing @filteredRecords.Count of @records.Count records</p>
-    </div>
-    <table class="table">
+    <div class="status-tab-content">
+        <div class="box">
+            <p>Showing @filteredRecords.Count of @records.Count records</p>
+        </div>
+        <table class="table">
         <thead>
             <tr>
                 <th>Id</th>
@@ -108,7 +235,7 @@ else
                 <th>Issued By</th>
                 <th>Issued On</th>
                 <th>Accepted On</th>
-                <th>Actions</th>
+                <th class="actions-column">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -121,62 +248,100 @@ else
                 <tr class="@GetRowClass(record)">
                     <td>@record.Id</td>
                     <td>@record.Title</td>
-                    <td><a href="@record.IssuedToSubjectUri">@(
-                        string.IsNullOrEmpty(record.IssuedToName) ?
-                            string.IsNullOrEmpty(record.IssuedToSubjectUri) ?
+                    <td class="issued-to-column">
+                        @if (!string.IsNullOrEmpty(record.IssuedToSubjectUri))
+                        {
+                            <a href="@record.IssuedToSubjectUri">@(
+                                string.IsNullOrEmpty(record.IssuedToName) ?
+                                    string.IsNullOrEmpty(record.IssuedToSubjectUri) ?
+                                        MaskEmail(record.IssuedToEmail) :
+                                        record.IssuedToSubjectUri
+                                        : record.IssuedToName)</a>
+                        }
+                        else
+                        {
+                            @(string.IsNullOrEmpty(record.IssuedToName) ?
                                 MaskEmail(record.IssuedToEmail) :
-                                record.IssuedToSubjectUri
-                                : record.IssuedToName)</a></td>
+                                record.IssuedToName)
+                        }
+                    </td>
                     <td><a href="@record.IssuedBy">@actorName</a></td>
                     <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
                     <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
-                    <td>
-                        @if (record.IsExternal) {
-                            <a href="@record.NoteId" class="button is-info is-small">View</a>
-                        } else if (string.IsNullOrEmpty(record.AcceptKey)) {
-                            if (string.IsNullOrEmpty(record.FingerPrint)) {
-                                <a href="/admin/grant/@record.Id/process" class="button is-primary is-small">Process</a>
-                            } else {
-                                <a href="/admin/grant/@record.Id/broadcast" class="button is-light is-small">Propagate</a>
-
-                                <a href="@record.NoteId" class="button is-info is-small">View</a>
-
-                                <div class="buttons">
-                                    <a href="/admin/grant/@record.Id/notify-processed/activitypub" class="button is-light is-small" title="Notify via ActivityPub">
-                                        <span class="icon">
-                                            <i class="fas fa-broadcast-tower"></i>
-                                        </span>
-                                        <span>ActivityPub</span>
-                                    </a>
-                                    <a href="/admin/grant/@record.Id/notify-processed/email" class="button is-light is-small" title="Notify via Email">
-                                        <span class="icon">
-                                            <i class="fas fa-envelope"></i>
-                                        </span>
-                                        <span>Email</span>
+                    <td class="actions-column">
+                        @if (record.IsExternal) 
+                        {
+                            <!-- External Badge Actions -->
+                            <div class="action-group">
+                                <a href="@record.NoteId" class="action-btn button is-info is-small" title="View external badge">
+                                    <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                                    <span>View</span>
+                                </a>
+                            </div>
+                        } 
+                        else if (string.IsNullOrEmpty(record.AcceptKey)) 
+                        {
+                            if (string.IsNullOrEmpty(record.FingerPrint)) 
+                            {
+                                <!-- Unprocessed Badge Actions -->
+                                <div class="action-group">
+                                    <a href="/admin/grant/@record.Id/process" class="action-btn button is-primary is-small" title="Process this grant">
+                                        <span class="icon"><i class="fas fa-cog"></i></span>
+                                        <span>Process</span>
                                     </a>
                                 </div>
+                            } 
+                            else 
+                            {
+                                <!-- Processed Badge Actions -->
+                                <div class="action-group">
+                                    <a href="/admin/grant/@record.Id/broadcast" class="action-btn button is-success is-small" title="Propagate to network">
+                                        <span class="icon"><i class="fas fa-share-nodes"></i></span>
+                                        <span>Propagate</span>
+                                    </a>
+                                    <a href="@record.NoteId" class="action-btn button is-info is-small" title="View badge post">
+                                        <span class="icon"><i class="fas fa-eye"></i></span>
+                                        <span>View</span>
+                                    </a>
+                                </div>
+                                
+                                <!-- Notification Actions -->
+                                <div class="action-group">
+                                    <div class="btn-group">
+                                        <a href="/admin/grant/@record.Id/notify-processed/activitypub" class="action-btn button is-light is-small" title="Notify recipient via ActivityPub">
+                                            <span class="icon"><i class="fab fa-mastodon"></i></span>
+                                            <span>ActivityPub</span>
+                                        </a>
+                                        <a href="/admin/grant/@record.Id/notify-processed/email" class="action-btn button is-light is-small" title="Notify recipient via Email">
+                                            <span class="icon"><i class="fas fa-envelope"></i></span>
+                                            <span>Email</span>
+                                        </a>
+                                    </div>
+                                </div>
                             }
-                        } else {
-                            <a href="/accept/grant/@record.Id/@record.AcceptKey" class="button is-link is-small">
-                                <span class="icon">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                <span>Accept Link</span>
-                            </a>
-
-                            <div class="buttons">
-                                <a href="/admin/grant/@record.Id/notify/activitypub" class="button is-light is-small" title="Notify via ActivityPub">
-                                    <span class="icon">
-                                        <i class="fas fa-broadcast-tower"></i>
-                                    </span>
-                                    <span>Notify via ActivityPub</span>
+                        } 
+                        else 
+                        {
+                            <!-- Pending Acceptance Actions -->
+                            <div class="action-group">
+                                <a href="/accept/grant/@record.Id/@record.AcceptKey" class="action-btn button is-link is-small" title="Direct acceptance link">
+                                    <span class="icon"><i class="fas fa-link"></i></span>
+                                    <span>Accept Link</span>
                                 </a>
-                                <a href="/admin/grant/@record.Id/notify/email" class="button is-light is-small" title="Notify via Email">
-                                    <span class="icon">
-                                        <i class="fas fa-envelope"></i>
-                                    </span>
-                                    <span>Notify via Email</span>
-                                </a>
+                            </div>
+                            
+                            <!-- Notification Actions -->
+                            <div class="action-group">
+                                <div class="btn-group">
+                                    <a href="/admin/grant/@record.Id/notify/activitypub" class="action-btn button is-light is-small" title="Send notification via ActivityPub">
+                                        <span class="icon"><i class="fab fa-mastodon"></i></span>
+                                        <span>Notify AP</span>
+                                    </a>
+                                    <a href="/admin/grant/@record.Id/notify/email" class="action-btn button is-light is-small" title="Send notification via Email">
+                                        <span class="icon"><i class="fas fa-envelope"></i></span>
+                                        <span>Notify Email</span>
+                                    </a>
+                                </div>
                             </div>
                         }
                
@@ -186,28 +351,30 @@ else
 
                         @if (!record.IsExternal)
                         {
-                            if (canDelete) {
-                                <button class="button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)">
-                                    <span class="icon">
-                                        <i class="fas fa-trash"></i>
-                                    </span>
-                                    <span>Delete</span>
-                                </button>
-                            } else {
-                                <button class="button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)">
-                                    <span class="icon">
-                                        <i class="fas fa-trash"></i>
-                                    </span>
-                                    <span>Revoke</span>
-                                </button>
-                            }
-
+                            <!-- Destructive Actions -->
+                            <div class="action-group">
+                                @if (canDelete) 
+                                {
+                                    <button class="action-btn button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)" title="Permanently delete this grant">
+                                        <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                                        <span>Delete</span>
+                                    </button>
+                                } 
+                                else 
+                                {
+                                    <button class="action-btn button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
+                                        <span class="icon"><i class="fas fa-ban"></i></span>
+                                        <span>Revoke</span>
+                                    </button>
+                                }
+                            </div>
                         }
                     </td>
                 </tr>
             }
         </tbody>
-    </table>
+        </table>
+    </div>
 }
 
 @if (showRevokeConfirmation && recordToDelete != null)
@@ -280,10 +447,12 @@ else
 
     // Filter properties
     private string searchTerm = "";
-    private string statusFilter = "";
     private string issuerFilter = "";
     private DateTime? dateFromFilter;
     private DateTime? dateToFilter;
+    
+    // Tab properties
+    private string activeTab = "pending";
 
     // Delete confirmation modal properties
     private bool showDeleteConfirmation = false;
@@ -308,18 +477,16 @@ else
         };
 
         if (!string.IsNullOrEmpty(searchTerm)) {
-            whereClauses.Add("(Title LIKE @Term OR IssuedToSubjectUri LIKE @Term OR IssuedBy LIKE @Term)");
+            whereClauses.Add("(br.Title LIKE @Term OR br.IssuedToSubjectUri LIKE @Term OR br.IssuedBy LIKE @Term)");
             filter.Parameters.Add("Term", $"%{searchTerm}%");
         }
 
         if (!CurrentUser.IsAdmin() && false) { //FIXME
-            whereClauses.Add("OwnerId = @OwnerId");
+            whereClauses.Add("br.OwnerId = @OwnerId");
             filter.Parameters.Add("OwnerId", CurrentUser.GetGroupId());
         }
 
         filter.Where = string.Join(" AND ", whereClauses);
-
-        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(filter));
         
         records = LocalDbService.GetBadgeRecords(filter, true)!;
     }
@@ -330,7 +497,7 @@ else
         if (records == null) return;
         
         filteredRecords = records.Where(r => {
-            bool matchesStatus = string.IsNullOrEmpty(statusFilter) || GetRecordStatus(r) == statusFilter;
+            bool matchesStatus = GetRecordStatus(r) == activeTab;
             bool matchesIssuer = string.IsNullOrEmpty(issuerFilter) || r.IssuedBy == issuerFilter;
             bool matchesDateFrom = !dateFromFilter.HasValue || r.IssuedOn >= dateFromFilter.Value;
             bool matchesDateTo = !dateToFilter.HasValue || r.IssuedOn <= dateToFilter.Value.AddDays(1);
@@ -341,14 +508,11 @@ else
 
     private void ClearFilters() {
         searchTerm = "";
-        statusFilter = "";
         issuerFilter = "";
         dateFromFilter = null;
         dateToFilter = null;
         
-        PerformSearch();
-        
-        filteredRecords = new List<BadgeRecord?>(records);
+        ApplyFilters();
     }
 
     private string GetRecordStatus(BadgeRecord record) {
@@ -373,6 +537,42 @@ else
         };
     }
 
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        ApplyFilters();
+    }
+    
+    private void SetActiveTabPending()
+    {
+        activeTab = "pending";
+        ApplyFilters();
+    }
+    
+    private void SetActiveTabAccepted()
+    {
+        activeTab = "accepted";
+        ApplyFilters();
+    }
+    
+    private void SetActiveTabProcessed()
+    {
+        activeTab = "processed";
+        ApplyFilters();
+    }
+    
+    private void SetActiveTabExternal()
+    {
+        activeTab = "external";
+        ApplyFilters();
+    }
+    
+    private int GetStatusCount(string status)
+    {
+        if (records == null) return 0;
+        return records.Count(r => GetRecordStatus(r) == status);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var actorList = LocalDbService.GetActors();
@@ -380,8 +580,7 @@ else
         actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
         PerformSearch();
-
-        filteredRecords = new List<BadgeRecord?>(records);
+        ApplyFilters();
     }
 
     private void ShowDeleteConfirmation(BadgeRecord record)

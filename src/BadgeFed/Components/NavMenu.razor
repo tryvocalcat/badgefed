@@ -5,6 +5,8 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject CurrentUser CurrentUser
 
+@rendermode InteractiveServer
+
 <style>
     .navbar {
         /* background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); */
@@ -83,7 +85,8 @@
             <a class="navbar-item navbar-logo" href="/admin">
                 <Logo />
             </a>
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu" @onclick="ToggleMenu">
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu" 
+                @onclick="ToggleMenu">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>

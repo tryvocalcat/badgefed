@@ -7,6 +7,7 @@
 @inject ServerDiscoveryService ServerDiscoveryService
 @inject LocalScopedDb LocalDbService
 @inject IJSRuntime JSRuntime
+@inject IHttpContextAccessor HttpContextAccessor
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -198,7 +199,16 @@
                                     <span class="has-text-weight-semibold">@server.Admin</span>
                                 </td>
                                 <td>
-                                    @if (server.IsFollowed)
+                                    @if (IsCurrentServer(server))
+                                    {
+                                        <span class="tag is-info">
+                                            <span class="icon">
+                                                <i class="fas fa-home"></i>
+                                            </span>
+                                            <span>Current Instance</span>
+                                        </span>
+                                    }
+                                    else if (server.IsFollowed)
                                     {
                                         <span class="tag is-success">
                                             <span class="icon">
@@ -222,7 +232,14 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (!server.IsFollowed)
+                                    @if (IsCurrentServer(server))
+                                    {
+                                        <span class="has-text-grey">
+                                            <i class="fas fa-home"></i>
+                                            This Instance
+                                        </span>
+                                    }
+                                    else if (!server.IsFollowed)
                                     {
                                         <button class="button is-small is-primary" @onclick="() => FollowServer(server.Id)" disabled="@isLoading">
                                             <span class="icon">
@@ -265,9 +282,19 @@
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
     private int followedCount = 0;
+    private string currentServerUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get current server URL
+        var request = HttpContextAccessor.HttpContext?.Request;
+        if (request != null)
+        {
+            var scheme = request.Scheme;
+            var host = request.Host.Value;
+            currentServerUrl = $"{scheme}://{host}";
+        }
+        
         await LoadServers();
     }
 
@@ -319,6 +346,13 @@
 
         try
         {
+            var server = discoveredServers.FirstOrDefault(s => s.Id == serverId);
+            if (server != null && IsCurrentServer(server))
+            {
+                errorMessage = "Cannot follow your own server instance.";
+                return;
+            }
+
             var currentActor = LocalDbService.GetMainActor();
             if (currentActor == null)
             {
@@ -329,7 +363,6 @@
             var success = await ServerDiscoveryService.FollowServerAsync(serverId, (int)currentActor.Id);
             if (success)
             {
-                var server = discoveredServers.FirstOrDefault(s => s.Id == serverId);
                 if (server != null)
                 {
                     server.IsFollowed = true;
@@ -451,6 +484,27 @@
     private void UpdateStatistics()
     {
         followedCount = discoveredServers.Count(s => s.IsFollowed);
-        availableServers = discoveredServers.Where(s => !s.IsFollowed).ToList();
+        availableServers = discoveredServers.Where(s => !s.IsFollowed && !IsCurrentServer(s)).ToList();
+    }
+
+    private bool IsCurrentServer(DiscoveredServer server)
+    {
+        if (string.IsNullOrEmpty(currentServerUrl) || string.IsNullOrEmpty(server.Url))
+            return false;
+            
+        try
+        {
+            var currentUri = new Uri(currentServerUrl);
+            var serverUri = new Uri(server.Url);
+            
+            // Compare host (domain) and port if specified
+            return string.Equals(currentUri.Host, serverUri.Host, StringComparison.OrdinalIgnoreCase) &&
+                   currentUri.Port == serverUri.Port;
+        }
+        catch
+        {
+            // If there's any error parsing URLs, assume it's not the current server
+            return false;
+        }
     }
 }

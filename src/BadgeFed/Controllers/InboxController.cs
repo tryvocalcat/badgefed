@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using ActivityPubDotNet.Core;
 using BadgeFed.Services;
+using BadgeFed.Core;
 
 namespace BadgeFed.Controllers
 {
@@ -14,20 +15,23 @@ namespace BadgeFed.Controllers
         private readonly FollowService _followService;
         private readonly CreateNoteService _createNoteService;
         private readonly BadgeProcessor _badgeProcessor;
+        private readonly QuoteRequestService _quoteRequestService;
 
         private readonly LocalScopedDb _db;
-       
+
         public InboxController(
             ILogger<InboxController> logger,
             FollowService followService,
             CreateNoteService createNoteService,
             BadgeProcessor badgeProcessor,
+            QuoteRequestService quoteRequestService,
             LocalScopedDb db)
         {
             _logger = logger;
             _followService = followService;
             _createNoteService = createNoteService;
             _badgeProcessor = badgeProcessor;
+            _quoteRequestService = quoteRequestService;
             _db = db;
         }
 
@@ -39,17 +43,12 @@ namespace BadgeFed.Controllers
                 return BadRequest("Invalid message content");
             }
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
             if (message.IsDelete())
             {
                 return StatusCode((int)HttpStatusCode.NotImplemented, "Delete not supported");
             }
 
-            _logger.LogInformation($"Received Activity: {JsonSerializer.Serialize(message, options)}");
+            _logger.LogInformation($"Received Activity: {message.Type} - {message.Id}");
 
             Response.ContentType = "application/activity+json";
 
@@ -57,6 +56,7 @@ namespace BadgeFed.Controllers
             {
                 _followService.Logger = _logger;
                 _createNoteService.Logger = _logger;
+                _quoteRequestService.Logger = _logger;
 
                 if (message.IsFollow())
                 {
@@ -67,6 +67,11 @@ namespace BadgeFed.Controllers
                 {
                     _logger?.LogInformation($"Unfollow action for actor: {message.Actor}");
                     await _followService.Unfollow(message);
+                }
+                else if (message.IsQuoteRequest())
+                {
+                    _logger?.LogInformation($"Quote request for actor: {message.Actor}");
+                    await _quoteRequestService.ProcessQuoteRequest(message);
                 }
                 else if (message.IsCreateActivity())
                 {

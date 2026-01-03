@@ -10,6 +10,7 @@ using System.Text.Json;
 using BadgeFed.Services;
 using BadgeFed;
 using BadgeFed.Models;
+using BadgeFed.Core;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,7 @@ using BadgeFed.Components;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Text;
+using BadgeFed.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +75,7 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<ExternalBadgeService>();
 builder.Services.AddScoped<RepliesService>();
 builder.Services.AddScoped<CreateNoteService>();
+builder.Services.AddScoped<QuoteRequestService>();
 builder.Services.AddScoped<ServerDiscoveryService>();
 
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
@@ -87,6 +90,8 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<OpenBadgeService>();
 
+builder.Services.AddScoped<BadgeImageService>();
+
 builder.Services.AddScoped<BadgeService>();
 
 builder.Services.AddScoped<BadgeGrantService>();
@@ -96,6 +101,32 @@ builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<RegistrationService>();
 
 builder.Services.AddScoped<UserService>();
+
+// Add custom asset path service
+builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
+
+// Add Mastodon registration service
+builder.Services.AddScoped<MastodonRegistrationService>(provider =>
+{
+    var httpClient = provider.GetRequiredService<HttpClient>();
+    var config = provider.GetRequiredService<IConfiguration>();
+    var domains = config.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "localhost:5000" };
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(domains));
+    var primaryDomain = domains.First();
+    Console.WriteLine(primaryDomain);
+    var primaryScheme = primaryDomain.Contains("localhost") ? "http" : "https";
+    var website = $"{primaryScheme}://{primaryDomain}";
+    
+    // Create redirect URIs for both HTTP and HTTPS schemes for each domain
+    var redirectUris = new List<string>();
+    foreach (var domain in domains)
+    {
+        redirectUris.Add($"https://{domain}/signin-mastodon-dynamic");
+        redirectUris.Add($"http://{domain}/signin-mastodon-dynamic");
+    }
+    
+    return new MastodonRegistrationService(httpClient, "BadgeFed", website, redirectUris.ToArray());
+});
 
 // Add a new configuration section for LinkedIn OAuth
 var linkedInConfig = builder.Configuration.GetSection("LinkedInConfig").Get<LinkedInConfig>();
@@ -112,16 +143,12 @@ var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.Authe
 });
 
 
-if (mastodonConfig != null)
-{
-    auth.AddMastodon(adminConfig, mastodonConfig, o => {
-        o.Scope.Add("read:accounts");
-        o.Scope.Add("profile");
-        o.ClientId = mastodonConfig.ClientId;
-        o.ClientSecret = mastodonConfig.ClientSecret;
-        o.SaveTokens = true;
-     }, localDbFactory);
-}
+// Always add dynamic Mastodon support (no pre-configuration needed)
+auth.AddDynamicMastodon(adminConfig, o => {
+    o.Scope.Add("read:accounts");
+    o.Scope.Add("profile");
+    o.SaveTokens = true;
+}, localDbFactory);
 
 if (gotoSocialConfig != null)
 {
@@ -220,6 +247,52 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseStaticFiles();
+
+// Add middleware to handle dynamic Mastodon OAuth endpoints
+app.Use(async (context, next) =>
+{
+    // Check if this is a dynamic Mastodon OAuth callback
+    if (context.Request.Path == "/signin-mastodon-dynamic" && context.Request.Query.ContainsKey("state"))
+    {
+        try
+        {
+            // Get the authentication options for the DynamicMastodon scheme
+            var authService = context.RequestServices.GetService<IAuthenticationSchemeProvider>();
+            var scheme = await authService.GetSchemeAsync("DynamicMastodon");
+            if (scheme != null)
+            {
+                var options = context.RequestServices.GetService<IOptionsMonitor<OAuthOptions>>();
+                var oauthOptions = options.Get("DynamicMastodon");
+                
+                // Unprotect the state to get the stored hostname and credentials
+                var stateValue = context.Request.Query["state"];
+                var properties = oauthOptions.StateDataFormat.Unprotect(stateValue);
+                
+                if (properties != null && properties.Items.TryGetValue("mastodon_hostname", out var hostname))
+                {
+                    // Dynamically override the OAuth endpoints
+                    oauthOptions.TokenEndpoint = $"https://{hostname}/oauth/token";
+                    oauthOptions.UserInformationEndpoint = $"https://{hostname}/api/v1/accounts/verify_credentials";
+                    
+                    // Override client credentials
+                    if (properties.Items.TryGetValue("mastodon_client_id", out var clientId))
+                        oauthOptions.ClientId = clientId;
+                    if (properties.Items.TryGetValue("mastodon_client_secret", out var clientSecret))
+                        oauthOptions.ClientSecret = clientSecret;
+                        
+                    Console.WriteLine($"Dynamic Mastodon OAuth: Set endpoints for {hostname}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in dynamic Mastodon middleware: {ex.Message}");
+        }
+    }
+    
+    await next();
+});
+
 app.UseCors("EmbedPolicy");
 app.UseCookiePolicy();
 app.UseAuthentication();
@@ -254,7 +327,7 @@ async Task SetupDefaultActor(IServiceProvider services)
 
     // Get all domains from configuration
     var domains = configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "example.com" };
-    var defaultUsername = "admin";
+    var defaultUsername = "badgerelay";
 
     foreach (var domain in domains)
     {
@@ -270,10 +343,10 @@ async Task SetupDefaultActor(IServiceProvider services)
             // Create the default actor
             var defaultActor = new Actor
             {
-                FullName = $"{domain.ToTitleCase()} Admin",
+                FullName = $"{domain.ToTitleCase()} Relay Bot",
                 Username = defaultUsername,
                 Domain = domain,
-                Summary = $"BadgeFed instance for {domain}. This is the default administrative account.",
+                Summary = $"Official relay bot for badge announcements on {domain}. Automatically boosts badge grants and credential updates to help spread the word about achievements across the ActivityPub network.",
                 PublicKeyPem = keyPair.PublicKeyPem,
                 PrivateKeyPem = keyPair.PrivateKeyPem,
                 InformationUri = $"https://{domain}/about",
@@ -490,6 +563,242 @@ public static class MastodonOAuthExtensions
 
             configureOptions(o);
         });
+    }
+
+    // In-memory cache for registered Mastodon apps per server
+    private static readonly Dictionary<string, (string clientId, string clientSecret)> _mastodonAppCache = new();
+    private static readonly SemaphoreSlim _registrationSemaphore = new(1, 1);
+
+    public static AuthenticationBuilder AddDynamicMastodon(
+        this AuthenticationBuilder builder,
+        AdminConfig adminConfig,
+        Action<OAuthOptions> configureOptions,
+        LocalDbFactory localDbFactory)
+    {
+        return builder.AddOAuth("DynamicMastodon", "Mastodon (Dynamic)", o =>
+        {
+            // Placeholder endpoints - will be overridden dynamically
+            o.AuthorizationEndpoint = "https://placeholder.invalid/oauth/authorize";
+            o.TokenEndpoint = "https://placeholder.invalid/oauth/token";
+            o.UserInformationEndpoint = "https://placeholder.invalid/api/v1/accounts/verify_credentials";
+         
+            o.CallbackPath = new Microsoft.AspNetCore.Http.PathString("/signin-mastodon-dynamic");
+
+            // Placeholder credentials - will be set dynamically
+            o.ClientId = "placeholder";
+            o.ClientSecret = "placeholder";
+
+            o.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+            o.ClaimActions.MapJsonKey(ClaimTypes.Name, "username");
+            o.ClaimActions.MapJsonKey($"urn:mastodon:id", "id");
+            o.ClaimActions.MapJsonKey($"urn:mastodon:username", "username");
+
+            o.Events = new OAuthEvents
+            {
+                OnRedirectToAuthorizationEndpoint = async context =>
+                {
+                    // Extract server from the authentication properties
+                    var hostname = context.Properties.Items.TryGetValue("mastodon_server", out var storedServer) 
+                        ? storedServer 
+                        : throw new InvalidOperationException("Mastodon server not specified");
+                    
+                    // Get or register OAuth app for this server
+                    var (clientId, clientSecret) = await GetOrRegisterMastodonAppAsync(hostname, context.HttpContext.RequestServices);
+                    
+                    // Store credentials for the callback
+                    context.Properties.Items["mastodon_client_id"] = clientId;
+                    context.Properties.Items["mastodon_client_secret"] = clientSecret;
+                    context.Properties.Items["mastodon_hostname"] = hostname;
+                    
+                    // Build authorization URL with real credentials
+                    var authUrl = $"https://{hostname}/oauth/authorize";
+                    
+                    // Build the full redirect URI to match what was registered
+                    var request = context.HttpContext.Request;
+                    var fullRedirectUri = $"{request.Scheme}://{request.Host}{context.Options.CallbackPath}";
+                    
+                    var queryParams = new Dictionary<string, string>
+                    {
+                        ["client_id"] = clientId,
+                        ["redirect_uri"] = fullRedirectUri,
+                        ["response_type"] = "code",
+                        ["scope"] = string.Join(" ", context.Options.Scope)
+                    };
+                    
+                    // Add state parameter - use the same state that the framework would use
+                    var state = context.Options.StateDataFormat.Protect(context.Properties);
+                    queryParams["state"] = state;
+                    
+                    var newRedirectUri = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(authUrl, queryParams);
+                    
+                    context.Response.Redirect(newRedirectUri);
+                },
+
+                OnCreatingTicket = async context =>
+                {
+                    // Get the server and credentials from stored properties
+                    var hostname = context.Properties.Items.TryGetValue("mastodon_server", out var storedServer) 
+                        ? storedServer 
+                        : throw new InvalidOperationException("Mastodon server not found in properties");
+
+                    // At this point, the token has already been exchanged, so we need to make sure
+                    // the endpoints were set correctly. This should be handled in OnRemoteAuthenticateAsync
+                    // but let's also make sure we have the right user info endpoint
+                    var userInfoEndpoint = $"https://{hostname}/api/v1/accounts/verify_credentials";
+
+                    var localDbService = localDbFactory.GetInstance(context.HttpContext);
+                    
+                    // Use the dynamic user info endpoint
+                    var request = new HttpRequestMessage(HttpMethod.Get, userInfoEndpoint);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                    response.EnsureSuccessStatusCode();
+
+                    if (context.Options.SaveTokens)
+                    {
+                        context.Properties.StoreTokens(new[] {
+                            new AuthenticationToken { Name = "access_token", Value = context.AccessToken }
+                        });
+                    }
+
+                    using var user = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    context.RunClaimActions(user.RootElement);
+
+                    var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
+
+                    // Check if this user is an admin for any Mastodon server
+                    var isAdmin = adminConfig?.AdminUsers?.Any(a =>
+                        a.Type.Equals("Mastodon", StringComparison.OrdinalIgnoreCase) &&
+                        a.Id == $"{username}@{hostname}") ?? false;
+
+                    Console.WriteLine($"Dynamic Mastodon login - Server: {hostname}, User: {username}, Is admin: {isAdmin}");
+
+                    var invitationCode = context.Properties.Items.ContainsKey("invitationCode")
+                        ? context.Properties.Items["invitationCode"]
+                        : context.HttpContext.Request.Cookies["invitationCode"];
+
+                    if (isAdmin)
+                    {
+                        context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                            new Claim("urn:mastodon:hostname", hostname),
+                            new Claim(ClaimTypes.Role, "admin"),
+                            new Claim("urn:badgefed:group", "system")
+                        }));
+                    }
+                    else
+                    {
+                        var userId = $"{hostname}_{username}";
+                        
+                        try
+                        {
+                            var registeredUser = localDbService.GetUserById(userId);
+
+                            if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
+                            {
+                                var invitationService = context.HttpContext.RequestServices.GetRequiredService<InvitationService>();
+                                var invitation = invitationService.ValidateAndGetInvitation(invitationCode);
+
+                                if (invitation != null)
+                                {
+                                    registeredUser = new User
+                                    {
+                                        Id = userId,
+                                        Email = invitation.Email,
+                                        GivenName = username ?? "User",
+                                        Surname = "",
+                                        CreatedAt = DateTime.UtcNow,
+                                        Provider = "Mastodon",
+                                        Role = invitation.Role,
+                                        GroupId = invitation.GroupId,
+                                        IsActive = true
+                                    };
+
+                                    invitationService.AcceptInvitation(invitationCode, registeredUser);
+                                    Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
+                                }
+                            }
+
+                            var role = registeredUser != null ? registeredUser.Role : "user";
+
+                            context.Principal.AddIdentity(new ClaimsIdentity(new[] {
+                                new Claim("urn:mastodon:hostname", hostname),
+                                new Claim(ClaimTypes.Role, role),
+                                new Claim("urn:badgefed:group", registeredUser?.GroupId ?? "system")
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error processing user {userId}: {ex.Message}");
+                            throw;
+                        }
+                    }
+                },
+                
+                OnRemoteFailure = context =>
+                {
+                    Console.WriteLine($"Dynamic Mastodon OAuth failure - Error: {context.Failure}");
+                    context.HandleResponse();
+                    context.Response.Redirect("/admin/denied");
+                    return Task.FromResult(0);
+                }
+            };
+
+            configureOptions(o);
+        });
+    }
+
+    // Helper method to get or register Mastodon OAuth app for a specific server
+    private static async Task<(string clientId, string clientSecret)> GetOrRegisterMastodonAppAsync(
+        string hostname, 
+        IServiceProvider services)
+    {
+        // Check cache first
+        if (_mastodonAppCache.TryGetValue(hostname, out var cached))
+        {
+            return cached;
+        }
+
+        // Use semaphore to prevent multiple registrations for the same server
+        await _registrationSemaphore.WaitAsync();
+        try
+        {
+            // Double-check after acquiring lock
+            if (_mastodonAppCache.TryGetValue(hostname, out cached))
+            {
+                return cached;
+            }
+
+            Console.WriteLine($"Registering new Mastodon OAuth app for {hostname}...");
+            
+            var registrationService = services.GetRequiredService<MastodonRegistrationService>();
+            var appDoc = await registrationService.RegisterApplicationAsync(hostname);
+            
+            var clientId = appDoc.RootElement.GetProperty("client_id").GetString();
+            var clientSecret = appDoc.RootElement.GetProperty("client_secret").GetString();
+            
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            {
+                throw new InvalidOperationException($"Failed to register Mastodon app for {hostname}: missing credentials");
+            }
+            
+            // Cache the credentials
+            var credentials = (clientId, clientSecret);
+            _mastodonAppCache[hostname] = credentials;
+            
+            Console.WriteLine($"Successfully registered Mastodon OAuth app for {hostname}");
+            return credentials;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error registering Mastodon app for {hostname}: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            _registrationSemaphore.Release();
+        }
     }
 
     public static AuthenticationBuilder AddMastodon(

@@ -16,9 +16,9 @@ public class LocalScopedDb : LocalDbService
         : base(
             !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SQLITE_DB_PATH"))
                 ? Environment.GetEnvironmentVariable("SQLITE_DB_PATH") + ".db"
-                : httpContextAccessor.HttpContext?.Request?.Host.Value + ".db"
+                : httpContextAccessor.HttpContext?.Request?.Host.Host + ".db"
           )
     {
-        //Console.WriteLine($"Using LocalScopedDb with path: {this.DbPath} for httpContext: {httpContextAccessor.HttpContext?.Request?.Host.Value}");
+        //Console.WriteLine($"Using LocalScopedDb with path: {this.DbPath} for httpContext: {httpContextAccessor.HttpContext?.Request?.Host.Host}");
     }
 }

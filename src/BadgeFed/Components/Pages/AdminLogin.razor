@@ -30,14 +30,75 @@
                         @if (IsMastodonConfigured)
                         {
                             <div class="field mb-3">
-                                <div class="control">
-                                    <button class="button is-fullwidth is-primary has-background-purple"
-                                            @onclick="SignInWithMastodon">
-                                        <span class="icon">
-                                            <i class="fab fa-mastodon"></i>
-                                        </span>
-                                        <span>Sign In with Mastodon</span>
-                                    </button>
+                                <div class="mastodon-login-container">
+                                    @if (!showMastodonDropdown)
+                                    {
+                                        <div class="control">
+                                            <button class="button is-fullwidth is-primary has-background-purple"
+                                                    @onclick="ToggleMastodonDropdown">
+                                                <span class="icon">
+                                                    <i class="fab fa-mastodon"></i>
+                                                </span>
+                                                <span>Sign In with Mastodon</span>
+                                                <span class="icon is-small ml-2">
+                                                    <i class="fas fa-chevron-down"></i>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="mastodon-dropdown-card">
+                                            <div class="dropdown-header">
+                                                <h5 class="title is-6 mb-3">
+                                                    <span class="icon">
+                                                        <i class="fab fa-mastodon"></i>
+                                                    </span>
+                                                    Choose your Mastodon server
+                                                </h5>
+                                                <button class="delete is-small" @onclick="CloseMastodonDropdown"></button>
+                                            </div>
+                                            
+                                            <div class="field">
+                                                <div class="control has-icons-left">
+                                                    <input class="input" type="text" placeholder="Search or enter server (e.g., mastodon.social)"
+                                                           @bind="selectedMastodonServer" @oninput="OnMastodonServerInput" @ref="mastodonInputRef" />
+                                                    <span class="icon is-small is-left">
+                                                        <i class="fas fa-search"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            @if (filteredMastodonServers.Any())
+                                            {
+                                                <div class="server-suggestions">
+                                                    @foreach (var server in filteredMastodonServers.Take(5))
+                                                    {
+                                                        <div class="server-suggestion" @onclick="() => SelectMastodonServer(server.Domain)">
+                                                            <div class="server-info">
+                                                                <strong>@server.Domain</strong>
+                                                                <small class="has-text-grey">@server.Description</small>
+                                                            </div>
+                                                            <span class="tag is-light">-</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            
+                                            <div class="field mt-4">
+                                                <div class="control">
+                                                    <button class="button is-fullwidth has-background-purple" 
+                                                            @onclick="SignInWithSelectedMastodonServer"
+                                                            disabled="@(string.IsNullOrWhiteSpace(selectedMastodonServer))">
+                                                        <span class="icon">
+                                                            <i class="fab fa-mastodon"></i>
+                                                        </span>
+                                                        <span>Continue with @(string.IsNullOrWhiteSpace(selectedMastodonServer) ? "..." : selectedMastodonServer)</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         }
@@ -108,6 +169,74 @@
 
     .has-background-orange:hover {
         background-color: #e07b00 !important;
+    }
+
+    .mastodon-login-container {
+        position: relative;
+    }
+
+    .mastodon-dropdown-card {
+        background: white;
+        border: 1px solid #dbdbdb;
+        border-radius: 6px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 16px rgba(10, 10, 10, 0.1);
+        animation: fadeInDown 0.2s ease-out;
+    }
+
+    .dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .server-suggestions {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dbdbdb;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .server-suggestion {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f5f5f5;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .server-suggestion:last-child {
+        border-bottom: none;
+    }
+
+    .server-suggestion:hover {
+        background-color: #f8f9fa;
+    }
+
+    .server-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .server-info small {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    @@keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* GoToSocial sloth */
@@ -264,6 +393,35 @@
     private string mastodonServer;
     private string gotoSocialServer;
     
+    // Mastodon dropdown state
+    private bool showMastodonDropdown = false;
+    private string selectedMastodonServer = "";
+    private ElementReference mastodonInputRef;
+    
+    // Popular Mastodon servers for suggestions
+    private List<MastodonServer> popularMastodonServers = new()
+    {
+        new("mastodon.social", "The original server run by the Mastodon team"),
+        new("mastodon.world", "A general-purpose Mastodon server"),
+        new("mas.to", "A safe, friendly community"),
+        new("fosstodon.org", "A community for free and open source software"),
+        new("mstdn.social", "A general-purpose community server"),
+        new("infosec.exchange", "InfoSec community on Mastodon"),
+        new("hachyderm.io", "Safe space for tech workers and enthusiasts"),
+        new("techhub.social", "Technology professionals and enthusiasts"),
+        new("mastodon.online", "A fast, secure and up-to-date instance")
+    };
+    
+    private List<MastodonServer> filteredMastodonServers => 
+        string.IsNullOrWhiteSpace(selectedMastodonServer) 
+            ? popularMastodonServers
+            : popularMastodonServers.Where(s => 
+                s.Domain.Contains(selectedMastodonServer, StringComparison.OrdinalIgnoreCase) ||
+                s.Description.Contains(selectedMastodonServer, StringComparison.OrdinalIgnoreCase)
+              ).ToList();
+
+    public record MastodonServer(string Domain, string Description);
+    
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -365,6 +523,66 @@
     {
         var invitationCode = await GetInvitationCodeFromUrl();
         var url = $"admin/login/oauth/{mastodonServer}?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private void ToggleMastodonDropdown()
+    {
+        showMastodonDropdown = true;
+        selectedMastodonServer = mastodonServer; // Default to configured server
+        StateHasChanged();
+        
+        // Focus the input after the DOM updates
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await mastodonInputRef.FocusAsync();
+                }
+                catch { }
+            });
+        });
+    }
+
+    private void CloseMastodonDropdown()
+    {
+        showMastodonDropdown = false;
+        StateHasChanged();
+    }
+
+    private void OnMastodonServerInput(ChangeEventArgs e)
+    {
+        selectedMastodonServer = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void SelectMastodonServer(string server)
+    {
+        selectedMastodonServer = server;
+        StateHasChanged();
+    }
+
+    private async Task SignInWithSelectedMastodonServer()
+    {
+        if (string.IsNullOrWhiteSpace(selectedMastodonServer))
+            return;
+
+        // Clean up the server URL (remove protocol if present)
+        var cleanServer = selectedMastodonServer.Trim();
+        if (cleanServer.StartsWith("https://"))
+            cleanServer = cleanServer.Substring(8);
+        if (cleanServer.StartsWith("http://"))
+            cleanServer = cleanServer.Substring(7);
+
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/oauth/{cleanServer}?returnUrl=/admin/";
         if (!string.IsNullOrEmpty(invitationCode))
         {
             url += $"&invitationCode={invitationCode}";

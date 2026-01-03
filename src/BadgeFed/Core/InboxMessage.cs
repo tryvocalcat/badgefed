@@ -12,6 +12,7 @@ namespace ActivityPubDotNet.Core
         public bool IsUndoFollow() => Type == "Undo";
         public bool IsCreateActivity() => Type == "Create";
         public bool IsDelete() => Type == "Delete";
+        public bool IsQuoteRequest() => Type == "QuoteRequest";
 
         public bool IsAnnounce() => Type == "Announce";
     }
