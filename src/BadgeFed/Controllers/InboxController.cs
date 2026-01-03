@@ -18,7 +18,7 @@ namespace BadgeFed.Controllers
         private readonly QuoteRequestService _quoteRequestService;
 
         private readonly LocalScopedDb _db;
-       
+
         public InboxController(
             ILogger<InboxController> logger,
             FollowService followService,
@@ -43,17 +43,12 @@ namespace BadgeFed.Controllers
                 return BadRequest("Invalid message content");
             }
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
             if (message.IsDelete())
             {
                 return StatusCode((int)HttpStatusCode.NotImplemented, "Delete not supported");
             }
 
-            _logger.LogInformation($"Received Activity: {JsonSerializer.Serialize(message, options)}");
+            _logger.LogInformation($"Received Activity: {message.Type} - {message.Id}");
 
             Response.ContentType = "application/activity+json";
 

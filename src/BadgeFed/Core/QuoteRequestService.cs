@@ -47,27 +47,36 @@ namespace BadgeFed.Core
             }
         }
 
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
         private async Task AutoApproveQuoteRequest(InboxMessage message)
         {
             try
             {
                 // Get the object URL being quoted
-                var objectUrl = message.Object?.ToString();
-                if (string.IsNullOrEmpty(objectUrl))
+                var noteUrl = message.Object?.ToString();
+                if (string.IsNullOrEmpty(noteUrl))
                 {
                     Logger?.LogWarning("Quote request missing object URL");
                     return;
                 }
 
                 // Find the actor that owns the quoted object
-                var actor = GetActorForQuotedObject(objectUrl);
+                var actor = GetActorForQuotedObject(noteUrl);
                 if (actor == null)
                 {
-                    Logger?.LogWarning($"Could not find actor for quoted object: {objectUrl}");
+                    Logger?.LogWarning($"Could not find actor for quoted object: {noteUrl}");
                     return;
                 }
 
                 // Create Accept response
+                var objectId = Guid.NewGuid().ToString();
+                var quoteId = $"https://{actor.Domain}/activities/accept/{objectId}";
+                var stampId = $"https://{actor.Domain}/stamps/{objectId}";
+
                 var acceptResponse = new QuoteAcceptResponse
                 {
                     Context = new object[]
@@ -79,14 +88,12 @@ namespace BadgeFed.Core
                         }
                     },
                     Type = "Accept",
-                    Id = $"https://{actor.Domain}/activities/accept/{Guid.NewGuid()}",
+                    Id = quoteId,
                     Actor = actor.Uri?.ToString(),
-                    To = new[] { message.Actor },
-                    Object = message.Object,
-                    Result = objectUrl // This acts as the QuoteAuthorization
+                    To = message.Actor,
+                    Object = message,
+                    Result = stampId // This acts as the QuoteAuthorization
                 };
-
-                Logger?.LogInformation($"Accept response object: {JsonSerializer.Serialize(acceptResponse)}");
 
                 // Send the Accept response
                 await SendAcceptResponse(acceptResponse, message.Actor, actor);
@@ -99,30 +106,29 @@ namespace BadgeFed.Core
             }
         }
 
-        private Actor? GetActorForQuotedObject(string objectUrl)
+        private Actor? GetActorForQuotedObject(string noteUrl)
         {
             try
             {
-                // Extract domain from the object URL
-                var uri = new Uri(objectUrl);
-                var domain = uri.Host;
+                var badgeRecord = _db.GetGrantByNoteId(noteUrl);
 
-                // Look for badges or other objects that belong to actors in this domain
-                // For badges, try to find the actor who issued them
-                if (objectUrl.Contains("/grant/"))
+                if (badgeRecord == null)
                 {
-                    // This is likely a badge grant URL
-                    // Find the main actor for this domain
+                    Logger?.LogInformation($"Cannot find badge record for quoted object: {noteUrl}");
                     return _db.GetMainActor();
                 }
 
-                // For other objects, try to find an actor by domain
-                var actor = _db.GetActorByFilter($"Domain = \"{domain}\"");
+                var actorUrl = badgeRecord.IssuedBy;
+                
+                var actor = _db.GetActorByUri(actorUrl);
+
+                Logger?.LogInformation($"Found actor {actor?.Id} for quoted object: {noteUrl} in {actorUrl}");
+
                 return actor ?? _db.GetMainActor();
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex, $"Error getting actor for quoted object: {objectUrl}");
+                Logger?.LogError(ex, $"Error getting actor for quoted object: {noteUrl}");
                 return _db.GetMainActor();
             }
         }
@@ -136,12 +142,7 @@ namespace BadgeFed.Core
                 // Fetch the requester's actor information to get their inbox
                 var requesterActor = await actorHelper.FetchActorInformationAsync(requesterActorUrl);
 
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                };
-
-                var acceptJson = JsonSerializer.Serialize(acceptResponse, options);
+                var acceptJson = JsonSerializer.Serialize(acceptResponse, SerializerOptions);
                 
                 Logger?.LogInformation($"Sending Accept response to {requesterActor.Inbox}: {acceptJson}");
                 
@@ -171,7 +172,7 @@ namespace BadgeFed.Core
         public string Actor { get; set; } = default!;
 
         [JsonPropertyName("to")]
-        public string[] To { get; set; } = default!;
+        public string To { get; set; } = default!;
 
         [JsonPropertyName("object")]
         public object Object { get; set; } = default!;
