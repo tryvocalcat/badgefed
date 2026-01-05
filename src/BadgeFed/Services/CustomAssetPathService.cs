@@ -5,8 +5,8 @@ namespace BadgeFed.Services;
 public class CustomAssetPathService : ICustomAssetPathService
 {
     private readonly IWebHostEnvironment _webHostEnvironment;
-    private const string CUSTOM_ASSETS_FOLDER = "assets";
-    private const string CUSTOM_ASSETS_URL = "/assets";
+    private const string CUSTOM_ASSETS_FOLDER = "pages";
+    private const string CUSTOM_ASSETS_URL = "/pages";
 
     public CustomAssetPathService(IWebHostEnvironment webHostEnvironment)
     {
@@ -56,7 +56,7 @@ public class CustomAssetPathService : ICustomAssetPathService
 
     public string GetPagesPath()
     {
-        return Path.Combine(GetCustomAssetsPath(), "pages");
+        return Path.Combine(GetCustomAssetsPath());
     }
 
     public string GetImagesPath()
