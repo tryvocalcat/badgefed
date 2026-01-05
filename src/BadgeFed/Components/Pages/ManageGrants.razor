@@ -349,26 +349,23 @@ else
                             bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint));
                         }
 
-                        @if (!record.IsExternal)
-                        {
-                            <!-- Destructive Actions -->
-                            <div class="action-group">
-                                @if (canDelete) 
-                                {
-                                    <button class="action-btn button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)" title="Permanently delete this grant">
-                                        <span class="icon"><i class="fas fa-trash-alt"></i></span>
-                                        <span>Delete</span>
-                                    </button>
-                                } 
-                                else 
-                                {
-                                    <button class="action-btn button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
-                                        <span class="icon"><i class="fas fa-ban"></i></span>
-                                        <span>Revoke</span>
-                                    </button>
-                                }
-                            </div>
-                        }
+                        <!-- Destructive Actions -->
+                        <div class="action-group">
+                            @if (canDelete) 
+                            {
+                                <button class="action-btn button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)" title="Permanently delete this grant">
+                                    <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                                    <span>Delete</span>
+                                </button>
+                            } 
+                            else 
+                            {
+                                <button class="action-btn button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
+                                    <span class="icon"><i class="fas fa-ban"></i></span>
+                                    <span>Revoke</span>
+                                </button>
+                            }
+                        </div>
                     </td>
                 </tr>
             }
