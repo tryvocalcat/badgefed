@@ -355,7 +355,7 @@ else
                             {
                                 <button class="action-btn button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)" title="Permanently delete this grant">
                                     <span class="icon"><i class="fas fa-trash-alt"></i></span>
-                                    <span>Delete</span>
+                                    <span>Delete @(recordToDelete.IsExternal ? "local copy" : string.Empty)</span>
                                 </button>
                             } 
                             else 
