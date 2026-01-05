@@ -246,6 +246,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
 app.UseStaticFiles();
 
 // Add middleware to handle dynamic Mastodon OAuth endpoints

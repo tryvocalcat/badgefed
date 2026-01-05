@@ -144,20 +144,17 @@ namespace ActivityPubDotNet.Core
                 Logger?.LogError($"Invalid note URI format: {badgeRecord.NoteId}");
                 return null;
             }
-            
-            Console.WriteLine($"Checking if badge record already exists for note ID: {badgeRecord.NoteId}");
+                
+            Logger?.LogInformation($"Checking if badge record already exists for note ID: {badgeRecord.NoteId}");
             var existingLocal = localDbService.GetGrantByNoteId(badgeRecord.NoteId);
 
             if (existingLocal != null)
             {
                 Logger?.LogInformation($"Grant already exists in local database: {existingLocal.Id}");
-                Console.WriteLine($"Grant already exists in local database: {existingLocal.Id}");
                 return existingLocal;
             }
 
             Logger?.LogInformation($"Grant is new, recording it in local database");
-            Console.WriteLine($"Grant is new, recording it in local database");
-
             badgeRecord.IsExternal = true;
             localDbService.CreateBadgeRecord(badgeRecord);
 

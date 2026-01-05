@@ -1742,9 +1742,30 @@ public class ActorStats
         command.ExecuteNonQuery();  
     }
 
-    public BadgeRecord? GetGrantByNoteId(string noteId)
+    public BadgeRecord? GetGrantByNoteId(string nodeId)
     {
-        Log(LogLevel.Debug, $"GetGrantByNoteId: {noteId}");
+        Log(LogLevel.Debug, $"GetGrantByNoteId: {nodeId}");
+
+        var record = GetGrantById(nodeId);
+
+        if (record != null)
+        {
+            return record;
+        }
+     
+        if (nodeId.Contains('/'))
+        {    
+            nodeId = nodeId.Split('/').Last();
+            record = GetGrantById(nodeId);
+            return record;
+        }
+
+        return default;
+    }
+
+    private BadgeRecord? GetGrantById(string noteId)
+    {
+        Log(LogLevel.Debug, $"GetGrantById: {noteId}");
         
         BadgeRecord? badgeRecord = null;
 
