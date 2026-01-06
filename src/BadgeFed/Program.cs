@@ -96,6 +96,8 @@ builder.Services.AddScoped<BadgeService>();
 
 builder.Services.AddScoped<BadgeGrantService>();
 
+builder.Services.AddScoped<TokenGrantService>();
+
 builder.Services.AddScoped<InvitationService>();
 
 builder.Services.AddScoped<RegistrationService>();

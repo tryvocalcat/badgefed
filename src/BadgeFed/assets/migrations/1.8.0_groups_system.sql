@@ -10,6 +10,17 @@ CREATE TABLE IF NOT EXISTS UserGroups (
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS Users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    givenName TEXT,
+    surname TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    provider TEXT NOT NULL,
+    role TEXT NOT NULL,
+    isActive BOOLEAN DEFAULT 1
+);
+
 -- Create the default user group
 INSERT OR IGNORE INTO UserGroups (id, name, description) 
 VALUES ('system', 'Default User Group', 'Default user group for all users');
