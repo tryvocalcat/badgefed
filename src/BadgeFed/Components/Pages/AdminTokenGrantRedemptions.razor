@@ -1,0 +1,338 @@
+@page "/admin/token-grants/{TokenGrantId:long}/redemptions"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager NavigationManager
+@inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalDbService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/grants">Grants</a></li>
+            <li><a href="/admin/token-grants">Token Grants</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Redemptions</a></li>
+        </ul>
+    </nav>
+
+    @if (tokenGrant == null)
+    {
+        <div class="has-text-centered">
+            <span class="icon is-large">
+                <i class="fas fa-spinner fa-pulse"></i>
+            </span>
+            <p>Loading...</p>
+        </div>
+    }
+    else
+    {
+        <div class="level">
+            <div class="level-left">
+                <div class="level-item">
+                    <div>
+                        <h1 class="title">@tokenGrant.Title - Redemptions</h1>
+                        <p class="subtitle">
+                            <span class="tag is-info">@tokenGrant.ShortCode</span>
+                            @tokenGrant.RedeemedCount redemption@(tokenGrant.RedeemedCount != 1 ? "s" : "")
+                            @if (tokenGrant.MaxRedemptions.HasValue)
+                            {
+                                <span>of @tokenGrant.MaxRedemptions</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <a href="/admin/token-grants" class="button is-light">
+                        <span class="icon">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        <span>Back to Token Grants</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="columns">
+            <div class="column is-8">
+                @if (redemptions == null)
+                {
+                    <div class="has-text-centered">
+                        <span class="icon is-large">
+                            <i class="fas fa-spinner fa-pulse"></i>
+                        </span>
+                        <p>Loading redemptions...</p>
+                    </div>
+                }
+                else if (redemptions.Count == 0)
+                {
+                    <div class="has-text-centered">
+                        <div class="content">
+                            <span class="icon is-large has-text-grey-light">
+                                <i class="fas fa-coins fa-3x"></i>
+                            </span>
+                            <h3 class="title is-4 has-text-grey">No Redemptions Yet</h3>
+                            <p class="has-text-grey">No one has redeemed this token grant yet.</p>
+                            <p>
+                                Share this link: 
+                                <a href="@($"{baseUrl}{tokenGrant.PublicUrl}")" target="_blank" class="has-text-link">
+                                    @($"{baseUrl}{tokenGrant.PublicUrl}")
+                                    <span class="icon is-small">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </span>
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-hoverable">
+                            <thead>
+                                <tr>
+                                    <th>Recipient</th>
+                                    <th>Contact</th>
+                                    <th>Redeemed</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var redemption in redemptions)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@redemption.RecipientName</strong>
+                                            @if (!string.IsNullOrEmpty(redemption.RecipientProfileUri))
+                                            {
+                                                <br>
+                                                <small>
+                                                    <a href="@redemption.RecipientProfileUri" target="_blank" class="has-text-link">
+                                                        @redemption.RecipientProfileUri
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </span>
+                                                    </a>
+                                                </small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(redemption.RecipientEmail))
+                                            {
+                                                <a href="mailto:@redemption.RecipientEmail" class="has-text-link">
+                                                    @redemption.RecipientEmail
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="has-text-grey">No email</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @redemption.RedeemedAt.ToString("MMM dd, yyyy")
+                                            <br>
+                                            <small class="has-text-grey">@redemption.RedeemedAt.ToString("HH:mm") UTC</small>
+                                        </td>
+                                        <td>
+                                            @if (redemption.BadgeRecord?.AcceptKey != null)
+                                            {
+                                                <a href="/badge/accept/@redemption.BadgeRecord.AcceptKey" target="_blank" class="button is-small is-info">
+                                                    <span class="icon">
+                                                        <i class="fas fa-award"></i>
+                                                    </span>
+                                                    <span>View Badge</span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="has-text-grey">Badge not available</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="column is-4">
+                <div class="box">
+                    <h4 class="title is-5">Token Grant Details</h4>
+                    
+                    <div class="field">
+                        <label class="label">Status</label>
+                        <div class="control">
+                            @if (tokenGrant.IsActive)
+                            {
+                                @if (tokenGrant.CanRedeem)
+                                {
+                                    <span class="tag is-success">Available for Redemption</span>
+                                }
+                                else
+                                {
+                                    @if (!tokenGrant.IsEnabled)
+                                    {
+                                        <span class="tag is-warning">Not Yet Enabled</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tag is-danger">Redemptions Exhausted</span>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <span class="tag is-danger">Inactive</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Public URL</label>
+                        <div class="control">
+                            <input class="input" type="text" readonly value="@($"{baseUrl}{tokenGrant.PublicUrl}")" id="publicUrl" />
+                        </div>
+                        <p class="help">
+                            <button class="button is-small is-light" onclick="navigator.clipboard.writeText(document.getElementById('publicUrl').value)">
+                                <span class="icon">
+                                    <i class="fas fa-copy"></i>
+                                </span>
+                                <span>Copy Link</span>
+                            </button>
+                        </p>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Badge</label>
+                        <div class="control">
+                            @if (tokenGrant.Badge != null)
+                            {
+                                <div class="media">
+                                    @if (!string.IsNullOrEmpty(tokenGrant.Badge.Image))
+                                    {
+                                        <div class="media-left">
+                                            <figure class="image is-48x48">
+                                                <img src="@tokenGrant.Badge.Image" alt="@tokenGrant.Badge.Title" />
+                                            </figure>
+                                        </div>
+                                    }
+                                    <div class="media-content">
+                                        <strong>@tokenGrant.Badge.Title</strong>
+                                        @if (!string.IsNullOrEmpty(tokenGrant.Badge.Description))
+                                        {
+                                            <br><small>@tokenGrant.Badge.Description</small>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (tokenGrant.EnabledAt.HasValue)
+                    {
+                        <div class="field">
+                            <label class="label">Enabled Since</label>
+                            <div class="control">
+                                @tokenGrant.EnabledAt?.ToString("MMM dd, yyyy HH:mm") UTC
+                            </div>
+                        </div>
+                    }
+
+                    <div class="field">
+                        <label class="label">Redemption Limit</label>
+                        <div class="control">
+                            @if (tokenGrant.MaxRedemptions.HasValue)
+                            {
+                                <span>@tokenGrant.MaxRedemptions.Value</span>
+                            }
+                            else
+                            {
+                                <span>Unlimited</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Created</label>
+                        <div class="control">
+                            @tokenGrant.CreatedAt.ToString("MMM dd, yyyy HH:mm") UTC
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public long TokenGrantId { get; set; }
+
+    private TokenGrant? tokenGrant;
+    private List<TokenGrantRedemption>? redemptions;
+    private string baseUrl = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get base URL for public link display
+        var uri = NavigationManager.ToAbsoluteUri("/");
+        baseUrl = $"{uri.Scheme}://{uri.Authority}";
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            tokenGrant = LocalDbService.GetTokenGrantById(TokenGrantId);
+            
+            if (tokenGrant == null)
+            {
+                NavigationManager.NavigateTo("/admin/token-grants");
+                return;
+            }
+
+            // Check authorization for non-admin users
+            if (!CurrentUser.IsAdmin())
+            {
+                var badge = LocalDbService.GetBadgeDefinitionById(tokenGrant.BadgeId);
+                if (badge?.OwnerId != CurrentUser.Id)
+                {
+                    NavigationManager.NavigateTo("/admin/token-grants");
+                    return;
+                }
+            }
+
+            redemptions = LocalDbService.GetTokenGrantRedemptions(TokenGrantId);
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show error message
+            NavigationManager.NavigateTo("/admin/token-grants");
+        }
+
+        StateHasChanged();
+    }
+}
+
+<style>
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .media {
+        align-items: center;
+    }
+    
+    .box {
+        position: sticky;
+        top: 20px;
+    }
+</style>
