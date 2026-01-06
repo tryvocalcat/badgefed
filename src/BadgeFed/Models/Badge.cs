@@ -10,6 +10,7 @@ namespace BadgeFed.Models
 
         public string Description { get; set; } = "";
 
+        [Range(1, long.MaxValue, ErrorMessage = "Please select an issuer")]
         public long IssuedBy { get; set; }
 
         public Actor? Issuer { get; set; }
@@ -17,6 +18,7 @@ namespace BadgeFed.Models
         public string Image { get; set; } = "";
         public string ImageAltText { get; set; } = "";
 
+        [Required(ErrorMessage = "Earning criteria is required")]
         public string EarningCriteria { get; set; } = "";
 
         public string BadgeType { get; set; } = "Badge";

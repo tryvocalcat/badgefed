@@ -346,7 +346,7 @@ else
                         }
                
                         @{
-                            bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint)) || records.IsExternal;
+                            bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint)) || record.IsExternal;
                         }
 
                         <!-- Destructive Actions -->

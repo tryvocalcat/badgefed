@@ -126,6 +126,9 @@ public class LocalDbService
         {
             hasAppliedMigrationsTried = true;
             ApplyPendingMigrations();
+            
+            // Initialize additional tables
+            InitializeTokenGrantTables();
         }
     }
 
@@ -139,6 +142,9 @@ public class LocalDbService
             if (pendingMigrations.Any())
             {
                 Log(LogLevel.Information, $"Found {pendingMigrations.Count} pending migrations. Applying...");
+
+                // sort them by version
+                pendingMigrations = pendingMigrations.OrderBy(m => m.Version).ToList();
 
                 foreach (var migration in pendingMigrations)
                 {
@@ -2878,5 +2884,389 @@ public class ActorStats
 
         command.ExecuteNonQuery();
         transaction.Commit();
+    }
+
+    // Token Grant management methods
+    public void InitializeTokenGrantTables()
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS TokenGrant (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Token TEXT NOT NULL UNIQUE,
+                ShortCode TEXT NOT NULL UNIQUE,
+                BadgeId INTEGER NOT NULL,
+                Title TEXT NOT NULL,
+                Description TEXT,
+                EnabledAt DATETIME,
+                MaxRedemptions INTEGER NULL,
+                RedeemedCount INTEGER NOT NULL DEFAULT 0,
+                IsActive BOOLEAN NOT NULL DEFAULT 1,
+                CreatedBy TEXT NOT NULL,
+                CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (BadgeId) REFERENCES Badge(Id)
+            );
+            
+            CREATE TABLE IF NOT EXISTS TokenGrantRedemption (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                TokenGrantId INTEGER NOT NULL,
+                BadgeRecordId INTEGER NOT NULL,
+                RecipientName TEXT NOT NULL,
+                RecipientEmail TEXT,
+                RecipientProfileUri TEXT,
+                IpAddress TEXT,
+                UserAgent TEXT,
+                RedeemedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (TokenGrantId) REFERENCES TokenGrant(Id),
+                FOREIGN KEY (BadgeRecordId) REFERENCES BadgeRecord(Id)
+            );
+            
+            CREATE INDEX IF NOT EXISTS IX_TokenGrant_ShortCode ON TokenGrant(ShortCode);
+            CREATE INDEX IF NOT EXISTS IX_TokenGrant_Token ON TokenGrant(Token);
+            CREATE INDEX IF NOT EXISTS IX_TokenGrant_BadgeId ON TokenGrant(BadgeId);
+            CREATE INDEX IF NOT EXISTS IX_TokenGrantRedemption_TokenGrantId ON TokenGrantRedemption(TokenGrantId);
+        ";
+        command.ExecuteNonQuery();
+    }
+
+    public void UpsertTokenGrant(TokenGrant tokenGrant)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        if (tokenGrant.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO TokenGrant (Token, ShortCode, BadgeId, Title, Description, EnabledAt, MaxRedemptions, RedeemedCount, IsActive, CreatedBy, CreatedAt)
+                VALUES (@Token, @ShortCode, @BadgeId, @Title, @Description, @EnabledAt, @MaxRedemptions, @RedeemedCount, @IsActive, @CreatedBy, @CreatedAt);
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE TokenGrant SET 
+                    Token = @Token, 
+                    ShortCode = @ShortCode, 
+                    BadgeId = @BadgeId, 
+                    Title = @Title, 
+                    Description = @Description,
+                    EnabledAt = @EnabledAt,
+                    MaxRedemptions = @MaxRedemptions,
+                    RedeemedCount = @RedeemedCount,
+                    IsActive = @IsActive,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", tokenGrant.Id);
+        }
+
+        command.Parameters.AddWithValue("@Token", tokenGrant.Token);
+        command.Parameters.AddWithValue("@ShortCode", tokenGrant.ShortCode);
+        command.Parameters.AddWithValue("@BadgeId", tokenGrant.BadgeId);
+        command.Parameters.AddWithValue("@Title", tokenGrant.Title);
+        command.Parameters.AddWithValue("@Description", tokenGrant.Description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@EnabledAt", tokenGrant.EnabledAt ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@MaxRedemptions", tokenGrant.MaxRedemptions ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@RedeemedCount", tokenGrant.RedeemedCount);
+        command.Parameters.AddWithValue("@IsActive", tokenGrant.IsActive);
+        command.Parameters.AddWithValue("@CreatedBy", tokenGrant.CreatedBy);
+        command.Parameters.AddWithValue("@CreatedAt", tokenGrant.CreatedAt);
+
+        if (tokenGrant.Id == 0)
+        {
+            tokenGrant.Id = Convert.ToInt64(command.ExecuteScalar());
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public TokenGrant? GetTokenGrantByShortCode(string shortCode)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT tg.*, b.Title as BadgeTitle, b.Description as BadgeDescription, b.Image as BadgeImage
+            FROM TokenGrant tg
+            LEFT JOIN Badge b ON tg.BadgeId = b.Id
+            WHERE tg.ShortCode = @ShortCode
+        ";
+        command.Parameters.AddWithValue("@ShortCode", shortCode);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            var tokenGrant = new TokenGrant
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Token = reader.GetString(reader.GetOrdinal("Token")),
+                ShortCode = reader.GetString(reader.GetOrdinal("ShortCode")),
+                BadgeId = reader.GetInt64(reader.GetOrdinal("BadgeId")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description")),
+                EnabledAt = reader.IsDBNull(reader.GetOrdinal("EnabledAt")) ? null : reader.GetDateTime(reader.GetOrdinal("EnabledAt")),
+                MaxRedemptions = reader.IsDBNull(reader.GetOrdinal("MaxRedemptions")) ? null : reader.GetInt32(reader.GetOrdinal("MaxRedemptions")),
+                RedeemedCount = reader.GetInt32(reader.GetOrdinal("RedeemedCount")),
+                IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
+                CreatedBy = reader.GetString(reader.GetOrdinal("CreatedBy")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.IsDBNull(reader.GetOrdinal("UpdatedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+
+            if (!reader.IsDBNull(reader.GetOrdinal("BadgeTitle")))
+            {
+                tokenGrant.Badge = new Badge
+                {
+                    Id = tokenGrant.BadgeId,
+                    Title = reader.GetString(reader.GetOrdinal("BadgeTitle")),
+                    Description = reader.IsDBNull(reader.GetOrdinal("BadgeDescription")) ? "" : reader.GetString(reader.GetOrdinal("BadgeDescription")),
+                    Image = reader.IsDBNull(reader.GetOrdinal("BadgeImage")) ? "" : reader.GetString(reader.GetOrdinal("BadgeImage"))
+                };
+            }
+
+            return tokenGrant;
+        }
+
+        return null;
+    }
+
+    public TokenGrant? GetTokenGrantById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT tg.*, b.Title as BadgeTitle, b.Description as BadgeDescription, b.Image as BadgeImage
+            FROM TokenGrant tg
+            LEFT JOIN Badge b ON tg.BadgeId = b.Id
+            WHERE tg.Id = @Id
+        ";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            var tokenGrant = new TokenGrant
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Token = reader.GetString(reader.GetOrdinal("Token")),
+                ShortCode = reader.GetString(reader.GetOrdinal("ShortCode")),
+                BadgeId = reader.GetInt64(reader.GetOrdinal("BadgeId")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description")),
+                EnabledAt = reader.IsDBNull(reader.GetOrdinal("EnabledAt")) ? null : reader.GetDateTime(reader.GetOrdinal("EnabledAt")),
+                MaxRedemptions = reader.IsDBNull(reader.GetOrdinal("MaxRedemptions")) ? null : reader.GetInt32(reader.GetOrdinal("MaxRedemptions")),
+                RedeemedCount = reader.GetInt32(reader.GetOrdinal("RedeemedCount")),
+                IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
+                CreatedBy = reader.GetString(reader.GetOrdinal("CreatedBy")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.IsDBNull(reader.GetOrdinal("UpdatedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+
+            if (!reader.IsDBNull(reader.GetOrdinal("BadgeTitle")))
+            {
+                tokenGrant.Badge = new Badge
+                {
+                    Id = tokenGrant.BadgeId,
+                    Title = reader.GetString(reader.GetOrdinal("BadgeTitle")),
+                    Description = reader.IsDBNull(reader.GetOrdinal("BadgeDescription")) ? "" : reader.GetString(reader.GetOrdinal("BadgeDescription")),
+                    Image = reader.IsDBNull(reader.GetOrdinal("BadgeImage")) ? "" : reader.GetString(reader.GetOrdinal("BadgeImage"))
+                };
+            }
+
+            return tokenGrant;
+        }
+
+        return null;
+    }
+
+    public List<TokenGrant> GetAllTokenGrants(string? ownerId = null)
+    {
+        var tokenGrants = new List<TokenGrant>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        var whereClause = string.IsNullOrEmpty(ownerId) ? "" : "WHERE b.OwnerId = @OwnerId";
+        
+        command.CommandText = $@"
+            SELECT tg.*, b.Title as BadgeTitle, b.Description as BadgeDescription, b.Image as BadgeImage, b.OwnerId
+            FROM TokenGrant tg
+            LEFT JOIN Badge b ON tg.BadgeId = b.Id
+            {whereClause}
+            ORDER BY tg.CreatedAt DESC
+        ";
+
+        if (!string.IsNullOrEmpty(ownerId))
+        {
+            command.Parameters.AddWithValue("@OwnerId", ownerId);
+        }
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var tokenGrant = new TokenGrant
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Token = reader.GetString(reader.GetOrdinal("Token")),
+                ShortCode = reader.GetString(reader.GetOrdinal("ShortCode")),
+                BadgeId = reader.GetInt64(reader.GetOrdinal("BadgeId")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description")),
+                EnabledAt = reader.IsDBNull(reader.GetOrdinal("EnabledAt")) ? null : reader.GetDateTime(reader.GetOrdinal("EnabledAt")),
+                MaxRedemptions = reader.IsDBNull(reader.GetOrdinal("MaxRedemptions")) ? null : reader.GetInt32(reader.GetOrdinal("MaxRedemptions")),
+                RedeemedCount = reader.GetInt32(reader.GetOrdinal("RedeemedCount")),
+                IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
+                CreatedBy = reader.GetString(reader.GetOrdinal("CreatedBy")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                UpdatedAt = reader.IsDBNull(reader.GetOrdinal("UpdatedAt")) ? null : reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+            };
+
+            if (!reader.IsDBNull(reader.GetOrdinal("BadgeTitle")))
+            {
+                tokenGrant.Badge = new Badge
+                {
+                    Id = tokenGrant.BadgeId,
+                    Title = reader.GetString(reader.GetOrdinal("BadgeTitle")),
+                    Description = reader.IsDBNull(reader.GetOrdinal("BadgeDescription")) ? "" : reader.GetString(reader.GetOrdinal("BadgeDescription")),
+                    Image = reader.IsDBNull(reader.GetOrdinal("BadgeImage")) ? "" : reader.GetString(reader.GetOrdinal("BadgeImage"))
+                };
+            }
+
+            tokenGrants.Add(tokenGrant);
+        }
+
+        return tokenGrants;
+    }
+
+    public void CreateTokenGrantRedemption(TokenGrantRedemption redemption)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO TokenGrantRedemption (TokenGrantId, BadgeRecordId, RecipientName, RecipientEmail, RecipientProfileUri, IpAddress, UserAgent, RedeemedAt)
+            VALUES (@TokenGrantId, @BadgeRecordId, @RecipientName, @RecipientEmail, @RecipientProfileUri, @IpAddress, @UserAgent, @RedeemedAt);
+            SELECT last_insert_rowid();
+        ";
+
+        command.Parameters.AddWithValue("@TokenGrantId", redemption.TokenGrantId);
+        command.Parameters.AddWithValue("@BadgeRecordId", redemption.BadgeRecordId);
+        command.Parameters.AddWithValue("@RecipientName", redemption.RecipientName);
+        command.Parameters.AddWithValue("@RecipientEmail", redemption.RecipientEmail ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@RecipientProfileUri", redemption.RecipientProfileUri ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@IpAddress", redemption.IpAddress ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@UserAgent", redemption.UserAgent ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@RedeemedAt", redemption.RedeemedAt);
+
+        redemption.Id = Convert.ToInt64(command.ExecuteScalar());
+
+        // Update redemption count
+        var updateCommand = connection.CreateCommand();
+        updateCommand.CommandText = "UPDATE TokenGrant SET RedeemedCount = RedeemedCount + 1, UpdatedAt = CURRENT_TIMESTAMP WHERE Id = @TokenGrantId";
+        updateCommand.Parameters.AddWithValue("@TokenGrantId", redemption.TokenGrantId);
+        updateCommand.ExecuteNonQuery();
+
+        transaction.Commit();
+    }
+
+    public List<TokenGrantRedemption> GetTokenGrantRedemptions(long tokenGrantId)
+    {
+        var redemptions = new List<TokenGrantRedemption>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT tgr.*, br.Title as BadgeTitle, br.AcceptKey
+            FROM TokenGrantRedemption tgr
+            LEFT JOIN BadgeRecord br ON tgr.BadgeRecordId = br.Id
+            WHERE tgr.TokenGrantId = @TokenGrantId
+            ORDER BY tgr.RedeemedAt DESC
+        ";
+        command.Parameters.AddWithValue("@TokenGrantId", tokenGrantId);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var redemption = new TokenGrantRedemption
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                TokenGrantId = reader.GetInt64(reader.GetOrdinal("TokenGrantId")),
+                BadgeRecordId = reader.GetInt64(reader.GetOrdinal("BadgeRecordId")),
+                RecipientName = reader.GetString(reader.GetOrdinal("RecipientName")),
+                RecipientEmail = reader.IsDBNull(reader.GetOrdinal("RecipientEmail")) ? null : reader.GetString(reader.GetOrdinal("RecipientEmail")),
+                RecipientProfileUri = reader.IsDBNull(reader.GetOrdinal("RecipientProfileUri")) ? null : reader.GetString(reader.GetOrdinal("RecipientProfileUri")),
+                IpAddress = reader.IsDBNull(reader.GetOrdinal("IpAddress")) ? null : reader.GetString(reader.GetOrdinal("IpAddress")),
+                UserAgent = reader.IsDBNull(reader.GetOrdinal("UserAgent")) ? null : reader.GetString(reader.GetOrdinal("UserAgent")),
+                RedeemedAt = reader.GetDateTime(reader.GetOrdinal("RedeemedAt"))
+            };
+
+            if (!reader.IsDBNull(reader.GetOrdinal("BadgeTitle")))
+            {
+                redemption.BadgeRecord = new BadgeRecord
+                {
+                    Id = redemption.BadgeRecordId,
+                    Title = reader.GetString(reader.GetOrdinal("BadgeTitle")),
+                    AcceptKey = reader.IsDBNull(reader.GetOrdinal("AcceptKey")) ? null : reader.GetString(reader.GetOrdinal("AcceptKey"))
+                };
+            }
+
+            redemptions.Add(redemption);
+        }
+
+        return redemptions;
+    }
+
+    public void DeleteTokenGrant(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        // First delete associated redemptions
+        var deleteRedemptionsCommand = connection.CreateCommand();
+        deleteRedemptionsCommand.CommandText = "DELETE FROM TokenGrantRedemption WHERE TokenGrantId = @Id";
+        deleteRedemptionsCommand.Parameters.AddWithValue("@Id", id);
+        deleteRedemptionsCommand.ExecuteNonQuery();
+
+        // Then delete the token grant
+        var deleteTokenGrantCommand = connection.CreateCommand();
+        deleteTokenGrantCommand.CommandText = "DELETE FROM TokenGrant WHERE Id = @Id";
+        deleteTokenGrantCommand.Parameters.AddWithValue("@Id", id);
+        deleteTokenGrantCommand.ExecuteNonQuery();
+
+        transaction.Commit();
+    }
+
+    public bool IsShortCodeAvailable(string shortCode, long excludeId = 0)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM TokenGrant WHERE ShortCode = @ShortCode AND Id != @ExcludeId";
+        command.Parameters.AddWithValue("@ShortCode", shortCode);
+        command.Parameters.AddWithValue("@ExcludeId", excludeId);
+
+        var count = Convert.ToInt32(command.ExecuteScalar());
+        return count == 0;
     }
 }

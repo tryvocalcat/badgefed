@@ -1,0 +1,558 @@
+@page "/admin/token-grants"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalDbService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/grants">Grants</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Token Grants</a></li>
+        </ul>
+    </nav>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">Token Grants</h1>
+                    <p class="subtitle">Create public token-based badge grants that anyone can redeem</p>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <button class="button is-primary" @onclick="ShowCreateModal">
+                    <span class="icon">
+                        <i class="fas fa-plus"></i>
+                    </span>
+                    <span>Create Token Grant</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    @if (tokenGrants == null)
+    {
+        <div class="has-text-centered">
+            <span class="icon is-large">
+                <i class="fas fa-spinner fa-pulse"></i>
+            </span>
+            <p>Loading token grants...</p>
+        </div>
+    }
+    else if (tokenGrants.Count == 0)
+    {
+        <div class="has-text-centered">
+            <div class="content">
+                <span class="icon is-large has-text-grey-light">
+                    <i class="fas fa-coins fa-3x"></i>
+                </span>
+                <h3 class="title is-4 has-text-grey">No Token Grants</h3>
+                <p class="has-text-grey">Create your first token grant to allow public badge redemption.</p>
+                <button class="button is-primary" @onclick="ShowCreateModal">
+                    <span class="icon">
+                        <i class="fas fa-plus"></i>
+                    </span>
+                    <span>Create First Token Grant</span>
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table is-fullwidth is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Badge</th>
+                        <th>Short Code</th>
+                        <th>Status</th>
+                        <th>Enabled</th>
+                        <th>Redemptions</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tokenGrant in tokenGrants)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@tokenGrant.Title</strong>
+                                @if (!string.IsNullOrEmpty(tokenGrant.Description))
+                                {
+                                    <br><small class="has-text-grey">@tokenGrant.Description</small>
+                                }
+                            </td>
+                            <td>
+                                @if (tokenGrant.Badge != null)
+                                {
+                                    <div class="media">
+                                        @if (!string.IsNullOrEmpty(tokenGrant.Badge.Image))
+                                        {
+                                            <div class="media-left">
+                                                <figure class="image is-32x32">
+                                                    <img src="@tokenGrant.Badge.Image" alt="@tokenGrant.Badge.Title" />
+                                                </figure>
+                                            </div>
+                                        }
+                                        <div class="media-content">
+                                            <strong>@tokenGrant.Badge.Title</strong>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="has-text-danger">Badge not found</span>
+                                }
+                            </td>
+                            <td>
+                                <code>@tokenGrant.ShortCode</code>
+                                <br>
+                                <small>
+                                    <a href="@tokenGrant.PublicUrl" target="_blank" class="has-text-link">
+                                        @tokenGrant.PublicUrl
+                                        <span class="icon is-small">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </span>
+                                    </a>
+                                </small>
+                            </td>
+                            <td>
+                                @if (tokenGrant.IsActive)
+                                {
+                                    <span class="tag is-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="tag is-danger">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                @if (tokenGrant.EnabledAt == null)
+                                {
+                                    <span class="tag is-info">Always</span>
+                                }
+                                else if (tokenGrant.EnabledAt <= DateTime.UtcNow)
+                                {
+                                    <span class="tag is-success">Enabled</span>
+                                    <br><small>@tokenGrant.EnabledAt?.ToString("MMM dd, yyyy HH:mm") UTC</small>
+                                }
+                                else
+                                {
+                                    <span class="tag is-warning">Scheduled</span>
+                                    <br><small>@tokenGrant.EnabledAt?.ToString("MMM dd, yyyy HH:mm") UTC</small>
+                                }
+                            </td>
+                            <td>
+                                <strong>@tokenGrant.RedeemedCount</strong>
+                                @if (tokenGrant.MaxRedemptions.HasValue)
+                                {
+                                    <span>/ @tokenGrant.MaxRedemptions</span>
+                                    @if (tokenGrant.RedeemedCount >= tokenGrant.MaxRedemptions.Value)
+                                    {
+                                        <br><span class="tag is-danger">Exhausted</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <br><small class="has-text-grey">Unlimited</small>
+                                }
+                            </td>
+                            <td>
+                                @tokenGrant.CreatedAt.ToString("MMM dd, yyyy")
+                                <br><small class="has-text-grey">@tokenGrant.CreatedAt.ToString("HH:mm")</small>
+                            </td>
+                            <td>
+                                <div class="buttons are-small">
+                                    <button class="button is-info" @onclick="() => ShowRedemptions(tokenGrant.Id)">
+                                        <span class="icon">
+                                            <i class="fas fa-list"></i>
+                                        </span>
+                                        <span>View</span>
+                                    </button>
+                                    <button class="button is-primary" @onclick="() => EditTokenGrant(tokenGrant)">
+                                        <span class="icon">
+                                            <i class="fas fa-edit"></i>
+                                        </span>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="button is-danger" @onclick="() => ConfirmDelete(tokenGrant)">
+                                        <span class="icon">
+                                            <i class="fas fa-trash"></i>
+                                        </span>
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal @(showCreateModal ? "is-active" : "")" id="createModal">
+    <div class="modal-background" @onclick="HideCreateModal"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">
+                @(isEditing ? "Edit Token Grant" : "Create Token Grant")
+            </p>
+            <button class="delete" aria-label="close" @onclick="HideCreateModal"></button>
+        </header>
+        <section class="modal-card-body">
+            <EditForm Model="currentTokenGrant" OnValidSubmit="SaveTokenGrant">
+                <DataAnnotationsValidator />
+                
+                <div class="field">
+                    <label class="label">Title <span class="has-text-danger">*</span></label>
+                    <div class="control">
+                        <InputText @bind-Value="currentTokenGrant.Title" class="input" placeholder="Enter title for this token grant" />
+                    </div>
+                    <ValidationMessage For="@(() => currentTokenGrant.Title)" class="help is-danger" />
+                </div>
+
+                <div class="field">
+                    <label class="label">Description</label>
+                    <div class="control">
+                        <InputTextArea @bind-Value="currentTokenGrant.Description" class="textarea" rows="3" placeholder="Optional description" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Badge <span class="has-text-danger">*</span></label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <InputSelect @bind-Value="currentTokenGrant.BadgeId">
+                                <option value="0">Select a badge...</option>
+                                @if (availableBadges != null)
+                                {
+                                    @foreach (var badge in availableBadges)
+                                    {
+                                        <option value="@badge.Id">@badge.Title</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <ValidationMessage For="@(() => currentTokenGrant.BadgeId)" class="help is-danger" />
+                </div>
+
+                <div class="field">
+                    <label class="label">Short Code <span class="has-text-danger">*</span></label>
+                    <div class="control has-icons-left">
+                        <InputText @bind-Value="currentTokenGrant.ShortCode" class="input" placeholder="e.g., welcome2024" />
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-link"></i>
+                        </span>
+                    </div>
+                    <p class="help">
+                        Will be accessible at: <strong>/get/@(string.IsNullOrEmpty(currentTokenGrant.ShortCode) ? "{shortcode}" : currentTokenGrant.ShortCode)</strong>
+                        <br>Only letters, numbers, hyphens, and underscores allowed.
+                    </p>
+                    <ValidationMessage For="@(() => currentTokenGrant.ShortCode)" class="help is-danger" />
+                </div>
+
+                <div class="field">
+                    <label class="label">Enable Time</label>
+                    <div class="control">
+                        <input type="datetime-local" @bind="enabledAtLocal" class="input" />
+                    </div>
+                    <p class="help">
+                        Leave empty to enable immediately.
+                    </p>
+                    @if (enabledAtLocal.HasValue)
+                    {
+                        <p class="help">
+                            <strong>UTC:</strong> @(enabledAtLocal?.ToUniversalTime().ToString("yyyy-MM-dd HH:mm")) UTC<br />
+                            <strong>Local:</strong> @(enabledAtLocal?.ToString("yyyy-MM-dd HH:mm")) @(TimeZoneInfo.Local.DisplayName)
+                        </p>
+                    }
+                </div>
+
+                <div class="field">
+                    <label class="label">Maximum Redemptions</label>
+                    <div class="control">
+                        <InputNumber @bind-Value="currentTokenGrant.MaxRedemptions" class="input" placeholder="Leave empty for unlimited" />
+                    </div>
+                    <p class="help">Leave empty for unlimited redemptions.</p>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <InputCheckbox @bind-Value="currentTokenGrant.IsActive" />
+                            Active
+                        </label>
+                    </div>
+                    <p class="help">Inactive token grants cannot be redeemed.</p>
+                </div>
+
+                <div class="field is-grouped">
+                    <div class="control">
+                        <button type="submit" class="button is-primary">
+                            @(isEditing ? "Update" : "Create")
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button type="button" class="button is-light" @onclick="HideCreateModal">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </section>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal @(showDeleteModal ? "is-active" : "")" id="deleteModal">
+    <div class="modal-background" @onclick="HideDeleteModal"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Confirm Delete</p>
+            <button class="delete" aria-label="close" @onclick="HideDeleteModal"></button>
+        </header>
+        <section class="modal-card-body">
+            @if (tokenGrantToDelete != null)
+            {
+                <p>Are you sure you want to delete the token grant <strong>"@tokenGrantToDelete.Title"</strong>?</p>
+                <p class="has-text-danger">
+                    <strong>Warning:</strong> This will also delete all redemption records associated with this token grant. 
+                    However, the actual badge grants will remain intact.
+                </p>
+            }
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-danger" @onclick="DeleteTokenGrant">
+                <span class="icon">
+                    <i class="fas fa-trash"></i>
+                </span>
+                <span>Delete</span>
+            </button>
+            <button class="button" @onclick="HideDeleteModal">Cancel</button>
+        </footer>
+    </div>
+</div>
+
+@code {
+    private List<TokenGrant>? tokenGrants;
+    private List<Badge>? availableBadges;
+    private TokenGrant currentTokenGrant = new();
+    private TokenGrant? tokenGrantToDelete;
+    private DateTime? enabledAtLocal;
+    
+    private bool showCreateModal = false;
+    private bool showDeleteModal = false;
+    private bool isEditing = false;
+    
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Initialize the tables first
+            LocalDbService.InitializeTokenGrantTables();
+            
+            // Get token grants for current user's badges
+            string? ownerId = CurrentUser.IsAdmin() ? null : CurrentUser.Id;
+            tokenGrants = LocalDbService.GetAllTokenGrants(ownerId);
+            
+            // Get available badges for the dropdown
+            if (CurrentUser.IsAdmin())
+            {
+                availableBadges = LocalDbService.GetAllBadgeDefinitions();
+            }
+            else
+            {
+                // For non-admin users, get only their own badges
+                var allBadges = LocalDbService.GetAllBadgeDefinitions();
+                availableBadges = allBadges?.Where(b => b.OwnerId == CurrentUser.Id).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void ShowCreateModal()
+    {
+        currentTokenGrant = new TokenGrant 
+        { 
+            CreatedBy = CurrentUser.Id,
+            IsActive = true
+        };
+        enabledAtLocal = null;
+        isEditing = false;
+        showCreateModal = true;
+    }
+
+    private void EditTokenGrant(TokenGrant tokenGrant)
+    {
+        currentTokenGrant = new TokenGrant
+        {
+            Id = tokenGrant.Id,
+            Token = tokenGrant.Token,
+            ShortCode = tokenGrant.ShortCode,
+            BadgeId = tokenGrant.BadgeId,
+            Title = tokenGrant.Title,
+            Description = tokenGrant.Description,
+            EnabledAt = tokenGrant.EnabledAt,
+            MaxRedemptions = tokenGrant.MaxRedemptions,
+            RedeemedCount = tokenGrant.RedeemedCount,
+            IsActive = tokenGrant.IsActive,
+            CreatedBy = tokenGrant.CreatedBy,
+            CreatedAt = tokenGrant.CreatedAt,
+            UpdatedAt = tokenGrant.UpdatedAt
+        };
+        
+        enabledAtLocal = tokenGrant.EnabledAt?.ToLocalTime();
+        isEditing = true;
+        showCreateModal = true;
+    }
+
+    private void HideCreateModal()
+    {
+        showCreateModal = false;
+        currentTokenGrant = new();
+        enabledAtLocal = null;
+        isEditing = false;
+    }
+
+    private async Task SaveTokenGrant()
+    {
+        try
+        {
+            // Validate short code
+            if (string.IsNullOrEmpty(currentTokenGrant.ShortCode))
+            {
+                errorMessage = "Short code is required.";
+                return;
+            }
+
+            // Check if short code is available
+            if (!LocalDbService.IsShortCodeAvailable(currentTokenGrant.ShortCode, currentTokenGrant.Id))
+            {
+                errorMessage = "Short code is already in use. Please choose a different one.";
+                return;
+            }
+
+            // Convert local time to UTC
+            currentTokenGrant.EnabledAt = enabledAtLocal?.ToUniversalTime();
+
+            // Generate token if it's a new grant
+            if (currentTokenGrant.Id == 0)
+            {
+                currentTokenGrant.Token = Guid.NewGuid().ToString();
+            }
+
+            LocalDbService.UpsertTokenGrant(currentTokenGrant);
+            
+            successMessage = isEditing ? "Token grant updated successfully!" : "Token grant created successfully!";
+            HideCreateModal();
+            
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving token grant: {ex.Message}";
+        }
+    }
+
+    private void ConfirmDelete(TokenGrant tokenGrant)
+    {
+        tokenGrantToDelete = tokenGrant;
+        showDeleteModal = true;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        tokenGrantToDelete = null;
+    }
+
+    private async Task DeleteTokenGrant()
+    {
+        if (tokenGrantToDelete != null)
+        {
+            try
+            {
+                LocalDbService.DeleteTokenGrant(tokenGrantToDelete.Id);
+                successMessage = $"Token grant '{tokenGrantToDelete.Title}' deleted successfully.";
+                HideDeleteModal();
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting token grant: {ex.Message}";
+            }
+        }
+    }
+
+    private void ShowRedemptions(long tokenGrantId)
+    {
+        NavigationManager.NavigateTo($"/admin/token-grants/{tokenGrantId}/redemptions");
+    }
+}
+
+<style>
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .media {
+        align-items: center;
+    }
+    
+    .buttons {
+        flex-wrap: nowrap;
+    }
+    
+    .buttons .button {
+        margin-bottom: 0;
+    }
+</style>
