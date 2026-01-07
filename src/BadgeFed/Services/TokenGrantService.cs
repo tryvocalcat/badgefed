@@ -80,8 +80,7 @@ namespace BadgeFed.Services
                 {
                     BadgeId = tokenGrant.BadgeId,
                     ProfileUri = request.ProfileUri?.Trim(),
-                    Name = request.Name?.Trim(),
-                    Evidence = $"Redeemed via token grant: {tokenGrant.Title}"
+                    Name = request.Name?.Trim()
                 };
 
                 // Grant the badge

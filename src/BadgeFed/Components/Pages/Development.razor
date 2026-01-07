@@ -1,0 +1,537 @@
+@page "/admin/development"
+
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using BadgeFed.Core
+@using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
+@using System.Text
+@using ActivityPubDotNet.Core
+
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<Development> Logger
+@inject IHttpContextAccessor HttpContextAccessor
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<style>
+    .dev-warning {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dev-warning .icon {
+        font-size: 1.5rem;
+        margin-right: 0.5rem;
+    }
+    
+    .response-box {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .response-success {
+        border-color: #28a745;
+        background-color: #d4edda;
+    }
+    
+    .response-error {
+        border-color: #dc3545;
+        background-color: #f8d7da;
+    }
+</style>
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Development Tools</a></li>
+        </ul>
+    </nav>
+
+    <!-- Development Warning -->
+    <div class="dev-warning">
+        <div class="level is-mobile">
+            <div class="level-left">
+                <div class="level-item">
+                    <span class="icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </span>
+                    <div>
+                        <strong>Development Environment Only</strong>
+                        <p class="is-size-7 has-text-white-ter">This page is for testing and development purposes. Use with caution on production systems.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">Development Tools</h1>
+                    <p class="subtitle">Test inbox functionality and ActivityPub message processing</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    <div class="columns">
+        <div class="column is-6">
+            <!-- Message Builder -->
+            <div class="box">
+                <h3 class="title is-5">
+                    <span class="icon">
+                        <i class="fas fa-edit"></i>
+                    </span>
+                    <span>Message Builder</span>
+                </h3>
+
+                <div class="field">
+                    <label class="label">ActivityPub JSON Message</label>
+                    <div class="control">
+                        <textarea class="textarea" rows="12" @bind="customJson" 
+                                  placeholder="Paste your ActivityPub JSON message here or use the quick templates below..."
+                                  @oninput="OnCustomJsonChanged"></textarea>
+                    </div>
+                    <p class="help">Enter the complete ActivityPub JSON message to send to the inbox</p>
+                </div>
+
+                <div class="field is-grouped">
+                    <div class="control">
+                        <button class="button is-primary" @onclick="SendMessage" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="icon">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="icon">
+                                    <i class="fas fa-paper-plane"></i>
+                                </span>
+                            }
+                            <span>Send to Inbox</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button class="button is-light" @onclick="ClearForm">
+                            <span class="icon">
+                                <i class="fas fa-times"></i>
+                            </span>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="column is-6">
+            <!-- JSON Preview -->
+            <div class="box">
+                <h3 class="title is-5">
+                    <span class="icon">
+                        <i class="fas fa-code"></i>
+                    </span>
+                    <span>JSON Preview</span>
+                </h3>
+                
+                <div class="field">
+                    <div class="control">
+                        <div class="response-box">@jsonPreview</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response -->
+            @if (!string.IsNullOrEmpty(responseContent))
+            {
+                <div class="box">
+                    <h3 class="title is-5">
+                        <span class="icon">
+                            <i class="fas fa-terminal"></i>
+                        </span>
+                        <span>Response</span>
+                    </h3>
+                    
+                    <div class="field">
+                        <label class="label">Status: @responseStatus</label>
+                        <div class="control">
+                            <div class="response-box @(responseIsSuccess ? "response-success" : "response-error")">@responseContent</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Quick Test Templates -->
+    <div class="box">
+        <h3 class="title is-5">
+            <span class="icon">
+                <i class="fas fa-rocket"></i>
+            </span>
+            <span>Quick Test Templates</span>
+        </h3>
+
+        <div class="buttons">
+            <button class="button is-info is-outlined" @onclick="LoadFollowTemplate">
+                <span class="icon">
+                    <i class="fas fa-user-plus"></i>
+                </span>
+                <span>Follow Request</span>
+            </button>
+            <button class="button is-warning is-outlined" @onclick="LoadUndoTemplate">
+                <span class="icon">
+                    <i class="fas fa-user-minus"></i>
+                </span>
+                <span>Unfollow</span>
+            </button>
+            <button class="button is-success is-outlined" @onclick="LoadCreateTemplate">
+                <span class="icon">
+                    <i class="fas fa-plus-circle"></i>
+                </span>
+                <span>Create Activity</span>
+            </button>
+            <button class="button is-primary is-outlined" @onclick="LoadQuoteTemplate">
+                <span class="icon">
+                    <i class="fas fa-quote-left"></i>
+                </span>
+                <span>Quote Request</span>
+            </button>
+            <button class="button is-link is-outlined" @onclick="LoadAnnounceTemplate">
+                <span class="icon">
+                    <i class="fas fa-bullhorn"></i>
+                </span>
+                <span>Announce</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="box">
+        <h3 class="title is-5">
+            <span class="icon">
+                <i class="fas fa-history"></i>
+            </span>
+            <span>Recent Jobs</span>
+            <span class="tag is-light">Last 10</span>
+        </h3>
+
+        @if (recentJobs == null)
+        {
+            <div class="notification is-info is-light">
+                <p>Loading recent jobs...</p>
+            </div>
+        }
+        else if (!recentJobs.Any())
+        {
+            <div class="notification is-light">
+                <p>No recent jobs found. Send a message above to see job creation.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in recentJobs)
+                        {
+                            <tr>
+                                <td><strong>#@job.Id</strong></td>
+                                <td><span class="tag is-light">@job.JobType</span></td>
+                                <td>
+                                    <span class="tag @GetJobStatusClass(job.Status)">
+                                        @job.Status.ToUpper()
+                                    </span>
+                                </td>
+                                <td>@job.CreatedAt.ToString("HH:mm:ss")</td>
+                                <td>@job.CreatedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="field">
+            <button class="button is-small is-light" @onclick="LoadRecentJobs">
+                <span class="icon">
+                    <i class="fas fa-sync"></i>
+                </span>
+                <span>Refresh Jobs</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string customJson = "";
+    private string jsonPreview = "Use the quick templates below or paste your own ActivityPub JSON above";
+    
+    private string responseContent = "";
+    private string responseStatus = "";
+    private bool responseIsSuccess = false;
+    
+    private bool isLoading = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+    
+    private List<SimpleJob>? recentJobs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentJobs();
+    }
+
+    private void OnCustomJsonChanged()
+    {
+        // If custom JSON is provided, use it as the preview
+        if (!string.IsNullOrWhiteSpace(customJson))
+        {
+            try
+            {
+                var parsed = JsonDocument.Parse(customJson);
+                jsonPreview = JsonSerializer.Serialize(parsed, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                jsonPreview = "Invalid JSON format";
+            }
+        }
+        else
+        {
+            jsonPreview = "Use the quick templates below or paste your own ActivityPub JSON above";
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        isLoading = true;
+        errorMessage = "";
+        successMessage = "";
+        responseContent = "";
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(customJson))
+            {
+                errorMessage = "Please enter a JSON message or use one of the quick templates.";
+                return;
+            }
+
+            var httpClient = HttpClientFactory.CreateClient();
+            var baseUrl = $"{HttpContextAccessor.HttpContext?.Request.Scheme}://{HttpContextAccessor.HttpContext?.Request.Host}";
+            var inboxUrl = $"{baseUrl}/inbox";
+
+            var content = new StringContent(customJson, Encoding.UTF8, "application/json");
+            
+            Logger.LogInformation("Sending test message to inbox: {Url}", inboxUrl);
+            Logger.LogInformation("Message content: {Content}", customJson);
+
+            var response = await httpClient.PostAsync(inboxUrl, content);
+            
+            responseStatus = $"{(int)response.StatusCode} {response.StatusCode}";
+            responseIsSuccess = response.IsSuccessStatusCode;
+            
+            var responseText = await response.Content.ReadAsStringAsync();
+            responseContent = string.IsNullOrEmpty(responseText) ? "No response body" : responseText;
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Message sent successfully! Check Recent Jobs below to see if a job was created.";
+                await LoadRecentJobs(); // Refresh the jobs list
+            }
+            else
+            {
+                errorMessage = $"Failed to send message: {responseStatus}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error sending message: {ex.Message}";
+            responseContent = ex.ToString();
+            responseStatus = "Exception";
+            responseIsSuccess = false;
+            
+            Logger.LogError(ex, "Error sending test message to inbox");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void LoadTemplate(string messageType)
+    {
+        var actorUrl = "https://badgefed.org/users/testuser";
+        var messageId = $"https://badgefed.org/activities/{Guid.NewGuid()}";
+        var objectUrl = $"https://badgefed.org/objects/{Guid.NewGuid()}";
+        
+        var message = messageType switch
+        {
+            "Follow" => new
+            {
+                Id = messageId,
+                Type = "Follow",
+                Actor = actorUrl,
+                Object = "https://yoursite.com/users/youractor"
+            },
+            "Undo" => new
+            {
+                Id = messageId,
+                Type = "Undo",
+                Actor = actorUrl,
+                Object = new { Type = "Follow", Actor = actorUrl, Object = "https://yoursite.com/users/youractor" }
+            },
+            "Create" => new
+            {
+                Id = messageId,
+                Type = "Create",
+                Actor = actorUrl,
+                Object = new
+                {
+                    Type = "Note",
+                    Id = objectUrl,
+                    Content = "This is a test note created from the development tools.",
+                    AttributedTo = actorUrl,
+                    To = new[] { "https://www.w3.org/ns/activitystreams#Public" }
+                }
+            },
+            "QuoteRequest" => new
+            {
+                Id = messageId,
+                Type = "QuoteRequest",
+                Actor = actorUrl,
+                Object = objectUrl
+            },
+            "Announce" => new
+            {
+                Id = messageId,
+                Type = "Announce",
+                Actor = actorUrl,
+                Object = objectUrl
+            },
+            _ => (object)new { }
+        };
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        customJson = JsonSerializer.Serialize(message, options);
+        OnCustomJsonChanged(); // Update the preview
+    }
+
+    private void ClearForm()
+    {
+        customJson = "";
+        jsonPreview = "Use the quick templates below or paste your own ActivityPub JSON above";
+        responseContent = "";
+        responseStatus = "";
+        errorMessage = "";
+        successMessage = "";
+    }
+
+    private async Task LoadRecentJobs()
+    {
+        try
+        {
+            var domain = HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost";
+            var jobQueue = new JobQueueService(domain);
+
+            using var connection = jobQueue.GetQueueDbInstance().GetConnection();
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT Id, JobType, Domain, Status, CreatedAt, CreatedBy
+                FROM Jobs 
+                WHERE Domain = @domain 
+                ORDER BY CreatedAt DESC 
+                LIMIT 10";
+            command.Parameters.AddWithValue("@domain", domain);
+
+            recentJobs = new List<SimpleJob>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                recentJobs.Add(new SimpleJob
+                {
+                    Id = reader.GetInt64(0),
+                    JobType = reader.GetString(1),
+                    Domain = reader.GetString(2),
+                    Status = reader.GetString(3),
+                    CreatedAt = reader.GetDateTime(4),
+                    CreatedBy = reader.IsDBNull(5) ? null : reader.GetString(5)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading recent jobs");
+            recentJobs = new List<SimpleJob>();
+        }
+    }
+
+    private string GetJobStatusClass(string status)
+    {
+        return status switch
+        {
+            "pending" => "is-info",
+            "processing" => "is-warning",
+            "completed" => "is-success",
+            "failed" => "is-danger",
+            _ => "is-light"
+        };
+    }
+
+    // Wrapper methods for template loading
+    private void LoadFollowTemplate() => LoadTemplate("Follow");
+    private void LoadUndoTemplate() => LoadTemplate("Undo");
+    private void LoadCreateTemplate() => LoadTemplate("Create");
+    private void LoadQuoteTemplate() => LoadTemplate("QuoteRequest");
+    private void LoadAnnounceTemplate() => LoadTemplate("Announce");
+}
