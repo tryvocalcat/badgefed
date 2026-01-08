@@ -144,8 +144,14 @@ namespace ActivityPubDotNet.Core
             // target could be https://communitycredentials.org/view/actor/communitycredentials.org/issuer
             // but we need to check https://communitycredentials.org/actors/communitycredentials.org/issuer
             var targetClean = target!.Replace("/view/actor/", "/actors/");
-
+           
             var actor = db.GetActorByFilter($"Uri = \"{targetClean}\"")!;
+
+            if (actor == null)
+            {
+                Logger?.LogWarning($"Actor not found for URI: {targetClean} or {target}");
+                throw new Exception($"Actor not found for uri: {targetClean}");
+            }
 
             var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
 

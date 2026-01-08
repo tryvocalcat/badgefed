@@ -78,6 +78,9 @@ builder.Services.AddScoped<CreateNoteService>();
 builder.Services.AddScoped<QuoteRequestService>();
 builder.Services.AddScoped<ServerDiscoveryService>();
 
+// Register JobQueueService with IHttpContextAccessor
+builder.Services.AddScoped<JobQueueService>();
+
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
@@ -332,8 +335,10 @@ async Task SetupDefaultActor(IServiceProvider services)
     var domains = configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "example.com" };
     var defaultUsername = "badgerelay";
 
-    foreach (var domain in domains)
+    foreach (var domainRaw in domains)
     {
+        var domain = domainRaw.Split(':')[0];
+
         Console.WriteLine($"Setting up default actor for domain: {domain}");
         // domain could be localhost:5000 we need to take just the hostname portion of it
         var localDbService = new LocalScopedDb(domain);
