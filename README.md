@@ -32,12 +32,12 @@ To run BadgeFed in a Docker container, follow these steps:
 
 1. **Build the Docker Image:**
    ```sh
-   docker build -t badgefed .
+   docker build -t badgefed src/
    ```
 
 2. **Run the Container (with persistence for data storage):**
    ```sh
-   docker run -d -p 8080:8080 --name badgefed \q
+   docker run -d -p 8080:8080 --name badgefed \
     -v $(pwd)/badgefed/data:/app/data \
     -v $(pwd)/badgefed/config:/app/config \
     -v $(pwd)/badgefed/pages:/app/wwwroot/pages \
