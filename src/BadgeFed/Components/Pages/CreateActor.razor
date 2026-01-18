@@ -121,9 +121,53 @@
     .social-field:last-child {
         margin-bottom: 0;
     }
+    .required-asterisk {
+        color: #e53e3e;
+        margin-left: 2px;
+        font-weight: bold;
+    }
+    .field-label.required {
+        position: relative;
+    }
+    .warning-banner {
+        background: #fef3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 2rem;
+        color: #856404;
+    }
+    .warning-banner .warning-icon {
+        color: #ffc107;
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .warning-banner .warning-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .warning-banner .warning-text {
+        margin: 0;
+        font-size: 0.925rem;
+    }
 </style>
 
 <div class="form-section">
+    @if (string.IsNullOrEmpty(Model?.Domain))
+    {
+        <div class="warning-banner">
+            <div class="warning-title">
+                <i class="fas fa-exclamation-triangle warning-icon"></i>
+                Domain Configuration Required
+            </div>
+            <p class="warning-text">
+                The domain could not be automatically detected from the request. This may cause issues with actor creation and federation. Please check your server configuration or contact your administrator.
+            </p>
+        </div>
+    }
+
     <div class="form-header">
                 
         @if (string.IsNullOrEmpty(ActorId))
@@ -142,9 +186,9 @@
         <div class="columns is-multiline">
             <div class="column is-6">
             <div class="field">
-                <label class="field-label" for="name">Full Name</label>
+                <label class="field-label required" for="name">Full Name<span class="required-asterisk">*</span></label>
                 <div class="control">
-                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" />
+                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" required />
                     </div>
                     <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
                 </div>
@@ -152,7 +196,7 @@
 
             <div class="column is-6">
                 <div class="field">
-                    <label class="field-label" for="username">Username</label>
+                    <label class="field-label required" for="username">Username<span class="required-asterisk">*</span></label>
                     
                     <div class="control">
                         @if (!string.IsNullOrEmpty(ActorId))
@@ -162,7 +206,7 @@
                         }
                         else
                         {
-                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" />
+                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" required />
                             <p class="help-text">This will be the actor's handle (e.g. username@@@Model.Domain)</p>
                         }
                     </div>
@@ -173,9 +217,9 @@
 
             <div class="column is-12">
                 <div class="field">
-                    <label class="field-label" for="summary">Summary</label>
+                    <label class="field-label required" for="summary">Summary<span class="required-asterisk">*</span></label>
                     <div class="control">
-                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" />
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" required />
                     </div>
                     <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
                 </div>
@@ -432,6 +476,8 @@
 
             // initialize domain based on request host
         }
+
+        Console.WriteLine("[DEBUG] Host: " + HttpContextAccessor?.HttpContext?.Request?.Host.Value);
         
         if (string.IsNullOrEmpty(Model.Domain))
         {
