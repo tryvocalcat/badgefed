@@ -29,22 +29,48 @@ public class QueueDb
         return dbFileName;
     }
 
+    private bool IsDbHealthy()
+    {
+        // check if table Jobs exists
+        using var connection = GetConnection();
+        connection.Open();
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Jobs';";
+        var result = command.ExecuteScalar();
+        if (result == null)
+        {
+            Log(LogLevel.Error, "Jobs table does not exist in Queue DB at {DatabasePath}", DbPath);
+        }
+        else
+        {
+            Log(LogLevel.Information, "Queue DB at {DatabasePath} is healthy", DbPath);
+        }
+
+        connection.Close();
+
+        return result != null;
+    }
+
     private void CreateDb()
     {
         // create if not exists
-        if (!File.Exists(DbPath))
+        if (!File.Exists(DbPath) || !IsDbHealthy())
         {
+            Log(LogLevel.Information, "Creating Queue Database at {DatabasePath}...", DbPath);
             using var connection = GetConnection();
             connection.Open();
 
             var command = connection.CreateCommand();
             //read from init.sql
-            var sql = File.ReadAllText("init.queue.sql");
+            var sql = File.ReadAllText("assets/queuedb/1.0.0_init.queue.sql");
             command.CommandText = sql;
             command.ExecuteNonQuery();
             connection.Close();
 
             Log(LogLevel.Information, "Database created at {DatabasePath}", DbPath);
+        } else
+        {
+            Log(LogLevel.Information, "Database already exists at {DatabasePath}", DbPath);
         }
     }
 
@@ -82,7 +108,7 @@ public class QueueDb
                 : httpContextAccessor.HttpContext?.Request?.Host.Host + "-queue.db"
           )
     {
-      
+        
     }
 
     public SQLiteConnection GetConnection()

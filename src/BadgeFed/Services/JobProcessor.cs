@@ -21,8 +21,10 @@ public class JobProcessor
         Logger = logger;
     }
 
-    public async Task DoWorkAsync(CancellationToken stoppingToken)
+    public async Task<int> DoWorkAsync(CancellationToken stoppingToken)
     {
+        var jobsProcessed = 0;
+
         foreach (var domainRaw in _domains)
         {
             // removing port
@@ -45,8 +47,10 @@ public class JobProcessor
             await ProcessFollowersAsync(db, badgeProcessor);
             
             // Process next queue work
-            await ProcessNextQueueWorkAsync(domain);
+            jobsProcessed += await ProcessNextQueueWorkAsync(domain);
         }
+        
+        return jobsProcessed;
     }
 
     private async Task ProcessNextNotifyGrantAsync(LocalScopedDb _dbService, BadgeProcessor _badgeProcessor)
@@ -113,11 +117,13 @@ public class JobProcessor
         }
     }
     
-    private async Task ProcessNextQueueWorkAsync(string domain)
+    private async Task<int> ProcessNextQueueWorkAsync(string domain)
     {
         var jobQueue = new JobQueueService(domain, Logger as ILogger<JobQueueService>);
         
         Logger?.LogInformation("Processing up to {MaxJobs} queue jobs for domain {Domain}", _maxJobsPerRun, domain);
+
+        var count = 0;
         
         // Process multiple jobs in one run
         for (int i = 0; i < _maxJobsPerRun; i++)
@@ -134,6 +140,8 @@ public class JobProcessor
             
             Logger?.LogInformation("Found queue job {JobId} of type {JobType} for processing ({JobNumber}/{MaxJobs})", 
                 job.Id, job.JobType, i + 1, _maxJobsPerRun);
+            
+            count++;
             
             try
             {
@@ -170,6 +178,8 @@ public class JobProcessor
             
             Logger?.LogInformation("Completed placeholder processing for job {JobId} ({JobNumber}/{MaxJobs})", job.Id, i + 1, _maxJobsPerRun);
         }
+    
+        return count;
     }
 
     private async Task ProcessAcceptFollowRequestJob(SimpleJob job, string domain)

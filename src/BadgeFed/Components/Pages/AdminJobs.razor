@@ -52,43 +52,6 @@
         </div>
     }
 
-    <!-- Queue Statistics -->
-    <div class="columns">
-        <div class="column">
-            <div class="box">
-                <h3 class="title is-5">Queue Statistics</h3>
-                @if (queueStats.Any())
-                {
-                    <div class="columns is-multiline">
-                        @foreach (var status in new[] { "pending", "processing", "completed", "failed" })
-                        {
-                            var count = queueStats.ContainsKey(status) ? queueStats[status] : 0;
-                            var colorClass = status switch
-                            {
-                                "pending" => "is-info",
-                                "processing" => "is-warning", 
-                                "completed" => "is-success",
-                                "failed" => "is-danger",
-                                _ => "is-light"
-                            };
-                            
-                            <div class="column is-3">
-                                <div class="box @colorClass has-text-white has-text-centered">
-                                    <p class="heading has-text-white">@status.ToUpper()</p>
-                                    <p class="title has-text-white">@count</p>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p>Loading queue statistics...</p>
-                }
-            </div>
-        </div>
-    </div>
-
     <!-- Jobs Table -->
     <div class="box">
         <div class="level">

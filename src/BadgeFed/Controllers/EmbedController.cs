@@ -51,7 +51,7 @@ namespace BadgeFed.Controllers
                 limit = Math.Min(Math.Max(limit, 1), 50);
 
                 var filter = $@"
-                    FingerPrint IS NOT NULL 
+                    (IsExternal = 1 OR FingerPrint IS NOT NULL)
                     AND NoteId IS NOT NULL 
                     AND Visibility = 'Public'
                     AND (IssuedToSubjectUri = '{decodedRecipient}' OR IssuedToSubjectUri = '{recipient}')
