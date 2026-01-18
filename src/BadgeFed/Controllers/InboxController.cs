@@ -16,6 +16,7 @@ namespace BadgeFed.Controllers
         private readonly CreateNoteService _createNoteService;
         private readonly BadgeProcessor _badgeProcessor;
         private readonly QuoteRequestService _quoteRequestService;
+        private readonly JobQueueService _jobQueue;
 
         private readonly LocalScopedDb _db;
 
@@ -25,6 +26,7 @@ namespace BadgeFed.Controllers
             CreateNoteService createNoteService,
             BadgeProcessor badgeProcessor,
             QuoteRequestService quoteRequestService,
+            JobQueueService jobQueue,
             LocalScopedDb db)
         {
             _logger = logger;
@@ -32,6 +34,7 @@ namespace BadgeFed.Controllers
             _createNoteService = createNoteService;
             _badgeProcessor = badgeProcessor;
             _quoteRequestService = quoteRequestService;
+            _jobQueue = jobQueue;
             _db = db;
         }
 
@@ -61,92 +64,37 @@ namespace BadgeFed.Controllers
                 if (message.IsFollow())
                 {
                     _logger?.LogInformation($"Follow action for actor: {message.Actor}");
-                    await _followService.AcceptFollowRequest(message, _db);
+                    
+                    // Insert job into queue
+                    await _jobQueue.AddJobAsync("accept_follow_request", message, createdBy: "InboxController");
                 }
                 else if (message.IsUndoFollow())
                 {
                     _logger?.LogInformation($"Unfollow action for actor: {message.Actor}");
-                    await _followService.Unfollow(message);
+                    
+                    // Insert job into queue
+                    await _jobQueue.AddJobAsync("unfollow", message, createdBy: "InboxController");
                 }
                 else if (message.IsQuoteRequest())
                 {
                     _logger?.LogInformation($"Quote request for actor: {message.Actor}");
-                    await _quoteRequestService.ProcessQuoteRequest(message);
+                    
+                    // Insert job into queue
+                    await _jobQueue.AddJobAsync("process_quote_request", message, createdBy: "InboxController");
                 }
                 else if (message.IsCreateActivity())
                 {
                     _logger?.LogInformation($"Create action for actor: {message.Actor}");
-                    var result = await _createNoteService.ProcessMessage(message, _db);
-                    _logger?.LogInformation($"Create action result: {result.Type}");
-
-                    switch (result.Type)
-                    {
-                        case CreateNoteResultType.ExternalBadgeProcessed:
-                            if (result.BadgeRecord != null)
-                            {
-                                _logger?.LogInformation($"External badge processed, announcing grant for badge {result.BadgeRecord.Id}");
-                                await _badgeProcessor.AnnounceGrantByMainActor(result.BadgeRecord);
-                            }
-                            else
-                            {
-                                _logger?.LogWarning("ExternalBadgeProcessed result missing BadgeRecord");
-                            }
-                            break;
-                        case CreateNoteResultType.Error:
-                            _logger?.LogError($"Error processing create activity: {result.ErrorMessage}");
-                            if (result.Exception != null)
-                            {
-                                _logger?.LogError(result.Exception, "Exception details");
-                            }
-                            break;
-                        case CreateNoteResultType.Reply:
-                            _logger?.LogInformation("Processed as reply to existing badge");
-                            break;
-                        case CreateNoteResultType.NotProcessed:
-                            _logger?.LogInformation("Create activity not processed");
-                            break;
-                        default:
-                            _logger?.LogWarning($"Unknown result type: {result.Type}");
-                            break;
-                    }
+                    
+                    // Insert job into queue
+                    await _jobQueue.AddJobAsync("create_activity", message, createdBy: "InboxController");
                 }
                 else if (message.IsAnnounce())
                 {
                     _logger?.LogInformation($"Announce action for actor: {message.Actor}");
-                    var mainActor = _db.GetMainActor();
-                    var result = await _createNoteService.ProcessAnnounce(message, mainActor, _db);
-                    _logger?.LogInformation($"Announce action result: {result.Type}");
-
-                    switch (result.Type)
-                    {
-                        case CreateNoteResultType.ExternalBadgeProcessed:
-                            if (result.BadgeRecord != null)
-                            {
-                                _logger?.LogInformation($"External badge processed via announce, announcing grant for badge {result.BadgeRecord.Id}");
-                                await _badgeProcessor.AnnounceGrantByMainActor(result.BadgeRecord);
-                            }
-                            else
-                            {
-                                _logger?.LogWarning("ExternalBadgeProcessed result missing BadgeRecord");
-                            }
-                            break;
-                        case CreateNoteResultType.Error:
-                            _logger?.LogError($"Error processing announce activity: {result.ErrorMessage}");
-                            if (result.Exception != null)
-                            {
-                                _logger?.LogError(result.Exception, "Exception details");
-                            }
-                            break;
-                        case CreateNoteResultType.Reply:
-                            _logger?.LogInformation("Processed as reply to existing badge");
-                            break;
-                        case CreateNoteResultType.NotProcessed:
-                            _logger?.LogInformation("Announce activity not processed");
-                            break;
-                        default:
-                            _logger?.LogWarning($"Unknown result type: {result.Type}");
-                            break;
-                    }
+                    
+                    // Insert job into queue
+                    await _jobQueue.AddJobAsync("process_announce", message, createdBy: "InboxController");
                 }
                 
             }

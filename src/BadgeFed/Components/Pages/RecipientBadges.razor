@@ -299,10 +299,21 @@
     }
     
     .badge-image {
-        width: 100%;
-        height: 100%;
+        padding: 35px;
         object-fit: cover;
         border-radius: 8px;
+    }
+    
+    @@media (max-width: 1024px) {
+        .badge-image {
+            padding: 20px;
+        }
+    }
+    
+    @@media (max-width: 768px) {
+        .badge-image {
+            padding: 10px;
+        }
     }
     
     .empty-state {

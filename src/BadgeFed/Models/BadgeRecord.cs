@@ -30,7 +30,7 @@ namespace BadgeFed.Models
                     return string.Empty;
                 }
 
-                if (Image.StartsWith("http://") || Image.StartsWith("https://") || !IsExternal)
+                if (Image.StartsWith("http://") || Image.StartsWith("https://"))
                 {
                     return Image;
                 }
