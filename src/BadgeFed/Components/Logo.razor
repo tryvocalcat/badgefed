@@ -1,4 +1,5 @@
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ICustomAssetPathService CustomAssetPathService
 <a class="navbar-item navbar-logo" href="/">
     <img src="@logoSrc" style="max-width: 400px" />
 </a>
@@ -21,9 +22,8 @@
         }
 
         var logoFileName = $"logo.{domain}.png";
-        var webRoot = env?.WebRootPath ?? string.Empty;
-        var logoPath = System.IO.Path.Combine(webRoot, logoFileName);
+        var logoPath = Path.Combine(CustomAssetPathService.GetImagesPath(), logoFileName);
 
-        logoSrc = System.IO.File.Exists(logoPath) ? $"/{logoFileName}" : "/logo.h.png";
+        logoSrc = System.IO.File.Exists(logoPath) ? CustomAssetPathService.GetImageUrl(logoFileName) : "/logo.h.png";
     }
 }

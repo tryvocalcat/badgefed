@@ -42,6 +42,8 @@ public interface ICustomAssetPathService
     /// </summary>
     /// <param name="relativePath">Relative path components</param>
     string GetCustomAssetPath(params string[] relativePath);
+
+    string GetCustomAssetUrl(string asset);
     
     /// <summary>
     /// Gets the URL for an uploaded badge image

@@ -53,7 +53,7 @@
         </h2>
         
         <div class="content">
-            <p>Upload a custom logo to replace the default. <strong>File must be PNG</strong> and will be saved as <code>logo.h.png</code>.</p>
+            <p>Upload a custom logo to replace the default. <strong>File MUST be PNG</strong>.</p>
         </div>        <div class="field">
             <label class="label">Choose Logo File</label>
             <div class="control">
@@ -220,8 +220,9 @@
             {
                 domain = domain.Replace(c, '_');
             }
+            
             var logoFileName = $"logo.{domain}.png";
-            var logoPath = CustomAssetPathService.GetCustomAssetPath(logoFileName);
+            var logoPath = Path.Combine(CustomAssetPathService.GetImagesPath(), logoFileName);
             
             using (var stream = SelectedLogoFile.OpenReadStream(5 * 1024 * 1024)) // 5MB max
             using (var fs = File.Create(logoPath))

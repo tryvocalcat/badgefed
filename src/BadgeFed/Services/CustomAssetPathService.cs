@@ -80,6 +80,11 @@ public class CustomAssetPathService : ICustomAssetPathService
         return Path.Combine(allPaths);
     }
 
+    public string GetCustomAssetUrl(string asset)
+    {
+        return $"{CUSTOM_ASSETS_URL}/{asset}";
+    }
+
     public string GetBadgeUrl(string fileName)
     {
         return $"{CUSTOM_ASSETS_URL}/badges/{fileName}";
