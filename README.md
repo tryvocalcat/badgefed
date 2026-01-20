@@ -10,7 +10,7 @@ BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system insp
 ## Features
 
 - Issue and manage digital badges and grants
-- ActivityPub protocol support for federation ([see implementation details](./DETAILS.md))
+- ActivityPub protocol support for federation ([see implementation details](./FEDERATION.md))
 - Built with .NET 9
 - OAuth login (Mastodon, LinkedIn)
 - Email notifications
@@ -186,7 +186,7 @@ If you are using a reverse proxy, you need to make sure that your original host 
 
 ## ActivityPub & OpenBadge Implementation
 
-For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [DETAILS.md](./DETAILS.md).
+For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [FEDERATION.md](./FEDERATION.md).
 
 ---
 
