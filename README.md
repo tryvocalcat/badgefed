@@ -3,6 +3,7 @@
 BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system inspired by Credly, built with .NET and leveraging the ActivityPub protocol and the OpenBadges spec. It enables issuing, managing, and verifying digital badges across federated servers.
 
 - **Blog:** [badgefed.vocalcat.com](https://badgefed.vocalcat.com/)
+- **Matrix:** [@badgefed:matrix.org](https://matrix.to/#/#badgefed:matrix.org)
 
 ---
 
@@ -164,6 +165,23 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
   ```
 - **Usage:** Update the SMTP server, port, sender email, and credentials for email functionality.
 
+### Reverse proxy
+
+If you are using a reverse proxy, you need to make sure that your original host gets forwarded and that your WebSockets upgrades are properly handled. An example configuration for nginx below:
+
+```nginx
+    location / {
+        proxy_pass https://example.com;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+```
 ---
 
 ## ActivityPub & OpenBadge Implementation

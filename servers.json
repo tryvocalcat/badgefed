@@ -54,7 +54,13 @@
         "categories": ["Podcast", "Community", "Fediverse", "Media"],
         "admin": "Fireside Fedi",
         "actor": "https://badges.firesidefedi.live/actors/badges.firesidefedi.live/admin"
+    },
+    {
+        "name": "Odznaki Reszki",
+        "url": "https://odznaka.reszka.org",
+        "description": "Polskojęzyczny wydawca odznak i certyfikacji w Fediwersum",
+        "categories": ["Polish", "Nonprofits", "Event", "Community", "Conference", "OpenSource"],
+        "admin": "Fundacja Wolnego Oprogramowania Reszka",
+        "actor": "https://odznaka.reszka.org/actors/odznaka.reszka.org/admin"
     }
 ]
-
-
