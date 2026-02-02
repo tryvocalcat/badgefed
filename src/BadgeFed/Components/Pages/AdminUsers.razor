@@ -1,0 +1,765 @@
+@page "/admin/users"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager NavigationManager
+@inject UserService UserService
+@inject IJSRuntime JSRuntime
+@inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalScopedDb
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">User Management</a></li>
+        </ul>
+    </nav>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">User Management Dashboard</h1>
+                    <p class="subtitle">Manage system users, registrations, and invitations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Options -->
+    <div class="columns mb-5">
+        <div class="column is-3">
+            <div class="card">
+                <div class="card-content">
+                    <div class="media">
+                        <div class="media-left">
+                            <figure class="image is-48x48">
+                                <span class="icon is-large has-text-info">
+                                    <i class="fas fa-clipboard-list fa-2x"></i>
+                                </span>
+                            </figure>
+                        </div>
+                        <div class="media-content">
+                            <p class="title is-6">User Registrations</p>
+                            <p class="subtitle is-7">Review user applications</p>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <p>Manage user registration requests where users apply to join your instance.</p>
+                        <br>
+                        <a class="button is-info is-fullwidth" href="/admin/registrations">
+                            <span class="icon">
+                                <i class="fas fa-clipboard-list"></i>
+                            </span>
+                            <span>Manage Registrations</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="card">
+                <div class="card-content">
+                    <div class="media">
+                        <div class="media-left">
+                            <figure class="image is-48x48">
+                                <span class="icon is-large has-text-primary">
+                                    <i class="fas fa-envelope fa-2x"></i>
+                                </span>
+                            </figure>
+                        </div>
+                        <div class="media-content">
+                            <p class="title is-6">User Invitations</p>
+                            <p class="subtitle is-7">Invite users directly</p>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <p>Send direct invitations to specific users via email.</p>
+                        <br>
+                        <a class="button is-primary is-fullwidth" href="/admin/invitations">
+                            <span class="icon">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <span>Manage Invitations</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="card">
+                <div class="card-content">
+                    <div class="media">
+                        <div class="media-left">
+                            <figure class="image is-48x48">
+                                <span class="icon is-large has-text-warning">
+                                    <i class="fas fa-layer-group fa-2x"></i>
+                                </span>
+                            </figure>
+                        </div>
+                        <div class="media-content">
+                            <p class="title is-6">Group Management</p>
+                            <p class="subtitle is-7">Manage user groups</p>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <p>Create and manage user groups for better organization.</p>
+                        <br>
+                        <button class="button is-warning is-fullwidth" @onclick="ToggleGroupManagement">
+                            <span class="icon">
+                                <i class="fas fa-layer-group"></i>
+                            </span>
+                            <span>@(showGroupManagement ? "Hide Groups" : "Manage Groups")</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column is-3">
+            <div class="card">
+                <div class="card-content">
+                    <div class="media">
+                        <div class="media-left">
+                            <figure class="image is-48x48">
+                                <span class="icon is-large has-text-success">
+                                    <i class="fas fa-users fa-2x"></i>
+                                </span>
+                            </figure>
+                        </div>
+                        <div class="media-content">
+                            <p class="title is-6">Active Users</p>
+                            <p class="subtitle is-7">Current system users</p>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <p>View and manage all existing users in the system.</p>
+                        <br>
+                        <span class="tag is-success is-medium">Current Section</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Group Management Section -->
+    @if (showGroupManagement)
+    {
+        <div class="box mb-5">
+            <h2 class="title is-4">
+                <span class="icon">
+                    <i class="fas fa-layer-group"></i>
+                </span>
+                Group Management
+            </h2>
+
+            <!-- Create New Group Form -->
+            <div class="box has-background-light">
+                <h3 class="title is-5">Create New Group</h3>
+                <div class="columns">
+                    <div class="column is-4">
+                        <div class="field">
+                            <label class="label">Group Name</label>
+                            <div class="control">
+                                <input @bind="newGroupName" class="input" type="text" placeholder="Enter group name..." />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-6">
+                        <div class="field">
+                            <label class="label">Description (Optional)</label>
+                            <div class="control">
+                                <input @bind="newGroupDescription" class="input" type="text" placeholder="Enter group description..." />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <label class="label">&nbsp;</label>
+                            <div class="control">
+                                <button class="button is-primary is-fullwidth" @onclick="CreateNewGroup" disabled="@(string.IsNullOrWhiteSpace(newGroupName) || isCreatingGroup)">
+                                    @if (isCreatingGroup)
+                                    {
+                                        <span class="icon">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                        <span>Creating...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="icon">
+                                            <i class="fas fa-plus"></i>
+                                        </span>
+                                        <span>Create</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Groups List -->
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Description</th>
+                            <th>Users Count</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (allGroups != null)
+                        {
+                            @foreach (var group in allGroups)
+                            {
+                                var userCount = GetUserCountForGroup(group.Id);
+                                <tr>
+                                    <td><strong>@group.Name</strong></td>
+                                    <td>@(group.Description ?? "No description")</td>
+                                    <td>
+                                        <span class="tag is-info">@userCount users</span>
+                                    </td>
+                                    <td>@group.CreatedAt.ToString("MMM d, yyyy")</td>
+                                    <td>
+                                        <div class="buttons are-small">
+                                            @if (group.Id != "system")
+                                            {
+                                                @if (userCount == 0)
+                                                {
+                                                    <button class="button is-danger is-small" @onclick="() => DeleteGroup(group.Id)">
+                                                        <span class="icon">
+                                                            <i class="fas fa-trash"></i>
+                                                        </span>
+                                                        <span>Delete</span>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tag is-light">Has users</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-warning">System Group</span>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <!-- Statistics cards -->
+    <div class="columns">
+        <div class="column">
+            <div class="box has-text-centered">
+                <p class="heading">Total Users</p>
+                <p class="title">@totalUsers</p>
+            </div>
+        </div>
+        <div class="column">
+            <div class="box has-text-centered">
+                <p class="heading">Active Users</p>
+                <p class="title">@activeUsers</p>
+            </div>
+        </div>
+        <div class="column">
+            <div class="box has-text-centered">
+                <p class="heading">Admins</p>
+                <p class="title">@adminUsers</p>
+            </div>
+        </div>
+        <div class="column">
+            <div class="box has-text-centered">
+                <p class="heading">Managers</p>
+                <p class="title">@managerUsers</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users table -->
+    @if (allUsers == null)
+    {
+        <div class="notification is-info">
+            <p>Loading users...</p>
+        </div>
+    }
+    else if (!allUsers.Any())
+    {
+        <div class="notification is-light">
+            <p>No users found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Provider</th>
+                        <th>Role</th>
+                        <th>Group</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in allUsers)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@user.GivenName @user.Surname</strong>
+                            </td>
+                            <td>@user.Email</td>
+                            <td>
+                                <span class="tag @GetProviderTagClass(user.Provider)">
+                                    @GetProviderDisplayName(user.Provider)
+                                </span>
+                            </td>
+                            <td>
+                                <span class="tag @GetRoleTagClass(user.Role)">
+                                    @user.Role.ToTitleCase()
+                                </span>
+                            </td>
+                            <td>
+                                @if (user.Role == "admin")
+                                {
+                                    <span class="tag is-warning">System</span>
+                                }
+                                else if (allGroups != null)
+                                {
+                                    <div class="field has-addons">
+                                        <div class="control">
+                                            @if (IsGroupEditing(user.Id))
+                                            {
+                                                <div class="select is-small">
+                                                    <select @onchange="@((ChangeEventArgs e) => SaveGroupChange(user.Id, e.Value?.ToString() ?? user.GroupId))"
+                                                            value="@user.GroupId">
+                                                        @foreach (var group in allGroups)
+                                                        {
+                                                            <option value="@group.Id">@group.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-light">@(GetGroupName(user.GroupId))</span>
+                                            }
+                                        </div>
+                                        <div class="control">
+                                            <button class="button is-small @(IsGroupEditing(user.Id) ? "is-success" : "is-info")" 
+                                                    @onclick="() => ToggleGroupEdit(user.Id)">
+                                                <span class="icon is-small">
+                                                    <i class="fas @(IsGroupEditing(user.Id) ? "fa-check" : "fa-edit")"></i>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="tag is-light">@(GetGroupName(user.GroupId))</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="tag is-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="tag is-warning">Inactive</span>
+                                }
+                            </td>
+                            <td>@user.CreatedAt.ToString("MMM d, yyyy")</td>
+                            <td>
+                                <div class="buttons are-small">
+                                    @if (user.Id != CurrentUser.UserId)
+                                    {
+                                        @if (user.IsActive)
+                                        {
+                                            <button class="button is-warning is-small" @onclick="() => UpdateUserStatus(user.Id, false)">
+                                                <span class="icon">
+                                                    <i class="fas fa-user-slash"></i>
+                                                </span>
+                                                <span>Deactivate</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="button is-success is-small" @onclick="() => UpdateUserStatus(user.Id, true)">
+                                                <span class="icon">
+                                                    <i class="fas fa-user-check"></i>
+                                                </span>
+                                                <span>Activate</span>
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="tag is-light">Current User</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<style>
+    .dropdown:hover .dropdown-menu {
+        display: block;
+    }
+    
+    .buttons.are-small .button {
+        margin-right: 0.25rem;
+    }
+    
+    .dropdown-item.is-active {
+        background-color: #3273dc;
+        color: white;
+    }
+    
+    .select.is-small select {
+        font-size: 0.75rem;
+        padding: 0.25em 0.5em;
+    }
+    
+    .group-management-toggle {
+        transition: all 0.3s ease;
+    }
+    
+    .group-creation-form {
+        border-left: 4px solid #3273dc;
+        padding-left: 1rem;
+    }
+    
+    .field.has-addons .control:not(:last-child) {
+        margin-right: 0;
+    }
+    
+    .field.has-addons .button {
+        border-left: 0;
+    }
+    
+    .field.has-addons .select.is-small + .control .button {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+</style>
+
+@code {
+    private List<User>? allUsers = new();
+    private List<UserGroup>? allGroups = new();
+    private Dictionary<string, int> groupUserCounts = new();
+    private HashSet<string> editingGroupUserIds = new(); // Track which users are being edited
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool showGroupManagement = false;
+    
+    // Group creation variables
+    private string newGroupName = string.Empty;
+    private string newGroupDescription = string.Empty;
+    private bool isCreatingGroup = false;
+    
+    private int totalUsers = 0;
+    private int activeUsers = 0;
+    private int adminUsers = 0;
+    private int managerUsers = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+        await LoadGroups();
+        CalculateStatistics();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            allUsers = UserService.GetAllUsers();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading users: {ex.Message}";
+        }
+    }
+
+    private async Task LoadGroups()
+    {
+        try
+        {
+            allGroups = UserService.GetAllUserGroups();
+            Console.WriteLine($"Loaded {allGroups?.Count ?? 0} groups.");
+            // Cache user counts for each group
+            groupUserCounts.Clear();
+            
+            if (allGroups != null)
+            {
+                foreach (var group in allGroups)
+                {
+                    groupUserCounts[group.Id] = UserService.CountUsersInGroup(group.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading groups: {ex.Message}";
+        }
+    }
+
+    private void ToggleGroupManagement()
+    {
+        showGroupManagement = !showGroupManagement;
+    }
+
+    private async Task CreateNewGroup()
+    {
+        if (string.IsNullOrWhiteSpace(newGroupName) || isCreatingGroup)
+            return;
+
+        isCreatingGroup = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var newGroup = new UserGroup
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = newGroupName.Trim(),
+                Description = string.IsNullOrWhiteSpace(newGroupDescription) ? null : newGroupDescription.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            UserService.CreateUserGroup(newGroup);
+            successMessage = $"Group '{newGroupName}' created successfully!";
+            
+            // Reset form
+            newGroupName = string.Empty;
+            newGroupDescription = string.Empty;
+            
+            // Reload groups
+            await LoadGroups();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating group: {ex.Message}";
+        }
+        finally
+        {
+            isCreatingGroup = false;
+        }
+    }
+
+    private async Task DeleteGroup(string groupId)
+    {
+        try
+        {
+            var userCount = UserService.CountUsersInGroup(groupId);
+            if (userCount > 0)
+            {
+                errorMessage = "Cannot delete group that contains users. Please move users to another group first.";
+                return;
+            }
+
+            if (groupId == "system")
+            {
+                errorMessage = "Cannot delete the system group.";
+                return;
+            }
+
+            UserService.DeleteUserGroup(groupId);
+            successMessage = "Group deleted successfully!";
+            await LoadGroups();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting group: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateUserGroup(string userId, string newGroupId)
+    {
+        try
+        {
+            var user = allUsers?.FirstOrDefault(u => u.Id == userId);
+            if (user == null) return;
+
+            // Admin users should always be in system group
+            if (user.Role == "admin" && newGroupId != "system")
+            {
+                errorMessage = "Admin users must remain in the system group.";
+                return;
+            }
+
+            UserService.UpdateUserGroup(userId, newGroupId);
+            successMessage = "User group updated successfully!";
+            
+            // Update local data
+            user.GroupId = newGroupId;
+            
+            // Refresh group counts
+            await LoadGroups();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating user group: {ex.Message}";
+        }
+    }
+
+    private bool IsGroupEditing(string userId)
+    {
+        return editingGroupUserIds.Contains(userId);
+    }
+
+    private void ToggleGroupEdit(string userId)
+    {
+        if (editingGroupUserIds.Contains(userId))
+        {
+            editingGroupUserIds.Remove(userId);
+        }
+        else
+        {
+            editingGroupUserIds.Add(userId);
+        }
+    }
+
+    private async Task SaveGroupChange(string userId, string newGroupId)
+    {
+        await UpdateUserGroup(userId, newGroupId);
+        editingGroupUserIds.Remove(userId); // Exit edit mode after saving
+    }
+
+    private int GetUserCountForGroup(string groupId)
+    {
+        return groupUserCounts.TryGetValue(groupId, out int count) ? count : 0;
+    }
+
+    private string GetGroupName(string groupId)
+    {
+        var group = allGroups?.FirstOrDefault(g => g.Id == groupId);
+        return group?.Name ?? "Unknown";
+    }
+
+    private void CalculateStatistics()
+    {
+        if (allUsers == null) return;
+
+        totalUsers = allUsers.Count;
+        activeUsers = allUsers.Count(u => u.IsActive);
+        adminUsers = allUsers.Count(u => u.Role == "admin");
+        managerUsers = allUsers.Count(u => u.Role == "manager");
+    }
+
+    private async Task UpdateUserRole(string userId, string newRole)
+    {
+        try
+        {
+            UserService.UpdateUserRole(userId, newRole);
+            successMessage = $"User role updated to {newRole.ToTitleCase()} successfully!";
+            
+            // Update the local data
+            var user = allUsers.FirstOrDefault(u => u.Id == userId);
+            if (user != null)
+            {
+                user.Role = newRole;
+                CalculateStatistics();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating user role: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateUserStatus(string userId, bool isActive)
+    {
+        try
+        {
+            UserService.UpdateUserStatus(userId, isActive);
+            successMessage = $"User {(isActive ? "activated" : "deactivated")} successfully!";
+            
+            // Update the local data
+            var user = allUsers.FirstOrDefault(u => u.Id == userId);
+            if (user != null)
+            {
+                user.IsActive = isActive;
+                CalculateStatistics();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating user status: {ex.Message}";
+        }
+    }
+
+    private string GetRoleTagClass(string role)
+    {
+        return role?.ToLower() switch
+        {
+            "admin" => "is-danger",
+            "manager" => "is-warning",
+            "user" => "is-info",
+            _ => "is-light"
+        };
+    }
+
+    private string GetProviderTagClass(string provider)
+    {
+        return provider?.ToLower() switch
+        {
+            "mastodon" => "is-primary",
+            "gotosocial" => "is-link",
+            "linkedin" => "is-info",
+            "google" => "is-success",
+            _ => "is-light"
+        };
+    }
+
+    private string GetProviderDisplayName(string provider)
+    {
+        return provider?.ToLower() switch
+        {
+            "gotosocial" => "GoToSocial",
+            "linkedin" => "LinkedIn",
+            _ => provider?.ToTitleCase() ?? "Unknown"
+        };
+    }
+}

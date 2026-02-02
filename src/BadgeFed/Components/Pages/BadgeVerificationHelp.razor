@@ -1,0 +1,297 @@
+@page "/badge-verification-help"
+@layout BadgeFed.Components.Layouts.MinimalLayout
+
+<HeadContent>
+    <title>Badge Image Verification - BadgeFed</title>
+    <meta name="description" content="Learn how to verify embedded OpenBadge metadata in badge images" />
+</HeadContent>
+
+<style>
+    .help-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .help-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .help-title {
+        color: #1a1a2e;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .help-subtitle {
+        color: #6b7280;
+        font-size: 1.1rem;
+    }
+    
+    .help-section {
+        margin-bottom: 2rem;
+    }
+    
+    .help-section h3 {
+        color: #1a1a2e;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .help-section h3 i {
+        color: #10b981;
+    }
+    
+    .code-block {
+        background: #1a1a2e;
+        color: #10b981;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: monospace;
+        margin: 1rem 0;
+        overflow-x: auto;
+    }
+    
+    .step {
+        padding: 1rem;
+        background: #f8fafc;
+        border-left: 4px solid #10b981;
+        margin: 1rem 0;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .step-number {
+        background: #10b981;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-right: 0.75rem;
+    }
+    
+    .tool-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .tool-item {
+        padding: 1rem;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .tool-item:hover {
+        border-color: #10b981;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+    
+    .tool-item h4 {
+        color: #1a1a2e;
+        margin-bottom: 0.5rem;
+    }
+    
+    .warning-box {
+        background: #fef3cd;
+        border: 2px solid #f59e0b;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .warning-box h4 {
+        color: #92400e;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
+<div class="help-container">
+    <div class="help-header">
+        <h1 class="help-title">
+            <i class="fas fa-certificate"></i>
+            Badge Image Verification
+        </h1>
+        <p class="help-subtitle">Understanding embedded OpenBadge metadata in badge images</p>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-info-circle"></i> What is Embedded Metadata?</h3>
+        <p>
+            BadgeFed embeds complete OpenBadge verification data directly into badge image files using PNG metadata chunks. 
+            This means the badge image itself contains all the information needed to verify its authenticity, 
+            making it portable and verifiable even when shared outside the platform.
+        </p>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-download"></i> How to Download Verifiable Images</h3>
+        <div class="step">
+            <span class="step-number">1</span>
+            Visit any badge verification page (like the one you came from)
+        </div>
+        <div class="step">
+            <span class="step-number">2</span>
+            Look for the "Verifiable Badge Image" section
+        </div>
+        <div class="step">
+            <span class="step-number">3</span>
+            Click "Download Verifiable Image" or right-click the badge image and save it
+        </div>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-search"></i> How to Extract Metadata</h3>
+        
+        <h4>Method 1: Online Tools</h4>
+        <div class="tool-list">
+            <div class="tool-item">
+                <h4>BadgeFed Extractor</h4>
+                <p>Upload an image to extract embedded metadata (feature coming soon)</p>
+            </div>
+            <div class="tool-item">
+                <h4>ExifTool</h4>
+                <p>Command-line tool for reading image metadata</p>
+            </div>
+            <div class="tool-item">
+                <h4>ImageMagick</h4>
+                <p>Identify command can show PNG text chunks</p>
+            </div>
+        </div>
+
+        <h4>Method 2: Command Line</h4>
+        <p>Using ExifTool:</p>
+        <div class="code-block">
+            exiftool -textual -b badge-image.png
+        </div>
+        
+        <p>Using ImageMagick:</p>
+        <div class="code-block">
+            identify -verbose badge-image.png | grep -A 10 "Properties:"
+        </div>
+
+        <h4>Method 3: Programming</h4>
+        <p>Python example using PIL:</p>
+        <div class="code-block">
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+
+# Open the image
+img = Image.open('badge-image.png')
+
+# Extract the OpenBadge metadata
+openbadge_data = img.text.get('openbadge')
+if openbadge_data:
+    print(openbadge_data)
+else:
+    print("No OpenBadge metadata found")
+        </div>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-shield-alt"></i> Verification Process</h3>
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>Extract the metadata:</strong> Use one of the methods above to get the JSON data
+        </div>
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>Parse the JSON:</strong> The extracted data is a complete OpenBadge assertion
+        </div>
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>Verify the badge:</strong> Check the issuer, recipient, and verification data
+        </div>
+        <div class="step">
+            <span class="step-number">4</span>
+            <strong>Cross-reference:</strong> Visit the verification URL in the badge data
+        </div>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-question-circle"></i> What the Metadata Contains</h3>
+        <p>The embedded JSON includes:</p>
+        <ul>
+            <li><strong>Assertion ID:</strong> Unique identifier for this badge instance</li>
+            <li><strong>Recipient information:</strong> Who the badge was issued to</li>
+            <li><strong>Badge details:</strong> Name, description, criteria, and image</li>
+            <li><strong>Issuer information:</strong> Who issued the badge</li>
+            <li><strong>Issue date:</strong> When the badge was granted</li>
+            <li><strong>Verification type:</strong> How to verify the badge</li>
+            <li><strong>Evidence:</strong> Links to supporting documentation</li>
+        </ul>
+    </div>
+
+    <div class="warning-box">
+        <h4><i class="fas fa-exclamation-triangle"></i> Important Notes</h4>
+        <ul>
+            <li>Only PNG format images support metadata embedding</li>
+            <li>The metadata is stored in PNG text chunks and may be stripped by some image editors</li>
+            <li>Always verify badges through official verification services</li>
+            <li>External badges from other platforms may not have embedded metadata</li>
+        </ul>
+    </div>
+
+    <div class="help-section">
+        <h3><i class="fas fa-external-link-alt"></i> Additional Resources</h3>
+        <ul>
+            <li><a href="https://openbadges.org/" target="_blank">OpenBadges.org - Official specification</a></li>
+            <li><a href="https://badgecheck.us.badgr.com/" target="_blank">BadgeCheck - Independent verification</a></li>
+            <li><a href="https://github.com/IMSGlobal/openbadges-specification" target="_blank">OpenBadge specification on GitHub</a></li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="javascript:history.back()" class="metadata-action-button">
+            <i class="fas fa-arrow-left"></i>
+            Go Back
+        </a>
+    </div>
+</div>
+
+<style>
+    .metadata-action-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-radius: 8px;
+        background: #10b981;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    
+    .metadata-action-button:hover {
+        background: #059669;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    }
+</style>

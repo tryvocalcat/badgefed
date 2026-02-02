@@ -1,14 +1,20 @@
 @page "/admin/actors/create"
 @page "/admin/actors/edit/{actorId}"
 @using System.IO
+@using System.Linq
+@using BadgeFed.Models
+@using BadgeFed.Services
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
 @inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
 @inject NavigationManager NavigationManager
-@inject LocalDbService LocalDbService
+@inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
 @inject FollowService FollowService
 @inject CurrentUser CurrentUser
+@inject IHttpContextAccessor HttpContextAccessor
+
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -103,9 +109,65 @@
         padding-top: 1.5rem;
         border-top: 1px solid #e9ecef;
     }
+    .social-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .social-field {
+        margin-bottom: 0.75rem;
+    }
+    .social-field:last-child {
+        margin-bottom: 0;
+    }
+    .required-asterisk {
+        color: #e53e3e;
+        margin-left: 2px;
+        font-weight: bold;
+    }
+    .field-label.required {
+        position: relative;
+    }
+    .warning-banner {
+        background: #fef3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 2rem;
+        color: #856404;
+    }
+    .warning-banner .warning-icon {
+        color: #ffc107;
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .warning-banner .warning-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .warning-banner .warning-text {
+        margin: 0;
+        font-size: 0.925rem;
+    }
 </style>
 
 <div class="form-section">
+    @if (string.IsNullOrEmpty(Model?.Domain))
+    {
+        <div class="warning-banner">
+            <div class="warning-title">
+                <i class="fas fa-exclamation-triangle warning-icon"></i>
+                Domain Configuration Required
+            </div>
+            <p class="warning-text">
+                The domain could not be automatically detected from the request. This may cause issues with actor creation and federation. Please check your server configuration or contact your administrator.
+            </p>
+        </div>
+    }
+
     <div class="form-header">
                 
         @if (string.IsNullOrEmpty(ActorId))
@@ -124,9 +186,9 @@
         <div class="columns is-multiline">
             <div class="column is-6">
             <div class="field">
-                <label class="field-label" for="name">Full Name</label>
+                <label class="field-label required" for="name">Full Name<span class="required-asterisk">*</span></label>
                 <div class="control">
-                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" />
+                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" required />
                     </div>
                     <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
                 </div>
@@ -134,7 +196,8 @@
 
             <div class="column is-6">
                 <div class="field">
-                    <label class="field-label" for="username">Username</label>
+                    <label class="field-label required" for="username">Username<span class="required-asterisk">*</span></label>
+                    
                     <div class="control">
                         @if (!string.IsNullOrEmpty(ActorId))
                         {
@@ -143,43 +206,45 @@
                         }
                         else
                         {
-                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" />
+                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" required />
+                            <p class="help-text">This will be the actor's handle (e.g. username@@@Model.Domain)</p>
                         }
                     </div>
+                    
                     <ValidationMessage For="@(() => Model.Username)" class="help is-danger" />
                 </div>
             </div>
 
             <div class="column is-12">
                 <div class="field">
-                    <label class="field-label" for="summary">Summary</label>
+                    <label class="field-label required" for="summary">Summary<span class="required-asterisk">*</span></label>
                     <div class="control">
-                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" />
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" required />
                     </div>
                     <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
                 </div>
             </div>
 
-            @if (string.IsNullOrEmpty(ActorId))
-            {
-                <div class="column is-6">
-                    <div class="field">
-                        <label class="field-label" for="domain">Domain</label>
-                        <div class="control">
-                            <div class="select is-fullwidth">
-                                <InputSelect id="domain" @bind-Value="Model!.Domain">
-                                    <option value="">-- Select a domain --</option>
-                                    @foreach (var domain in availableDomains)
-                                    {
-                                        <option value="@domain">@domain</option>
-                                    }
-                                </InputSelect>
-                            </div>
+            <div class="column is-6">
+                <div class="field">
+                    <label class="field-label" for="theme">Profile Theme</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <InputSelect id="theme" @bind-Value="Model!.Theme">
+                                <option value="default">Default - Modern Gradient</option>
+                                <option value="ocean">Ocean - Blue & Teal</option>
+                                <option value="forest">Forest - Green & Earth</option>
+                                <option value="sunset">Sunset - Orange & Purple</option>
+                                @foreach (var customTheme in GetCustomThemes())
+                                {
+                                    <option value="@customTheme.Key">@customTheme.Value</option>
+                                }
+                            </InputSelect>
                         </div>
-                        <ValidationMessage For="@(() => Model.Domain)" class="help is-danger" />
                     </div>
+                    <p class="help">Choose a visual theme for your profile page</p>
                 </div>
-            }
+            </div>
 
             <div class="column is-6">
                 <div class="field">
@@ -190,6 +255,64 @@
                     <ValidationMessage For="@(() => Model.InformationUri)" class="help is-danger" />
                 </div>
             </div>
+
+            <div class="column is-6">
+                <div class="field">
+                    <label class="checkbox">
+                        <InputCheckbox @bind-Value="Model!.ShowFollowers" />
+                        Show Followers
+                    </label>
+                    <p class="help-text">When enabled, followers count and list will be displayed on your public profile</p>
+                </div>
+            </div>
+
+            <!-- Social Links Section -->
+            <div class="column is-12">
+                <div class="field">
+                    <label class="field-label">Social Links</label>
+                    <p class="help-text">Add up to 3 social media links or contact methods</p>
+                </div>
+            </div>
+
+            @for (int i = 0; i < 3; i++)
+            {
+                var index = i; // Capture for lambda
+                <div class="column is-4">
+                    <div class="social-section">
+                        <div class="social-field">
+                            <label class="field-label">Social @(index + 1) Type</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select @onchange="@(e => UpdateSocialType(index, e.Value?.ToString()))" value="@GetSocialType(index)">
+                                        <option value="">Select platform...</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                        <option value="mastodon">Mastodon</option>
+                                        <option value="loops">Loops</option>
+                                        <option value="youtube">YouTube</option>
+                                        <option value="peertube">PeerTube</option>
+                                        <option value="email">Email</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="pixelfed">Pixelfed</option>
+                                        <option value="threads">Threads</option>
+                                        <option value="github">GitHub</option>
+                                        <option value="bluesky">Bluesky</option>
+                                        <option value="discord">Discord</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="social-field">
+                            <label class="field-label">URL/Handle</label>
+                            <div class="control">
+                                <input type="text" class="input" 
+                                       value="@GetSocialUri(index)" 
+                                       @onchange="@(e => UpdateSocialUri(index, e.Value?.ToString()))"
+                                       placeholder="@GetSocialPlaceholder(index)" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
 
             <div class="column is-12">
                 <div class="field">
@@ -339,7 +462,6 @@
     private string? imagePreview;
     private string? errorMessage;
     private bool isSubmitting = false;
-    private List<string> availableDomains = [];
     private ElementReference fileInput;
     private List<FollowedIssuer> FollowedIssuers = new();
     private string newIssuerUrl = string.Empty;
@@ -348,11 +470,30 @@
 
     protected override void OnInitialized()
     {
-        availableDomains = Configuration.GetSection("BadgesDomains").Get<string[]>().ToList();
-
         if (!string.IsNullOrEmpty(ActorId)) {
             var id = long.Parse(ActorId);
             Model = LocalDbService.GetActorById(id);
+
+            // initialize domain based on request host
+        }
+
+        Console.WriteLine("[DEBUG] Host: " + HttpContextAccessor?.HttpContext?.Request?.Host.Value);
+        
+        if (string.IsNullOrEmpty(Model.Domain))
+        {
+            Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
+        }
+
+        // Initialize socials list if null
+        if (Model.Socials == null)
+        {
+            Model.Socials = new List<SocialUri>();
+        }
+
+        // Ensure we have at least 3 empty social entries for the UI
+        while (Model.Socials.Count < 3)
+        {
+            Model.Socials.Add(new SocialUri());
         }
     }
 
@@ -368,7 +509,16 @@
         }
     }
 
-    private void ClearForm() => Model = new();
+    private void ClearForm() 
+    {
+        Model = new();
+        // Initialize socials list for new model
+        Model.Socials = new List<SocialUri>();
+        while (Model.Socials.Count < 3)
+        {
+            Model.Socials.Add(new SocialUri());
+        }
+    }
 
     private async Task GenerateKeyPair()
     {
@@ -406,7 +556,7 @@
             if (selectedFile != null)
             {
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
-                var path = Path.Combine(Environment.WebRootPath, "uploads", "avatars");
+                var path = CustomAssetPathService.GetAvatarsPath();
                 
                 Directory.CreateDirectory(path);
                 
@@ -416,11 +566,20 @@
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
                 
-                Model.AvatarPath = $"/uploads/avatars/{fileName}";
+                Model.AvatarPath = CustomAssetPathService.GetAvatarUrl(fileName);
             }
 
-            Model.OwnerId = CurrentUser.UserId;
+            // Clean up empty social entries before saving
+            if (Model?.Socials != null)
+            {
+                Model.Socials = Model.Socials
+                    .Where(s => !string.IsNullOrWhiteSpace(s.Type) && !string.IsNullOrWhiteSpace(s.Uri))
+                    .ToList();
+            }
+
+            Model.OwnerId = CurrentUser.GetGroupId();
             
+            // print socials
             LocalDbService.UpsertActor(Model);
             NavigationManager.NavigateTo("/admin/actors");
             
@@ -431,6 +590,7 @@
         catch (Exception ex)
         {
             errorMessage = $"Error creating actor: {ex.Message}";
+            Console.WriteLine(ex);
         }
         finally
         {
@@ -459,6 +619,7 @@
                         Inbox = fediverseInfo.Inbox,
                         Outbox = fediverseInfo.Outbox,
                         ActorId = actorId,
+                        AvatarUri = fediverseInfo.Icon?.Url ?? string.Empty
                     };
 
                     LocalDbService.UpsertFollowedIssuer(issuer);
@@ -478,5 +639,97 @@
             issuerValidationMessage = $"⚠️ Could not validate url. {ex.Message}";
             return;
         }
+    }
+
+    private Dictionary<string, string> GetCustomThemes()
+    {
+        var customThemes = new Dictionary<string, string>();
+        var themesPath = CustomAssetPathService.GetThemesPath();
+        
+        if (Directory.Exists(themesPath))
+        {
+            var cssFiles = Directory.GetFiles(themesPath, "*.css")
+                .Where(f => !Path.GetFileNameWithoutExtension(f).Equals("default", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("ocean", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("forest", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("sunset", StringComparison.OrdinalIgnoreCase));
+            
+            foreach (var file in cssFiles)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                var displayName = fileName.Replace("-", " ").Replace("_", " ");
+                // Capitalize first letter of each word
+                displayName = string.Join(" ", displayName.Split(' ').Select(word => 
+                    char.ToUpper(word[0]) + word.Substring(1).ToLower()));
+                customThemes.Add(fileName, $"{displayName} (Custom)");
+            }
+        }
+        
+        return customThemes;
+    }
+
+    // Social Links Helper Methods
+    private string GetSocialType(int index)
+    {
+        if (Model?.Socials != null && index < Model.Socials.Count)
+        {
+            return Model.Socials[index]?.Type ?? "";
+        }
+        return "";
+    }
+
+    private string GetSocialUri(int index)
+    {
+        if (Model?.Socials != null && index < Model.Socials.Count)
+        {
+            return Model.Socials[index]?.Uri ?? "";
+        }
+        return "";
+    }
+
+    private void UpdateSocialType(int index, string? type)
+    {
+        if (Model?.Socials != null)
+        {
+            if (index < Model.Socials.Count)
+            {
+                Model.Socials[index].Type = type ?? "";
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void UpdateSocialUri(int index, string? uri)
+    {
+        Console.WriteLine($"Updating Social URI at index: {index} {uri}");
+        if (Model?.Socials != null)
+        {
+            if (index < Model.Socials.Count)
+            {
+                Model.Socials[index].Uri = uri ?? "";
+            }
+        }
+        StateHasChanged();
+    }
+
+    private string GetSocialPlaceholder(int index)
+    {
+        var type = GetSocialType(index);
+        return type switch
+        {
+            "linkedin" => "https://linkedin.com/in/username",
+            "mastodon" => "https://mastodon.social/@username",
+            "loops" => "https://loops.video/@username",
+            "youtube" => "https://youtube.com/@username",
+            "peertube" => "https://peertube.instance/@username",
+            "email" => "email@example.com",
+            "instagram" => "https://instagram.com/username",
+            "pixelfed" => "https://pixelfed.social/@username",
+            "threads" => "https://threads.net/@username",
+            "github" => "https://github.com/username",
+            "bluesky" => "https://bsky.app/profile/username.bsky.social",
+            "discord" => "https://discord.gg/invite-code",
+            _ => "Enter URL or handle..."
+        };
     }
 }

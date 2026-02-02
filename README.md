@@ -3,13 +3,14 @@
 BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system inspired by Credly, built with .NET and leveraging the ActivityPub protocol and the OpenBadges spec. It enables issuing, managing, and verifying digital badges across federated servers.
 
 - **Blog:** [badgefed.vocalcat.com](https://badgefed.vocalcat.com/)
+- **Matrix:** [@badgefed:matrix.org](https://matrix.to/#/#badgefed:matrix.org)
 
 ---
 
 ## Features
 
 - Issue and manage digital badges and grants
-- ActivityPub protocol support for federation ([see implementation details](./DETAILS.md))
+- ActivityPub protocol support for federation ([see implementation details](./FEDERATION.md))
 - Built with .NET 9
 - OAuth login (Mastodon, LinkedIn)
 - Email notifications
@@ -32,32 +33,18 @@ To run BadgeFed in a Docker container, follow these steps:
 
 1. **Build the Docker Image:**
    ```sh
-   docker build -t badgefed .
+   docker build -t badgefed src/
    ```
 
-2. **Run the Container:**
+2. **Run the Container (with persistence for data storage):**
    ```sh
-   docker run -d -p 5000:80 --name badgefed -e SQLITE_DB_FILENAME="badgefed.db" badgefed
+   docker run -d -p 8080:8080 --name badgefed \
+    -v $(pwd)/badgefed/data:/app/data \
+    -v $(pwd)/badgefed/config:/app/config \
+    -v $(pwd)/badgefed/pages:/app/wwwroot/pages \
+    -e DB_DATA="/app/data" \
+    badgefed
    ```
-
-3. **Environment Variables:**
-   - Pass environment variables using the `-e` flag.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -e SQLITE_DB_FILENAME="badgefed.db" \
-       -e ASPNETCORE_ENVIRONMENT="Development" \
-       badgefed
-     ```
-
-4. **Volume Mounts:**
-   - Mount volumes for persistent data storage.
-   - Example:
-     ```sh
-     docker run -d -p 5000:80 --name badgefed \
-       -v $(pwd)/data:/app/data \
-       badgefed
-     ```
 
 A fully docker example would be:
 
@@ -67,10 +54,7 @@ docker run -d \
     --name badgefed \
     -e SQLITE_DB_FILENAME="badgefed.db" \
     -e ASPNETCORE_ENVIRONMENT="Production" \
-    -e "MastodonConfig__ClientId=your-client-id" \
-    -e "MastodonConfig__ClientSecret=your-client-secret" \
-    -e "MastodonConfig__Server=hachyderm.io" \
-    -e "AdminAuthentication__AdminUsers__0__Id=mymastodonusername" \
+    -e "AdminAuthentication__AdminUsers__0__Id=mapache@hachyderm.io" \
     -e "AdminAuthentication__AdminUsers__0__Type=Mastodon" \
     -v $(pwd)/data:/app/data \
     badgefed
@@ -139,7 +123,7 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
         "Type": "LinkedIn"
       },
       {
-        "Id": "mastodon_user",
+        "Id": "username@mastodoninstance.com",
         "Type": "Mastodon"
       }
     ]
@@ -148,17 +132,10 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
 - **Usage:** Add admin users with their IDs and authentication types (`LinkedIn` or `Mastodon`). LinkedIn uses email as IDs, and Mastodon uses usernames. If only Mastodon users are specified or only LinkedIn users are specified, only the corresponding login button will appear. For example, if no Mastodon users are specified, the Mastodon login button will not appear.
 
 #### 5. **Mastodon Configuration**
-- **Purpose:** Configures Mastodon OAuth for authentication.
-- **Location:** `appsettings.json` and `appsettings.Development.json`
-- **Example:**
-  ```json
-  "MastodonConfig": {
-    "ClientId": "your-client-id",
-    "ClientSecret": "your-client-secret",
-    "Server": "hachyderm.io"
-  }
-  ```
-- **Usage:** Replace `ClientId`, `ClientSecret`, and `Server` with your Mastodon app credentials. For more details, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
+- **Purpose:** Mastodon OAuth authentication is supported out-of-the-box.
+- **Location:** No configuration required.
+- **Example:** N/A
+- **Usage:** Mastodon authentication works with any Mastodon server without requiring any configuration. The system automatically registers OAuth applications dynamically when users log in from their Mastodon instances. For more details about Mastodon authentication, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
 
 #### 6. **LinkedIn Configuration**
 - **Purpose:** Configures LinkedIn OAuth for authentication.
@@ -188,11 +165,28 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
   ```
 - **Usage:** Update the SMTP server, port, sender email, and credentials for email functionality.
 
+### Reverse proxy
+
+If you are using a reverse proxy, you need to make sure that your original host gets forwarded and that your WebSockets upgrades are properly handled. An example configuration for nginx below:
+
+```nginx
+    location / {
+        proxy_pass https://example.com;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+```
 ---
 
 ## ActivityPub & OpenBadge Implementation
 
-For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [DETAILS.md](./DETAILS.md).
+For a technical overview of how BadgeFed implements ActivityPub and OpenBadge 2.0, see [FEDERATION.md](./FEDERATION.md).
 
 ---
 

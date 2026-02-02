@@ -6,7 +6,29 @@ namespace ActivityPubDotNet.Core;
 public class ActivityPubNote
 {
     [JsonPropertyName("@context")]
-    public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
+    public object Context { get; set; } = new object[]
+    {
+        "https://www.w3.org/ns/activitystreams",
+        new
+        {
+            gts = "https://gotosocial.org/ns#",
+            interactionPolicy = new Dictionary<string, object>
+            {
+               { "@id", "gts:interactionPolicy" },
+               { "@type", "@id" }
+            },
+            canQuote = new Dictionary<string, object>
+            {
+               { "@id", "gts:canQuote" },
+               { "@type", "@id" }
+            },
+            automaticApproval = new Dictionary<string, object>
+            {
+                { "@id", "gts:automaticApproval" },
+                { "@type", "@id" }
+            }
+        }
+    };
 
     [JsonPropertyName("id")]
     public string Id { get; set; }
@@ -27,7 +49,7 @@ public class ActivityPubNote
     public List<object> Attachment { get; set; } = new List<object>();
 
     [JsonPropertyName("vocalcat:badgeAssertion")]
-    public BadgeRecord BadgeMetadata { get; set; }
+    public BadgeRecord? BadgeMetadata { get; set; }
 
     [JsonPropertyName("openbadges:assertion")]
     public object OpenBadge { get; set; }
@@ -49,6 +71,21 @@ public class ActivityPubNote
 
     [JsonPropertyName("inReplyTo")]
     public string InReplyTo { get; set; } = default!;
+
+    [JsonPropertyName("interactionPolicy")]
+    public InteractionPolicyDefinition InteractionPolicy { get; set; } = new InteractionPolicyDefinition();
+
+    public class InteractionPolicyDefinition
+    {
+        [JsonPropertyName("canQuote")]
+        public CanQuoteDefinition CanQuote { get; set; } = new CanQuoteDefinition();
+    }
+
+    public class CanQuoteDefinition
+    {
+        [JsonPropertyName("automaticApproval")]
+        public object AutomaticApproval { get; set; } = "https://www.w3.org/ns/activitystreams#Public";
+    }
 
     public class Tag
     {

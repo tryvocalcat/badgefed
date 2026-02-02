@@ -8,20 +8,24 @@ namespace BadgeFed.Controllers
     public class WebFingerController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly LocalScopedDb _localDbService;
+        private readonly ILogger<WebFingerController> _logger;
 
-        private readonly LocalDbService _localDbService;
-
-        public WebFingerController(IConfiguration configuration, LocalDbService localDbService)
+        public WebFingerController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<WebFingerController> logger)
         {
             _configuration = configuration;
             _localDbService = localDbService;
+            _logger = logger;
         }
 
         [HttpGet("webfinger")]
         public IActionResult GetWebFinger([FromQuery] string resource)
         {
+            _logger.LogInformation("[{RequestHost}] WebFinger request for resource: {Resource}", Request.Host, resource);
+            
             if (string.IsNullOrEmpty(resource) || !resource.StartsWith("acct:"))
             {
+                _logger.LogWarning("[{RequestHost}] Invalid WebFinger resource parameter: {Resource}", Request.Host, resource);
                 return BadRequest("Invalid resource parameter");
             }
 
@@ -33,8 +37,11 @@ namespace BadgeFed.Controllers
 
             if (actor == null)
             {
+                _logger.LogWarning("[{RequestHost}] Account not found for WebFinger request: {Account}", Request.Host, account);
                 return NotFound("Account not found on this domain");
             }
+            
+            _logger.LogInformation("[{RequestHost}] Successfully processed WebFinger request for: {Account}", Request.Host, account);
 
             var subject = $"acct:{actorName}@{domain}";
             var aliases = new[] { $"https://{domain}/actors/{domain}/{actorName}" };

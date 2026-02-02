@@ -27,7 +27,9 @@ namespace ActivityPubDotNet.Core
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
-            Console.WriteLine($"Actor information: {jsonContent}");
+
+            Console.WriteLine($"Fetching actor information from {actorUrl}");
+          //  Console.WriteLine($"Actor information: {jsonContent}");
             return JsonSerializer.Deserialize<ActivityPubActor>(jsonContent, options)!;
         }
 
@@ -65,7 +67,7 @@ namespace ActivityPubDotNet.Core
                 string header = $"keyId=\"{this._keyId}\",headers=\"(request-target) host date\",signature=\"{signature}\",algorithm=\"rsa-sha256\"";
 
                 // Create HTTP client
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = true }))
                 {
                     // Set request headers
                     client.DefaultRequestHeaders.Add("Host", url.Host);
@@ -82,8 +84,6 @@ namespace ActivityPubDotNet.Core
 
                     // Print the response
                     var responseString = await response.Content.ReadAsStringAsync();
-
-                    Logger?.LogInformation($"Response {response.StatusCode} - {responseString}");
 
                     return responseString;
                 }
@@ -142,7 +142,7 @@ namespace ActivityPubDotNet.Core
                     // Print the response
                     var responseString = await response.Content.ReadAsStringAsync();
 
-                    Logger?.LogInformation($"Response {response.StatusCode} - {responseString}");
+                    Logger?.LogInformation($"POST {url} - {response.StatusCode}");
                 }
             }
         }

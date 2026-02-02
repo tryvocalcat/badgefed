@@ -3,25 +3,64 @@
         "name": "Maho's Badge Server",
         "url": "https://verifiedby.maho.dev",
         "description": "A personal badge server for emitting badges for personal projects.",
-        "categories": ["Personal", "Creator"],
+        "categories": ["Personal", "Creator", "Development", "Portfolio"],
         "admin": "Maho Pacheco",
-        "actor": "https://verifiedby.maho.dev/view/actor/verifiedby.maho.dev/admin"
+        "actor": "https://verifiedby.maho.dev/actors/verifiedby.maho.dev/admin"
     },
     {
         "name": "BadgeFed",
         "url": "https://badges.vocalcat.com",
         "description": "The main server for emitting badges related to VocalCat and BadgeFed projects.",
-        "categories": ["Company", "OpenSource"],
+        "categories": ["Company", "OpenSource", "Technology", "Innovation"],
         "admin": "VocalCat LLC",
-        "actor": "https://badges.vocalcat.com/view/actor/badges.vocalcat.com/admin"
+        "actor": "https://badges.vocalcat.com/actors/badges.vocalcat.com/admin"
     },
     {
         "name": "The Tech Baddie Studio",
         "url": "https://verifiedby.baddie.tech",
         "description": "A badge server for The Tech Baddie Studio, a company that creates tech-related content.",
-        "categories": ["Company", "Creator"],
+        "categories": ["Company", "Creator", "Media", "Education"],
         "admin": "The Tech Baddie Studio",
-        "actor": "https://verifiedby.baddie.tech/view/actor/verifiedby.baddie.tech/admin"
+        "actor": "https://verifiedby.baddie.tech/actors/verifiedby.baddie.tech/admin"
+    },
+    {
+        "name": "Fediverse.Games",
+        "url": "https://badges.fediverse.games",
+        "description": "A badge server for the Fediverse Games Mastodon instance, supporting a friendly and inclusive community for all lovers of games, including board games, video games, and more.",
+        "categories": ["Community", "Gaming", "Social", "Entertainment"],
+        "admin": "Fediverse Games",
+        "actor": "https://badges.fediverse.games/actors/badges.fediverse.games/admin"
+    },
+    {
+        "name": "FediCon Badge Server",
+        "url": "https://badges.fedicon.ca",
+        "description": "The official badge server for FediCon (the Fediverse Conference in Canada).",
+        "categories": ["Event", "Community", "Fediverse", "Conference"],
+        "admin": "FediCon Organizers",
+        "actor": "https://badges.fedicon.ca/actors/badges.fedicon.ca/admin"
+    },
+    {
+        "name": "Community Credentials",
+        "url": "https://communitycredentials.org/",
+        "description": "Empowering organizations with verifiable credentials to recognize achievements and contributions.",
+        "categories": ["Organization", "OpenBadges", "Commercial", "Nonprofits"],
+        "admin": "Community Credentials",
+        "actor": "https://communitycredentials.org/view/actor/communitycredentials.org/issuer"
+    },
+    {
+        "name": "Fireside Fedi Badge Server",
+        "url": "https://badges.firesidefedi.live/",
+        "description": "The official badge server for Fireside Fedi, a live podcast show where we sit down with folks from across the Fediverse to get to know them. A relaxing chill time, fully powered by Fediverse-connected tech. Let's stop yelling past each other and put the social back into social media.",
+        "categories": ["Podcast", "Community", "Fediverse", "Media"],
+        "admin": "Fireside Fedi",
+        "actor": "https://badges.firesidefedi.live/actors/badges.firesidefedi.live/admin"
+    },
+    {
+        "name": "Odznaki Reszki",
+        "url": "https://odznaka.reszka.org",
+        "description": "Polskojęzyczny wydawca odznak i certyfikacji w Fediwersum",
+        "categories": ["Polish", "Nonprofits", "Event", "Community", "Conference", "OpenSource"],
+        "admin": "Fundacja Wolnego Oprogramowania Reszka",
+        "actor": "https://odznaka.reszka.org/actors/odznaka.reszka.org/admin"
     }
-
 ]

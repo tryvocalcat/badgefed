@@ -9,6 +9,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject HttpClient Http
 @inject ProtectedSessionStorage ProtectedSessionStore
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <section class="section">
@@ -29,20 +30,97 @@
                         @if (IsMastodonConfigured)
                         {
                             <div class="field mb-3">
+                                <div class="mastodon-login-container">
+                                    @if (!showMastodonDropdown)
+                                    {
+                                        <div class="control">
+                                            <button class="button is-fullwidth is-primary has-background-purple"
+                                                    @onclick="ToggleMastodonDropdown">
+                                                <span class="icon">
+                                                    <i class="fab fa-mastodon"></i>
+                                                </span>
+                                                <span>Sign In with Mastodon</span>
+                                                <span class="icon is-small ml-2">
+                                                    <i class="fas fa-chevron-down"></i>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="mastodon-dropdown-card">
+                                            <div class="dropdown-header">
+                                                <h5 class="title is-6 mb-3">
+                                                    <span class="icon">
+                                                        <i class="fab fa-mastodon"></i>
+                                                    </span>
+                                                    Choose your Mastodon server
+                                                </h5>
+                                                <button class="delete is-small" @onclick="CloseMastodonDropdown"></button>
+                                            </div>
+                                            
+                                            <div class="field">
+                                                <div class="control has-icons-left">
+                                                    <input class="input" type="text" placeholder="Search or enter server (e.g., mastodon.social)"
+                                                           @bind="selectedMastodonServer" @oninput="OnMastodonServerInput" @ref="mastodonInputRef" />
+                                                    <span class="icon is-small is-left">
+                                                        <i class="fas fa-search"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            @if (filteredMastodonServers.Any())
+                                            {
+                                                <div class="server-suggestions">
+                                                    @foreach (var server in filteredMastodonServers.Take(5))
+                                                    {
+                                                        <div class="server-suggestion" @onclick="() => SelectMastodonServer(server.Domain)">
+                                                            <div class="server-info">
+                                                                <strong>@server.Domain</strong>
+                                                                <small class="has-text-grey">@server.Description</small>
+                                                            </div>
+                                                            <span class="tag is-light">-</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            
+                                            <div class="field mt-4">
+                                                <div class="control">
+                                                    <button class="button is-fullwidth has-background-purple" 
+                                                            @onclick="SignInWithSelectedMastodonServer"
+                                                            disabled="@(string.IsNullOrWhiteSpace(selectedMastodonServer))">
+                                                        <span class="icon">
+                                                            <i class="fab fa-mastodon"></i>
+                                                        </span>
+                                                        <span>Continue with @(string.IsNullOrWhiteSpace(selectedMastodonServer) ? "..." : selectedMastodonServer)</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (IsGotoSocialConfigured)
+                        {
+                            <div class="field mb-3">
                                 <div class="control">
-                                    <button class="button is-fullwidth is-primary has-background-purple"
-                                            @onclick="SignInWithMastodon">
+                                    <button class="button is-fullwidth is-primary has-background-orange"
+                                            @onclick="SignInWithGotoSocial">
                                         <span class="icon">
-                                            <i class="fab fa-mastodon"></i>
+                                            <i class="fab fa-gotosocial"></i>
                                         </span>
-                                        <span>Sign In with Mastodon</span>
+                                        <span>Sign In with GoToSocial</span>
                                     </button>
                                 </div>
                             </div>
                         }
+
                         @if (IsLinkedInConfigured)
                         {
-                            <div class="field">
+                            <div class="field mb-3">
                                 <div class="control">
                                     <button class="button is-fullwidth is-info"
                                             @onclick="SignInWithLinkedIn">
@@ -50,6 +128,20 @@
                                             <i class="fab fa-linkedin"></i>
                                         </span>
                                         <span>Sign In with LinkedIn</span>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        @if (IsGoogleConfigured)
+                        {
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button is-fullwidth is-danger"
+                                            @onclick="SignInWithGoogle">
+                                        <span class="icon">
+                                            <i class="fab fa-google"></i>
+                                        </span>
+                                        <span>Sign In with Google</span>
                                     </button>
                                 </div>
                             </div>
@@ -68,6 +160,107 @@
     }
     .has-background-purple:hover {
         background-color: #5b009a !important;
+    }
+
+    .has-background-orange {
+        background-color: #ff8c00 !important;
+        color: white !important;
+    }
+
+    .has-background-orange:hover {
+        background-color: #e07b00 !important;
+    }
+
+    .mastodon-login-container {
+        position: relative;
+    }
+
+    .mastodon-dropdown-card {
+        background: white;
+        border: 1px solid #dbdbdb;
+        border-radius: 6px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 16px rgba(10, 10, 10, 0.1);
+        animation: fadeInDown 0.2s ease-out;
+    }
+
+    .dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .server-suggestions {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dbdbdb;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .server-suggestion {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f5f5f5;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .server-suggestion:last-child {
+        border-bottom: none;
+    }
+
+    .server-suggestion:hover {
+        background-color: #f8f9fa;
+    }
+
+    .server-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .server-info small {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    @@keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* GoToSocial sloth */
+    .fab.fa-gotosocial::before {
+        content: "";
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        background: currentColor;
+        vertical-align: -0.125em;
+
+        /* Stylized sloth icon (Font-Awesome-like) encoded as a data URI.
+           White areas are visible; black areas create small cutouts (eyes/mouth). */
+        --gts-sloth: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="%23ffffff" d="M32 6c-7 0-12 4-16 9-6 7-6 16-4 22 2 6 7 11 13 14 6 3 27 6 31-1 4-7 1-18-3-24-4-6-9-12-21-20z"/><circle fill="%23000000" cx="23" cy="28" r="3"/><circle fill="%23000000" cx="41" cy="28" r="3"/><path fill="%23000000" d="M32 35c-3 0-6 3-6 4 0 1 3 2 6 2s6-1 6-2c0-1-3-4-6-4z"/></svg>');
+
+        -webkit-mask-image: var(--gts-sloth);
+        mask-image: var(--gts-sloth);
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+
     }
 </style>
 
@@ -193,7 +386,41 @@
     private string Avatar;
 
     private bool IsMastodonConfigured;
+    private bool IsGotoSocialConfigured;
     private bool IsLinkedInConfigured;
+    private bool IsGoogleConfigured;
+
+    private string mastodonServer;
+    private string gotoSocialServer;
+    
+    // Mastodon dropdown state
+    private bool showMastodonDropdown = false;
+    private string selectedMastodonServer = "";
+    private ElementReference mastodonInputRef;
+    
+    // Popular Mastodon servers for suggestions
+    private List<MastodonServer> popularMastodonServers = new()
+    {
+        new("mastodon.social", "The original server run by the Mastodon team"),
+        new("mastodon.world", "A general-purpose Mastodon server"),
+        new("mas.to", "A safe, friendly community"),
+        new("fosstodon.org", "A community for free and open source software"),
+        new("mstdn.social", "A general-purpose community server"),
+        new("infosec.exchange", "InfoSec community on Mastodon"),
+        new("hachyderm.io", "Safe space for tech workers and enthusiasts"),
+        new("techhub.social", "Technology professionals and enthusiasts"),
+        new("mastodon.online", "A fast, secure and up-to-date instance")
+    };
+    
+    private List<MastodonServer> filteredMastodonServers => 
+        string.IsNullOrWhiteSpace(selectedMastodonServer) 
+            ? popularMastodonServers
+            : popularMastodonServers.Where(s => 
+                s.Domain.Contains(selectedMastodonServer, StringComparison.OrdinalIgnoreCase) ||
+                s.Description.Contains(selectedMastodonServer, StringComparison.OrdinalIgnoreCase)
+              ).ToList();
+
+    public record MastodonServer(string Domain, string Description);
     
     protected override async Task OnInitializedAsync()
     {
@@ -210,10 +437,28 @@
                                    !string.IsNullOrEmpty(mastodonSection["ClientSecret"]) &&
                                    !string.IsNullOrEmpty(mastodonSection["Server"]);
 
+            if (IsMastodonConfigured) {
+                mastodonServer = mastodonSection["Server"];
+            }
+
+            // Check if GotoSocialConfig is present
+            var gotoSocialSection = Configuration.GetSection("GotoSocialConfig");
+            IsGotoSocialConfigured = !string.IsNullOrEmpty(gotoSocialSection["Server"]);
+
+            if (IsGotoSocialConfigured) {
+                gotoSocialServer = gotoSocialSection["Server"];
+            }
+
             // Check if LinkedInConfig is present
             var linkedInSection = Configuration.GetSection("LinkedInConfig");
             IsLinkedInConfigured = !string.IsNullOrEmpty(linkedInSection["ClientId"]) &&
                                    !string.IsNullOrEmpty(linkedInSection["ClientSecret"]);
+
+            // Check if GoogleConfig is present
+            var googleSection = Configuration.GetSection("GoogleConfig");
+            IsGoogleConfigured = !string.IsNullOrEmpty(googleSection["ClientId"]) &&
+                                 !string.IsNullOrEmpty(googleSection["ClientSecret"]);
+
 
             if (User != null)
             {
@@ -270,14 +515,85 @@
         if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("invitationCode", out var invitationCode))
         {
             // Store the invitation code in session storage
-            await ProtectedSessionStore.SetAsync("invitationCode", invitationCode.ToString());
+            await JS.InvokeVoidAsync("setCookie", "invitationCode", invitationCode, 1);
         }
     }
 
     private async Task SignInWithMastodon()
     {
         var invitationCode = await GetInvitationCodeFromUrl();
-        var url = $"admin/login/mastodon?returnUrl=/admin/";
+        var url = $"admin/login/oauth/{mastodonServer}?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private void ToggleMastodonDropdown()
+    {
+        showMastodonDropdown = true;
+        selectedMastodonServer = mastodonServer; // Default to configured server
+        StateHasChanged();
+        
+        // Focus the input after the DOM updates
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await mastodonInputRef.FocusAsync();
+                }
+                catch { }
+            });
+        });
+    }
+
+    private void CloseMastodonDropdown()
+    {
+        showMastodonDropdown = false;
+        StateHasChanged();
+    }
+
+    private void OnMastodonServerInput(ChangeEventArgs e)
+    {
+        selectedMastodonServer = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void SelectMastodonServer(string server)
+    {
+        selectedMastodonServer = server;
+        StateHasChanged();
+    }
+
+    private async Task SignInWithSelectedMastodonServer()
+    {
+        if (string.IsNullOrWhiteSpace(selectedMastodonServer))
+            return;
+
+        // Clean up the server URL (remove protocol if present)
+        var cleanServer = selectedMastodonServer.Trim();
+        if (cleanServer.StartsWith("https://"))
+            cleanServer = cleanServer.Substring(8);
+        if (cleanServer.StartsWith("http://"))
+            cleanServer = cleanServer.Substring(7);
+
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/oauth/{cleanServer}?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private async Task SignInWithGotoSocial()
+    {
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/oauth/{gotoSocialServer}?returnUrl=/admin/";
         if (!string.IsNullOrEmpty(invitationCode))
         {
             url += $"&invitationCode={invitationCode}";
@@ -289,6 +605,17 @@
     {
         var invitationCode = await GetInvitationCodeFromUrl();
         var url = $"admin/login/linkedin?returnUrl=/admin/";
+        if (!string.IsNullOrEmpty(invitationCode))
+        {
+            url += $"&invitationCode={invitationCode}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+
+    private async Task SignInWithGoogle()
+    {
+        var invitationCode = await GetInvitationCodeFromUrl();
+        var url = $"admin/login/google?returnUrl=/admin/";
         if (!string.IsNullOrEmpty(invitationCode))
         {
             url += $"&invitationCode={invitationCode}";

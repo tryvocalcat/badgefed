@@ -35,14 +35,18 @@ namespace BadgeFed.Services
                     return null;
                 }
 
-                // Check if this badge has already been imported
-                var existingBadge = _localDbService.GetBadgeRecords(
-                    $"NoteId = '{openBadge.Id}'");
+                var issuerUrl =  openBadge.Badge.Issuer.Url ?? string.Empty;
 
-                if (existingBadge.Any())
+                Console.WriteLine($"Checking if badge record already exists for note ID: {openBadge.Id}");
+
+                var existingLocal = _localDbService.GetGrantByNoteId(openBadge.Id);
+
+                if (existingLocal != null)
                 {
-                    Logger?.LogInformation($"Badge already exists: {openBadge.Id}");
-                    return existingBadge.First();
+                    Logger?.LogInformation($"Grant already exists in local database: {existingLocal.Id}");
+                    Console.WriteLine($"Grant already exists in local database: {existingLocal.Id}");
+
+                    return existingLocal;
                 }
 
                 // Convert OpenBadge to BadgeRecord
@@ -52,7 +56,7 @@ namespace BadgeFed.Services
                     Type = "BadgeRecord",
                     Title = openBadge.Badge.Name,
                     Description = openBadge.Badge.Description,
-                    IssuedBy = openBadge.Badge.Issuer,
+                    IssuedBy = issuerUrl,
                     Image = openBadge.Badge.Image,
                     EarningCriteria = openBadge.Badge.Criteria?.Narrative ?? "",
                     IssuedOn = DateTime.Parse(openBadge.IssuedOn),
@@ -112,7 +116,16 @@ namespace BadgeFed.Services
         public string Description { get; set; } = "";
         public string Image { get; set; } = "";
         public OpenBadgeCriteria? Criteria { get; set; }
-        public string Issuer { get; set; } = "";
+        public OpenBadgeIssuer Issuer { get; set; } = new();
+    }
+
+    public class OpenBadgeIssuer
+    {
+        public string? Type { get; set; }
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Url { get; set; }
+        public string? Email { get; set; }
     }
 
     public class OpenBadgeCriteria

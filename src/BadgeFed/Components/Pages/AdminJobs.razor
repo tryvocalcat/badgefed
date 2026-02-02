@@ -1,0 +1,642 @@
+@page "/admin/jobs"
+
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
+
+@inject NavigationManager NavigationManager
+@inject LocalScopedDb LocalDbService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Job Queue</a></li>
+        </ul>
+    </nav>
+
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title">Job Queue Management</h1>
+                    <p class="subtitle">Monitor and manage background job processing</p>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <button class="button is-light" @onclick="RefreshJobs">
+                    <span class="icon">
+                        <i class="fas fa-sync"></i>
+                    </span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Jobs Table -->
+    <div class="box">
+        <div class="level">
+            <div class="level-left">
+                <div class="level-item">
+                    <h3 class="title is-5">Recent Jobs</h3>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <div class="field has-addons">
+                        <div class="control">
+                            <div class="select">
+                                <select @bind="selectedStatus" @bind:after="FilterJobs">
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="failed">Failed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control">
+                            <div class="select">
+                                <select @bind="selectedJobType" @bind:after="FilterJobs">
+                                    <option value="">All Job Types</option>
+                                    <option value="accept_follow_request">Accept Follow</option>
+                                    <option value="unfollow">Unfollow</option>
+                                    <option value="process_quote_request">Quote Request</option>
+                                    <option value="create_activity">Create Activity</option>
+                                    <option value="process_announce">Process Announce</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (jobs == null)
+        {
+            <div class="notification is-info is-light">
+                <p>Loading jobs...</p>
+            </div>
+        }
+        else if (!jobs.Any())
+        {
+            <div class="notification is-light">
+                <p>No jobs found.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Job Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Processed</th>
+                            <th>Retries</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in jobs)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>#@job.Id</strong>
+                                </td>
+                                <td>
+                                    <span class="tag is-light">@FormatJobType(job.JobType)</span>
+                                </td>
+                                <td>
+                                    <span class="tag @GetStatusClass(job.Status)">
+                                        @job.Status.ToUpper()
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="has-text-grey-dark">@job.CreatedAt.ToString("MMM d, HH:mm")</span>
+                                </td>
+                                <td>
+                                    @if (job.ProcessedAt.HasValue)
+                                    {
+                                        <span class="has-text-grey-dark">@job.ProcessedAt.Value.ToString("MMM d, HH:mm")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="has-text-grey-light">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (job.CurrentRetry > 0)
+                                    {
+                                        <span class="tag is-warning">@job.CurrentRetry/@job.MaxRetries</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="has-text-grey-light">0/@job.MaxRetries</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <button class="button is-small is-info is-outlined" @onclick="() => ViewJobDetails(job.Id)">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            <span>View</span>
+                                        </button>
+                                        @if (job.Status == "failed")
+                                        {
+                                            <button class="button is-small is-warning is-outlined" @onclick="() => RetryJob(job.Id)">
+                                                <span class="icon">
+                                                    <i class="fas fa-redo"></i>
+                                                </span>
+                                                <span>Retry</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (totalJobs > pageSize)
+            {
+                <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+                    <button class="pagination-previous" @onclick="PreviousPage" disabled="@(currentPage <= 1)">Previous</button>
+                    <button class="pagination-next" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+                    <ul class="pagination-list">
+                        <li><span class="pagination-link is-current">Page @currentPage of @totalPages</span></li>
+                    </ul>
+                </nav>
+            }
+        }
+    </div>
+
+    <!-- Job Details Modal -->
+    @if (selectedJob != null)
+    {
+        <div class="modal is-active">
+            <div class="modal-background" @onclick="CloseJobDetails"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Job #@selectedJob.Id Details</p>
+                    <button class="delete" @onclick="CloseJobDetails"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="content">
+                        <div class="field">
+                            <label class="label">Job Type</label>
+                            <div class="control">
+                                <span class="tag is-medium">@FormatJobType(selectedJob.JobType)</span>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="label">Status</label>
+                            <div class="control">
+                                <span class="tag is-medium @GetStatusClass(selectedJob.Status)">@selectedJob.Status.ToUpper()</span>
+                            </div>
+                        </div>
+
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label">Created</label>
+                                    <div class="control">
+                                        <input class="input" value="@selectedJob.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label">Processed</label>
+                                    <div class="control">
+                                        <input class="input" value="@(selectedJob.ProcessedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Not processed")" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label">Current Retry</label>
+                                    <div class="control">
+                                        <input class="input" value="@selectedJob.CurrentRetry" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label">Max Retries</label>
+                                    <div class="control">
+                                        <input class="input" value="@selectedJob.MaxRetries" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(selectedJob.LastError))
+                        {
+                            <div class="field">
+                                <label class="label">Last Error</label>
+                                <div class="control">
+                                    <textarea class="textarea is-danger" rows="3" readonly>@selectedJob.LastError</textarea>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(selectedJob.CreatedBy))
+                        {
+                            <div class="field">
+                                <label class="label">Created By</label>
+                                <div class="control">
+                                    <input class="input" value="@selectedJob.CreatedBy" readonly>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(selectedJob.Payload))
+                        {
+                            <div class="field">
+                                <label class="label">Payload</label>
+                                <div class="control">
+                                    <textarea class="textarea" rows="6" readonly>@FormatJsonPayload(selectedJob.Payload)</textarea>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Job Logs -->
+                    @if (jobLogs.Any())
+                    {
+                        <div class="content">
+                            <h4 class="title is-5">Job Logs</h4>
+                            <div class="box" style="max-height: 300px; overflow-y: auto;">
+                                @foreach (var log in jobLogs.OrderBy(l => l.CreatedAt))
+                                {
+                                    <div class="notification is-light is-small">
+                                        <div class="level is-mobile">
+                                            <div class="level-left">
+                                                <div class="level-item">
+                                                    <small class="has-text-grey">@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="content is-small">
+                                            @log.Message
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+                <footer class="modal-card-foot">
+                    @if (selectedJob.Status == "failed")
+                    {
+                        <button class="button is-warning" @onclick="() => RetryJob(selectedJob.Id)">
+                            <span class="icon">
+                                <i class="fas fa-redo"></i>
+                            </span>
+                            <span>Retry Job</span>
+                        </button>
+                    }
+                    <button class="button" @onclick="CloseJobDetails">Close</button>
+                </footer>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<SimpleJob>? jobs;
+    private SimpleJob? selectedJob;
+    private List<JobLog> jobLogs = new();
+    private Dictionary<string, int> queueStats = new();
+    private string errorMessage = string.Empty;
+    private string selectedStatus = string.Empty;
+    private string selectedJobType = string.Empty;
+    
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalJobs = 0;
+    private int totalPages = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJobs();
+        await LoadQueueStats();
+    }
+
+    private async Task LoadJobs()
+    {
+        try
+        {
+            var domain = HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost";
+            var jobQueue = new JobQueueService(domain);
+
+            // Get all jobs with pagination and filtering
+            jobs = await GetJobsWithFilters(jobQueue);
+            totalJobs = await GetTotalJobsCount(jobQueue);
+            totalPages = (int)Math.Ceiling((double)totalJobs / pageSize);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading jobs: {ex.Message}";
+            jobs = new List<SimpleJob>();
+        }
+    }
+
+    private async Task LoadQueueStats()
+    {
+        try
+        {
+            var domain = HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost";
+            var jobQueue = new JobQueueService(domain);
+            queueStats = await jobQueue.GetJobCountsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading queue stats: {ex.Message}";
+        }
+    }
+
+    private async Task<List<SimpleJob>> GetJobsWithFilters(JobQueueService jobQueue)
+    {
+        using var connection = jobQueue.GetQueueDbInstance().GetConnection();
+        connection.Open();
+
+        var query = @"SELECT Id, JobType, Domain, Status, Payload, MaxRetries, CurrentRetry, 
+                             LastError, CreatedAt, ScheduledFor, StartedAt, CompletedAt, 
+                             ProcessedAt, CreatedBy, Notes 
+                      FROM Jobs WHERE Domain = @domain";
+        var parameters = new Dictionary<string, object> { { "@domain", HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost" } };
+
+        if (!string.IsNullOrEmpty(selectedStatus))
+        {
+            query += " AND Status = @status";
+            parameters["@status"] = selectedStatus;
+        }
+
+        if (!string.IsNullOrEmpty(selectedJobType))
+        {
+            query += " AND JobType = @jobType";
+            parameters["@jobType"] = selectedJobType;
+        }
+
+        query += " ORDER BY CreatedAt DESC LIMIT @limit OFFSET @offset";
+        parameters["@limit"] = pageSize;
+        parameters["@offset"] = (currentPage - 1) * pageSize;
+
+        var command = connection.CreateCommand();
+        command.CommandText = query;
+
+        foreach (var param in parameters)
+        {
+            command.Parameters.AddWithValue(param.Key, param.Value);
+        }
+
+        var jobList = new List<SimpleJob>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            jobList.Add(new SimpleJob
+            {
+                Id = reader.GetInt64(0), // Id
+                JobType = reader.GetString(1), // JobType
+                Domain = reader.GetString(2), // Domain
+                Status = reader.GetString(3), // Status
+                Payload = reader.IsDBNull(4) ? null : reader.GetString(4), // Payload
+                MaxRetries = reader.GetInt32(5), // MaxRetries
+                CurrentRetry = reader.GetInt32(6), // CurrentRetry
+                LastError = reader.IsDBNull(7) ? null : reader.GetString(7), // LastError
+                CreatedAt = reader.GetDateTime(8), // CreatedAt
+                ScheduledFor = reader.GetDateTime(9), // ScheduledFor
+                StartedAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10), // StartedAt
+                CompletedAt = reader.IsDBNull(11) ? null : reader.GetDateTime(11), // CompletedAt
+                ProcessedAt = reader.IsDBNull(12) ? null : reader.GetDateTime(12), // ProcessedAt
+                CreatedBy = reader.IsDBNull(13) ? null : reader.GetString(13), // CreatedBy
+                Notes = reader.IsDBNull(14) ? null : reader.GetString(14) // Notes
+            });
+        }
+
+        return jobList;
+    }
+
+    private async Task<int> GetTotalJobsCount(JobQueueService jobQueue)
+    {
+        using var connection = jobQueue.GetQueueDbInstance().GetConnection();
+        connection.Open();
+
+        var query = "SELECT COUNT(*) FROM Jobs WHERE Domain = @domain";
+        var parameters = new Dictionary<string, object> { { "@domain", HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost" } };
+
+        if (!string.IsNullOrEmpty(selectedStatus))
+        {
+            query += " AND Status = @status";
+            parameters["@status"] = selectedStatus;
+        }
+
+        if (!string.IsNullOrEmpty(selectedJobType))
+        {
+            query += " AND JobType = @jobType";
+            parameters["@jobType"] = selectedJobType;
+        }
+
+        var command = connection.CreateCommand();
+        command.CommandText = query;
+
+        foreach (var param in parameters)
+        {
+            command.Parameters.AddWithValue(param.Key, param.Value);
+        }
+
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private async Task ViewJobDetails(long jobId)
+    {
+        selectedJob = jobs?.FirstOrDefault(j => j.Id == jobId);
+        if (selectedJob != null)
+        {
+            await LoadJobLogs(jobId);
+        }
+    }
+
+    private async Task LoadJobLogs(long jobId)
+    {
+        try
+        {
+            var domain = HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost";
+            var jobQueue = new JobQueueService(domain);
+
+            using var connection = jobQueue.GetQueueDbInstance().GetConnection();
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT Id, JobId, Message, CreatedAt FROM JobLogs WHERE JobId = @jobId ORDER BY CreatedAt ASC";
+            command.Parameters.AddWithValue("@jobId", jobId);
+
+            jobLogs.Clear();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                jobLogs.Add(new JobLog
+                {
+                    Id = reader.GetInt64(0), // Id column
+                    JobId = reader.GetInt64(1), // JobId column
+                    Message = reader.GetString(2), // Message column
+                    CreatedAt = reader.GetDateTime(3) // CreatedAt column
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading job logs: {ex.Message}";
+        }
+    }
+
+    private void CloseJobDetails()
+    {
+        selectedJob = null;
+        jobLogs.Clear();
+    }
+
+    private async Task RetryJob(long jobId)
+    {
+        try
+        {
+            var domain = HttpContextAccessor.HttpContext?.Request.Host.Host ?? "localhost";
+            var jobQueue = new JobQueueService(domain);
+
+            using var connection = jobQueue.GetQueueDbInstance().GetConnection();
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                UPDATE Jobs 
+                SET Status = 'pending', CurrentRetry = 0, LastError = NULL, 
+                    ScheduledFor = @scheduledFor, StartedAt = NULL, CompletedAt = NULL
+                WHERE Id = @jobId";
+
+            command.Parameters.AddWithValue("@jobId", jobId);
+            command.Parameters.AddWithValue("@scheduledFor", DateTime.UtcNow);
+
+            await command.ExecuteNonQueryAsync();
+
+            await LoadJobs();
+            await LoadQueueStats();
+            
+            if (selectedJob?.Id == jobId)
+            {
+                selectedJob = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error retrying job: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshJobs()
+    {
+        await LoadJobs();
+        await LoadQueueStats();
+    }
+
+    private async Task FilterJobs()
+    {
+        currentPage = 1;
+        await LoadJobs();
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadJobs();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadJobs();
+        }
+    }
+
+    private string FormatJobType(string jobType)
+    {
+        return jobType switch
+        {
+            "accept_follow_request" => "Accept Follow",
+            "unfollow" => "Unfollow",
+            "process_quote_request" => "Quote Request",
+            "create_activity" => "Create Activity",
+            "process_announce" => "Process Announce",
+            _ => jobType
+        };
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "pending" => "is-info",
+            "processing" => "is-warning",
+            "completed" => "is-success",
+            "failed" => "is-danger",
+            _ => "is-light"
+        };
+    }
+
+    private string FormatJsonPayload(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload)) return "No payload";
+        
+        try
+        {
+            var jsonDocument = JsonDocument.Parse(payload);
+            return JsonSerializer.Serialize(jsonDocument, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return payload;
+        }
+    }
+
+    public class JobLog
+    {
+        public long Id { get; set; }
+        public long JobId { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+}

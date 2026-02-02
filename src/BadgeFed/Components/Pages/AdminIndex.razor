@@ -1,9 +1,11 @@
 @page "/admin/"
 
 @using BadgeFed.Models
+@using System.IO
 
 @inject NavigationManager NavigationManager
-@inject LocalDbService LocalDbService
+@inject LocalScopedDb LocalDbService
+@inject IWebHostEnvironment Environment
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -61,13 +63,6 @@
                         </span>
                         <span>User Invitations</span>
                     </button>
-                    
-                    <button class="button is-warning is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/templates"))">
-                        <span class="icon">
-                            <i class="fas fa-book"></i>
-                        </span>
-                        <span>Documentation</span>
-                    </button>
                 </div>
             </div>
         </div>
@@ -84,7 +79,36 @@
                     </span>
                 </h2>
                 
+                @if (!string.IsNullOrEmpty(statsError))
+                {
+                    <div class="notification is-danger is-light">
+                        <p>Error loading analytics: @statsError</p>
+                    </div>
+                }
+                else
+                {
                 <div class="level is-mobile">
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Issued</p>
+                            <p class="title">@stats.IssuedCount</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Accepted</p>
+                            <p class="title">@stats.AcceptedCount</p>
+                        </div>
+                    </div>
+                    <div class="level-item has-text-centered">
+                        <div>
+                            <p class="heading">Pending</p>
+                            <p class="title">@stats.PendingCount</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="level is-mobile mt-4">
                     <div class="level-item has-text-centered">
                         <div>
                             <p class="heading">Followers</p>
@@ -93,14 +117,14 @@
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Issued Grants</p>
-                            <p class="title">@stats.IssuedCount</p>
+                            <p class="heading">Followed Instances</p>
+                            <p class="title">@stats.FollowedInstancesCount</p>
                         </div>
                     </div>
                     <div class="level-item has-text-centered">
                         <div>
-                            <p class="heading">Accepted Grants</p>
-                            <p class="title">@stats.AcceptedCount</p>
+                            <p class="heading">External Badges</p>
+                            <p class="title">@stats.ExternalBadgesCount</p>
                         </div>
                     </div>
                 </div>
@@ -119,6 +143,7 @@
                         <span>Export Report</span>
                     </button>
                 </div>
+                }
             </div>
         </div>
         
@@ -134,7 +159,13 @@
                     </span>
                 </h2>
                 
-                @if (recentActivityLogs.Count == 0)
+                @if (!string.IsNullOrEmpty(recentActivityError))
+                {
+                    <div class="notification is-danger is-light">
+                        <p>Error loading recent activity: @recentActivityError</p>
+                    </div>
+                }
+                else if (recentActivityLogs.Count == 0)
                 {
                     <div class="notification is-white p-2 mb-2">
                         <p class="is-size-7">No recent activity logs available.</p>
@@ -179,7 +210,14 @@
                             humanRelativeTime = $"{(int)(timeSpan.TotalDays / 365)} yr ago";
                         }
                         <div class="notification is-white p-2 mb-2">
-                            <p class="is-size-7"><strong>@log.Title:</strong> @log.Description <span class="tag is-small @colorTimeClass is-light">@humanRelativeTime</span></p>
+                            <p class="is-size-7">
+                                <strong>@log.Title:</strong> @log.Description 
+                                @if (!string.IsNullOrEmpty(log.EntityUrl))
+                                {
+                                    <a href="@log.EntityUrl" class="tag is-small is-light ml-1 is-link">View</a>
+                                }
+                                <span class="tag is-small @colorTimeClass is-light ml-1">@humanRelativeTime</span>
+                            </p>
                         </div>
                     }
                 }
@@ -189,55 +227,8 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Tools Panel -->
-        <div class="column is-6">
-            <div class="box has-background-white-ter has-shadow">
-                <h2 class="subtitle has-text-weight-bold has-text-centered">
-                    <span class="icon-text">
-                        <span class="icon has-text-grey-dark">
-                            <i class="fas fa-toolbox"></i>
-                        </span>
-                        <span>Certification Tools</span>
-                    </span>
-                </h2>
-                
-                <div class="columns is-multiline">
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-magic"></i>
-                            </span>
-                            <span>Badge Designer</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-file-import"></i>
-                            </span>
-                            <span>Bulk Import</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-qrcode"></i>
-                            </span>
-                            <span>QR Generator</span>
-                        </button>
-                    </div>
-                    <div class="column is-6">
-                        <button class="button is-fullwidth is-outlined is-link has-shadow">
-                            <span class="icon">
-                                <i class="fas fa-cogs"></i>
-                            </span>
-                            <span>System Settings</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+ 
+        @((MarkupString)adminResourcesHtml)
         
         <!-- Pending Tasks -->
         <div class="column is-6" style="display: none;">
@@ -320,12 +311,59 @@
 @code {
 
     private InstanceStats stats = new InstanceStats();
+    private string statsError = "";
 
     private List<RecentActivityLog> recentActivityLogs = [];
+    private string recentActivityError = "";
+    
+    private string adminResourcesHtml = "";
 
     protected override async Task OnInitializedAsync()
     {
-        stats = LocalDbService.GetInstanceStats();
-        recentActivityLogs = LocalDbService.GetRecentActivityLogs(5); // Fetch the last 5 logs
+        try {
+            stats = LocalDbService.GetInstanceStats();
+            statsError = ""; // Clear any previous errors
+        } catch (Exception ex) {
+            stats = new InstanceStats();
+            statsError = ex.Message;
+        }        
+
+        try {
+            recentActivityLogs = LocalDbService.GetRecentActivityLogs(7);
+            recentActivityError = ""; // Clear any previous errors
+        } catch (Exception ex) {
+            recentActivityLogs = new List<RecentActivityLog>();
+            recentActivityError = ex.Message;
+        }
+        
+        // Load admin resources HTML from static file
+        await LoadAdminResourcesHtml();
+    }
+    
+    private async Task LoadAdminResourcesHtml()
+    {
+        try
+        {
+            var filePath = Path.Combine(Environment.ContentRootPath, "assets", "static", "admin-resources.html");
+            if (File.Exists(filePath))
+            {
+                adminResourcesHtml = await File.ReadAllTextAsync(filePath);
+            }
+            else
+            {
+                // Fallback HTML if file doesn't exist
+                adminResourcesHtml = @"
+                    <div class=""notification is-warning is-light"">
+                        <p>Admin resources file not found. Please check <code>assets/static/admin-resources.html</code></p>
+                    </div>";
+            }
+        }
+        catch (Exception ex)
+        {
+            adminResourcesHtml = $@"
+                <div class=""notification is-danger is-light"">
+                    <p>Error loading admin resources: {ex.Message}</p>
+                </div>";
+        }
     }
 }

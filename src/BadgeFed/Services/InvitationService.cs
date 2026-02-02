@@ -5,18 +5,18 @@ namespace BadgeFed.Services;
 
 public class InvitationService
 {
-    private readonly LocalDbService _localDbService;
+    private readonly LocalScopedDb _localDbService;
     private readonly MailService _mailService;
     private readonly IConfiguration _configuration;
 
-    public InvitationService(LocalDbService localDbService, MailService mailService, IConfiguration configuration)
+    public InvitationService(LocalScopedDb localDbService, MailService mailService, IConfiguration configuration)
     {
         _localDbService = localDbService;
         _mailService = mailService;
         _configuration = configuration;
     }
 
-    public Invitation CreateInvitation(string email, string invitedByUserId, string role = "manager", int expirationDays = 7, string? notes = null)
+    public Invitation CreateInvitation(string email, string invitedByUserId, string role = "manager", int expirationDays = 7, string? notes = null, string groupId = "system")
     {
         var invitation = new Invitation
         {
@@ -24,7 +24,8 @@ public class InvitationService
             InvitedBy = invitedByUserId,
             ExpiresAt = DateTime.UtcNow.AddDays(expirationDays),
             Role = role,
-            Notes = notes
+            Notes = notes,
+            GroupId = groupId
         };
 
         _localDbService.UpsertInvitation(invitation);
@@ -112,6 +113,7 @@ public class InvitationService
     public Invitation? ValidateAndGetInvitation(string invitationCode)
     {
         var invitation = _localDbService.GetInvitationById(invitationCode);
+        Console.WriteLine($"Validating invitation code: {invitationCode}, Found: {invitation != null}, IsValid: {invitation?.IsValid}");
         return invitation?.IsValid == true ? invitation : null;
     }
 
@@ -123,8 +125,9 @@ public class InvitationService
             throw new InvalidOperationException("Invalid or expired invitation code");
         }
 
-        // Ensure the user has the role specified in the invitation
+        // Ensure the user has the role and group specified in the invitation
         user.Role = invitation.Role;
+        user.GroupId = invitation.GroupId;
         
         // Create or update the user
         _localDbService.UpsertUser(user);

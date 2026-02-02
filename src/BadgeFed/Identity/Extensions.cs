@@ -12,11 +12,42 @@ internal static class LoginLogoutEndpointRouteBuilderExtensions
     {
         var group = endpoints.MapGroup("");
 
+        // Add dynamic Mastodon OAuth route that accepts any server
+        group.MapGet($"/login/oauth/{{server}}", (string server, string? returnUrl, string? invitationCode) =>
+        {
+            Console.WriteLine(returnUrl);
+            var authProps = GetAuthProperties(returnUrl);
+
+            if (!string.IsNullOrEmpty(invitationCode))
+            {
+                authProps.Items["invitationCode"] = invitationCode;
+            }
+
+            // Store the server in the authentication properties
+            authProps.Items["mastodon_server"] = server;
+
+            // Use the DynamicMastodon scheme
+            return TypedResults.Challenge(authProps, new[] { "DynamicMastodon" });
+        }).AllowAnonymous();
+
+        // Keep the legacy server-specific routes for backward compatibility if needed
         if (servers?.Any() ?? false)
         {
-            group.MapGet("/login/mastodon", (string? returnUrl) =>
-                TypedResults.Challenge(GetAuthProperties(returnUrl), servers))
-                    .AllowAnonymous();
+            foreach (var server in servers)
+            {
+                group.MapGet($"/login/legacy/{server}", (string? returnUrl, string? invitationCode) =>
+                {
+                    var authProps = GetAuthProperties(returnUrl);
+
+                    if (!string.IsNullOrEmpty(invitationCode))
+                    {
+                        authProps.Items["invitationCode"] = invitationCode;
+                    }
+
+                    authProps.Items["mastodon_server"] = server;
+                    return TypedResults.Challenge(authProps, new[] { "DynamicMastodon" });
+                }).AllowAnonymous();
+            }
         }
 
         // Sign out of the Cookie and OIDC handlers. If you do not sign out with the OIDC handler,
@@ -69,22 +100,28 @@ internal static class LoginLogoutEndpointRouteBuilderExtensions
 
     private static AuthenticationProperties GetAuthProperties(string? returnUrl)
     {
+        Console.WriteLine($"GetAuthProperties called with returnUrl: {returnUrl}");
         // TODO: Use HttpContext.Request.PathBase instead.
         const string pathBase = "/";
 
         // Prevent open redirects.
         if (string.IsNullOrEmpty(returnUrl))
         {
+            Console.WriteLine("returnUrl is null or empty, setting to pathBase");
             returnUrl = pathBase;
         }
         else if (!Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
         {
+            Console.WriteLine($"returnUrl is not a relative URI: {returnUrl}");
             returnUrl = new Uri(returnUrl, UriKind.Absolute).PathAndQuery;
         }
         else if (returnUrl[0] != '/')
         {
+            Console.WriteLine($"returnUrl does not start with '/': {returnUrl}");
             returnUrl = $"{pathBase}{returnUrl}";
         }
+
+        Console.WriteLine($"Final returnUrl after processing: {returnUrl}");
 
         return new AuthenticationProperties { RedirectUri = returnUrl };
     }

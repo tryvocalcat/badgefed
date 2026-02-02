@@ -2,7 +2,8 @@
 @using ActivityPubDotNet.Core
 @using System.Text.Json
 @inject NavigationManager NavManager
-@inject LocalDbService DbService
+@inject LocalScopedDb DbService
+@inject BadgeProcessor BadgeProcessor
 @using BadgeFed.Models
 @inject HttpClient HttpClient
 @rendermode InteractiveServer
@@ -67,7 +68,7 @@ else if (accepted)
                 <label class="label" for="email">Confirm Email Address:</label>
                 <div class="control">
                     <input type="email" id="email" class="input is-rounded" @bind="acceptEmail" 
-                    required placeholder="@BadgeRecord.IssuedToEmail"/>
+                    required />
                 </div>
                 <p class="help is-info">
                     Please enter the email address this badge was originally sent to for verification.
@@ -92,7 +93,7 @@ else if (accepted)
         {
             <!-- Profile URI Input -->
             <div class="field mb-3">
-                <label class="label" for="profileUri">Profile URI:</label>
+                <label class="label" for="profileUri">* Profile URI:</label>
                 <div class="control">
                     <input type="url" id="profileUri" class="input is-rounded" @bind="Model.ProfileUri" placeholder="e.g., https://mastodon.social/@@username" />
                 </div>
@@ -115,16 +116,7 @@ else if (accepted)
                 </div>
             </div>
 
-            <!-- Certification Checkbox -->
-            <div class="field mt-4 mb-3">
-                <div class="control">
-                    <label class="checkbox">
-                        <input type="checkbox" id="certifyCheck" @bind="certificationCompleted" />
-                        By checking this box I certify I completed the earning criteria.
-                    </label>
-                </div>
-            </div>
-
+           
             <!-- Visibility Select -->
             <div class="field mb-3">
                 <label class="label" for="visibility">Visibility:</label>
@@ -144,6 +136,9 @@ else if (accepted)
 
             <!-- Submit Button -->
             <div class="field">
+                <label class="checkbox">
+                        By accepting this badge I certify I completed the earning criteria.
+                    </label>
                 <div class="control">
                     <button type="submit" class="button is-primary is-fullwidth is-medium is-rounded">Accept Badge</button>
                 </div>
@@ -162,8 +157,6 @@ else if (accepted)
     public Recipient? Model = new();
 
     public BadgeRecord BadgeRecord;
-
-    private bool certificationCompleted;
 
     private string visibility = "Public";
 
@@ -250,14 +243,15 @@ else if (accepted)
 
     public async Task HandleValidSubmit()
     {
-        if (!certificationCompleted)
-        {
-            return;
-        }
-
         DbService.UpsertRecipient(Model);
 
         var issuedTo = Model.ProfileUri; //Model.IsActivityPubActor ? : $"https://{Actor.Domain}/recipients/{Actor.Domain}/{Model.Id}";
+
+        if (string.IsNullOrEmpty(issuedTo))
+        {
+            errorMessage = "Profile URI is required (e.g. https://linkedin.com/in/username or https://mastodon.social/@username).";
+            return;
+        }
 
         BadgeRecord.IssuedToName = Model.Name;
         BadgeRecord.IssuedToSubjectUri = issuedTo;
@@ -267,6 +261,19 @@ else if (accepted)
         DbService.AcceptBadgeRecord(BadgeRecord);
 
         accepted = true;
+
+        try {
+            BadgeRecord = await BadgeProcessor.SignAndGenerateBadge(BadgeRecord.Id);
+
+            if (!string.IsNullOrEmpty(BadgeRecord?.NoteId))
+            {
+                NavManager.NavigateTo(BadgeRecord.NoteId);
+
+                return;
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"WARNING - Error processing badge: {ex.Message}");
+        }
     }
 
     protected override async Task OnInitializedAsync()

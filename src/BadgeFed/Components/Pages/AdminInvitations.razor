@@ -8,6 +8,7 @@
 @inject InvitationService InvitationService
 @inject IJSRuntime JSRuntime
 @inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalScopedDb
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -18,6 +19,7 @@
     <nav class="breadcrumb" aria-label="breadcrumbs">
         <ul>
             <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/users">User Management</a></li>
             <li class="is-active"><a href="#" aria-current="page">Invitations</a></li>
         </ul>
     </nav>
@@ -100,6 +102,7 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Status</th>
+                        <th>Group</th>
                         <th>Created</th>
                         <th>Expires</th>
                         <th>Actions</th>
@@ -131,6 +134,19 @@
                                 else
                                 {
                                     <span class="tag is-primary">Active</span>
+                                }
+                            </td>
+                            <td>
+                                @{
+                                    var groupName = GetGroupName(invitation.GroupId);
+                                }
+                                @if (!string.IsNullOrEmpty(groupName))
+                                {
+                                    <span class="tag is-light">@groupName</span>
+                                }
+                                else
+                                {
+                                    <span class="tag is-warning">Unknown Group</span>
                                 }
                             </td>
                             <td>@invitation.CreatedAt.ToString("MMM d, yyyy")</td>
@@ -200,6 +216,28 @@
                 <p class="help">Managers can create issuers and badges. Admins have full system access.</p>
             </div>
 
+            @if (newInvitation.Role != "admin")
+            {
+                <div class="field">
+                    <label class="label">Group <span class="has-text-danger">*</span></label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select @bind="newInvitation.GroupId" required>
+                                <option value="">Select a group...</option>
+                                @if (availableGroups != null)
+                                {
+                                    @foreach (var group in availableGroups)
+                                    {
+                                        <option value="@group.Id">@group.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">Non-admin users must be assigned to a specific group.</p>
+                </div>
+            }
+
             <div class="field">
                 <label class="label">Expiration</label>
                 <div class="control">
@@ -254,15 +292,12 @@
 <style>
     .buttons.are-small .button {
         margin-right: 0.25rem;
-    }
-
-    .level-item .title {
-        margin-bottom: 1.5rem;
-    }
+    }    
 </style>
 
 @code {
     private List<Invitation>? invitations;
+    private List<UserGroup>? availableGroups;
     private string currentFilter = "all";
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
@@ -274,6 +309,28 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadInvitations();
+        await LoadAvailableGroups();
+    }
+
+    private async Task LoadAvailableGroups()
+    {
+        try
+        {
+            availableGroups = LocalScopedDb.GetAllUserGroups();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading groups: {ex.Message}";
+        }
+    }
+
+    private string GetGroupName(string groupId)
+    {
+        if (string.IsNullOrEmpty(groupId))
+            return "No Group";
+            
+        var group = availableGroups?.FirstOrDefault(g => g.Id == groupId);
+        return group?.Name ?? "Unknown Group";
     }
 
     private async Task LoadInvitations()
@@ -333,6 +390,21 @@
         showCreateModal = true;
     }
 
+    private void OnRoleChanged(ChangeEventArgs e)
+    {
+        newInvitation.Role = e.Value?.ToString() ?? "manager";
+        
+        // Reset GroupId when role changes to admin (since admin doesn't need a group)
+        if (newInvitation.Role == "admin")
+        {
+            newInvitation.GroupId = "system";
+        }
+        else if (string.IsNullOrEmpty(newInvitation.GroupId) || newInvitation.GroupId == "system")
+        {
+            newInvitation.GroupId = string.Empty;
+        }
+    }
+
     private void HideCreateModal()
     {
         showCreateModal = false;
@@ -348,12 +420,20 @@
 
         try
         {
+            // Validate group selection for non-admin users
+            if (newInvitation.Role != "admin" && string.IsNullOrEmpty(newInvitation.GroupId))
+            {
+                errorMessage = "Please select a group for non-admin users.";
+                return;
+            }
+
             var invitation = InvitationService.CreateInvitation(
                 newInvitation.Email,
                 CurrentUser.UserId,
                 newInvitation.Role,
                 newInvitation.ExpirationDays,
-                newInvitation.Notes
+                newInvitation.Notes,
+                newInvitation.GroupId
             );
 
             if (newInvitation.SendEmail)
@@ -440,6 +520,7 @@
     {
         public string Email { get; set; } = string.Empty;
         public string Role { get; set; } = "manager";
+        public string GroupId { get; set; } = "system";
         public int ExpirationDays { get; set; } = 7;
         public string? Notes { get; set; }
         public bool SendEmail { get; set; } = true;

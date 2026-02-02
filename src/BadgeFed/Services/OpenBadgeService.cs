@@ -5,9 +5,9 @@ namespace BadgeFed.Services
 {
     public class OpenBadgeService
     {
-        private readonly LocalDbService _localDbService;
+        private readonly LocalScopedDb _localDbService;
 
-        public OpenBadgeService(LocalDbService localDbService)
+        public OpenBadgeService(LocalScopedDb localDbService)
         {
             _localDbService = localDbService;
         }
@@ -91,7 +91,7 @@ namespace BadgeFed.Services
                 record.Actor = _localDbService.GetActorByFilter($"Uri = \"{record.IssuedBy}\"") ?? new Actor();
             }
 
-            var badge = record.Badge;
+            var badge = _localDbService.GetBadgeById(record.Badge.Id);
             var actor = record.Actor;
             var noteId = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
 
@@ -105,7 +105,8 @@ namespace BadgeFed.Services
                     type = "url",
                     identity = record.IssuedToSubjectUri, // this is critical for BadgeFed compatibility
                     hashed = false
-                },                badge = new {
+                },
+                badge = new {
                     _context = "https://w3id.org/openbadges/v2",
                     type = "BadgeClass",
                     id = $"https://{actor.Domain}/openbadge/class/{badge.Id}",

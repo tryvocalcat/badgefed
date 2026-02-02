@@ -1,0 +1,211 @@
+/* Night Theme - Dark Blue and Deep Purple */
+.issuer-header {
+    background: linear-gradient(135deg, rgb(10, 10, 10) 0%, #1f1b66 100%);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    border-radius: 25px;
+    position: relative;
+    overflow: hidden;
+}
+
+.box {
+    background: linear-gradient(135deg, rgb(10, 10, 10) 0%, #1f1b66 100%);
+    color: white;
+}
+
+.issuer-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1%, transparent 80%);
+    animation: shimmer 15s infinite linear;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.issuer-avatar {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 5px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 30px rgba(31, 27, 102, 0.7);
+    object-fit: cover;
+    position: relative;
+    z-index: 1;
+}
+
+.issuer-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.03));
+    padding: 1.5rem 2rem;
+    border-radius: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(31, 27, 102, 0.2);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+@media (min-width: 768px) {
+    .badge-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+body {
+    background: linear-gradient(145deg, #0c0c0e 0%, #131338 100%) !important;
+}
+
+.title {
+    color: white;
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.badge-card {
+    background: linear-gradient(145deg, #131338 0%, #1f1b66 100%);
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(31, 27, 102, 0.3);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 100%;
+    border: 1px solid rgba(31, 27, 102, 0.2);
+    position: relative;
+    color: #fff;
+}
+
+.badge-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(31, 27, 102, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.badge-card:hover::before {
+    left: 100%;
+}
+
+.badge-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 20px 50px rgba(31, 27, 102, 0.5);
+}
+
+.badge-image {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: #131338;
+    padding: 1rem;
+}
+
+.badge-content {
+    padding: 1.5rem;
+}
+
+.follower-card {
+    background: linear-gradient(145deg, #0c0c0e 0%, #131338 100%);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 6px 20px rgba(31, 27, 102, 0.2);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(31, 27, 102, 0.2);
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+}
+
+.follower-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(10, 10, 10), #131338, #1f1b66, #2d2a99, #3b37cc);
+}
+
+.follower-card:hover {
+    transform: translateX(5px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(31, 27, 102, 0.3);
+}
+
+.social-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-link {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.social-link::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(31, 27, 102, 0.8), transparent);
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.social-link:hover::before {
+    width: 100%;
+    height: 100%;
+}
+
+.social-link:hover {
+    transform: scale(1.15) rotate(5deg);
+    border-color: rgba(31, 27, 102, 0.6);
+}

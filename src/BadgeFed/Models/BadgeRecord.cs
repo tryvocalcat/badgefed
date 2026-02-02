@@ -30,7 +30,7 @@ namespace BadgeFed.Models
                     return string.Empty;
                 }
 
-                if (Image.StartsWith("http://") || Image.StartsWith("https://") || !IsExternal)
+                if (Image.StartsWith("http://") || Image.StartsWith("https://"))
                 {
                     return Image;
                 }
@@ -65,6 +65,9 @@ namespace BadgeFed.Models
 
         public DateTime? AcceptedOn { get; set; }
         public DateTime? LastUpdated { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public DateTime? BoostedOn { get; set; }
 
         public string Hashtags { get; set; } = "";
 

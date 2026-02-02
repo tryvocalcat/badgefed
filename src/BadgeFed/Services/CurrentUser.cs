@@ -12,7 +12,7 @@ public class CurrentUser
         _httpContextAccessor = httpContextAccessor;
         _protectedSessionStorage = protectedSessionStorage;
     }
-    
+
     public string? Issuer => _httpContextAccessor.HttpContext?.User.Identity.AuthenticationType;
 
     public string? Id => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -24,13 +24,19 @@ public class CurrentUser
 
     public string? UserId => IsAuthenticated ? string.Concat(Issuer, "_", Id) : null;
 
-    public bool HasClaim(string claimType) => 
+    public bool HasClaim(string claimType) =>
         _httpContextAccessor.HttpContext?.User.HasClaim(c => c.Type == claimType) ?? false;
 
     public string GetRole()
     {
         var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role);
         return roleClaim?.Value ?? string.Empty;
+    }
+
+    public string GetGroupId()
+    {
+        var groupClaim = _httpContextAccessor.HttpContext?.User.FindFirst("urn:badgefed:group");
+        return groupClaim?.Value ?? "system";
     }
 
     public bool IsAdmin()
@@ -43,5 +49,11 @@ public class CurrentUser
     {
         var role = GetRole();
         return !string.IsNullOrEmpty(role) && role.Equals("manager", StringComparison.OrdinalIgnoreCase) || IsAdmin();
+    }
+
+    public bool CanCollaborate()
+    {
+        var role = GetRole();
+        return !string.IsNullOrEmpty(role) && role.Equals("collaborator", StringComparison.OrdinalIgnoreCase) || CanManage();
     }
 } 

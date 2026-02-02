@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
-@inject LocalDbService LocalDbService
+@inject LocalScopedDb LocalDbService
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 @using System.Security.Claims;
@@ -50,10 +50,19 @@ else
                         </td>
                         <td class="has-text-right">
                             <div class="buttons is-right">
+                                <button class="button is-info is-small" @onclick="() => ViewActor(actor)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                    <span>View</span>
+                                </button>
                                 <button class="button is-primary is-small" @onclick="() => EditActor(actor)">Edit</button>
                                 @if (!actor.IsMain)
                                 {
-                                    <button class="button is-warning is-small" @onclick="() => MarkAsMain(actor)">Mark as Main</button>
+                                    if (CurrentUser.IsAdmin())
+                                    {
+                                        <button class="button is-warning is-small" @onclick="() => MarkAsMain(actor)">Mark as Main</button>
+                                    }
                                     <button class="button is-danger is-small" @onclick="() => DeleteActor(actor)">Delete</button>
                                 }
                             </div>
@@ -82,8 +91,7 @@ else
         }
         else
         {
-            var userId = CurrentUser.UserId;
-            actors = LocalDbService.GetActors($"OwnerId = '{userId}'");
+            actors = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
         }
     }
 
@@ -96,7 +104,16 @@ else
     private void ViewActor(Actor actor)
     {
         Console.WriteLine($"Viewing actor: {actor.Id}");
-        NavigationManager.NavigateTo(actor.Uri?.ToString());
+        if (!string.IsNullOrEmpty(actor.Uri?.ToString()))
+        {
+            // Open in new tab
+            NavigationManager.NavigateTo(actor.Uri.ToString(), true);
+        }
+        else
+        {
+            // Navigate to a local actor profile page if URI is not available
+            NavigationManager.NavigateTo($"/actors/{actor.Username}");
+        }
     }
 
     private async void DeleteActor(Actor actor)

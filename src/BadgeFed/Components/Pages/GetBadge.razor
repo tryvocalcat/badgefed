@@ -1,0 +1,434 @@
+@page "/get/{ShortCode}"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject TokenGrantService TokenGrantService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<section class="section pt-5">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-8">
+                @if (isLoading)
+                {
+                    <div class="card">
+                        <div class="card-content has-text-centered py-6">
+                            <span class="icon is-large has-text-primary">
+                                <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                            </span>
+                            <p class="mt-4 has-text-grey">Loading badge information...</p>
+                        </div>
+                    </div>
+                }
+                else if (tokenGrant == null)
+                {
+                    <div class="card">
+                        <div class="card-content has-text-centered py-6">
+                            <span class="icon is-large has-text-danger mb-4">
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </span>
+                            <h2 class="title is-4 has-text-danger mb-3">Badge Not Found</h2>
+                            <p class="has-text-grey">The badge grant you're looking for doesn't exist or has been removed.</p>
+                        </div>
+                    </div>
+                }
+                else if (!tokenGrant.CanRedeem)
+                {
+                    <div class="card">
+                        <div class="card-content has-text-centered py-6">
+                            <span class="icon is-large mb-4">
+                                <i class="fas fa-lock fa-2x"></i>
+                            </span>
+                            <h2 class="title is-4  mb-3">Badge Not Available</h2>
+                            <div class="content">
+                                @if (!tokenGrant.IsActive)
+                                {
+                                    <p class="has-text-grey">This badge grant is currently inactive.</p>
+                                }
+                                else if (!tokenGrant.IsEnabled)
+                                {
+                                    <p class="has-text-grey">This badge grant will be available on @tokenGrant.EnabledAt?.ToString("MMMM dd, yyyy 'at' HH:mm") UTC.</p>
+                                }
+                                else if (!tokenGrant.HasRedemptionsLeft)
+                                {
+                                    <p class="has-text-grey">This badge grant has reached its redemption limit.</p>
+                                }
+                                else
+                                {
+                                    <p class="has-text-grey">This badge grant is not available for redemption at this time.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (isSubmitted && redemptionResult != null && redemptionResult.Success)
+                {
+                    <div class="card success-card">
+                        <div class="card-content has-text-centered py-6">
+                            <span class="icon is-large has-text-success mb-4">
+                                <i class="fas fa-check-circle fa-3x"></i>
+                            </span>
+                            <h2 class="title is-3 has-text-success mb-4">Badge Claimed Successfully!</h2>
+                            <p class="subtitle has-text-grey mb-5" style="padding: 20px">@redemptionResult.Message</p>
+                            
+                            @if (!string.IsNullOrEmpty(redemptionResult.AcceptUrl))
+                            {
+                                <div class="mb-5">
+                                    <a href="@redemptionResult.AcceptUrl" class="button is-primary is-large is-rounded">
+                                        <span class="icon">
+                                            <i class="fas fa-award"></i>
+                                        </span>
+                                        <span>View & Accept Your Badge</span>
+                                    </a>
+                                </div>
+                                
+                                <div class="notification is-light has-text-left">
+                                    <span class="icon has-text-info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                    <strong>Important:</strong> Please bookmark the link above or save it somewhere safe. You'll need it to accept and manage your badge.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Badge Information Card -->
+                    @if (tokenGrant.Badge != null)
+                    {
+                        <div class="card badge-showcase mb-5">
+                            <div class="card-content">
+                                <div class="has-text-centered mb-5">
+                                    @if (!string.IsNullOrEmpty(tokenGrant.Badge.Image))
+                                    {
+                                        <figure class="image is-128x128 mx-auto mb-4">
+                                            <img src="@tokenGrant.Badge.Image" alt="@tokenGrant.Badge.Title" class="badge-image-large" />
+                                        </figure>
+                                    }
+                                    <h1 class="title is-2 mb-3">@tokenGrant.Title</h1>
+                                    @if (!string.IsNullOrEmpty(tokenGrant.Description))
+                                    {
+                                        <p class="subtitle is-5 has-text-grey" style="padding: 20px">@tokenGrant.Description</p>
+                                    }
+                                </div>
+                                
+                                <div class="columns is-variable is-8">
+                                    <div class="column">
+                                        <div class="content">
+                                            <h3 class="title is-5 has-text-primary">Badge Details</h3>
+                                            <p class="has-text-weight-medium">@tokenGrant.Badge.Title</p>
+                                            @if (!string.IsNullOrEmpty(tokenGrant.Badge.Description))
+                                            {
+                                                <p class="has-text-grey">@tokenGrant.Badge.Description</p>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(tokenGrant.Badge.EarningCriteria))
+                                    {
+                                        <div class="column">
+                                            <div class="content">
+                                                <h3 class="title is-5 has-text-primary">Earning Criteria</h3>
+                                                <p class="has-text-grey">@tokenGrant.Badge.EarningCriteria</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Redemption Form Card -->
+                    <div class="card redemption-form">
+                        <div class="card-content">
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="notification is-danger is-light">
+                                    <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+                                    <span class="icon">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </span>
+                                    @errorMessage
+                                </div>
+                            }
+
+                            <div class="has-text-centered mb-5">
+                                <h2 class="title is-4">Claim Your Badge</h2>
+                                <p class="subtitle is-6 has-text-grey">Please provide your information to receive the badge</p>
+                            </div>
+
+                            <EditForm Model="redemptionRequest" OnValidSubmit="RedeemBadge">
+                                <DataAnnotationsValidator />
+                                
+                                <div class="columns is-variable is-6">
+                                    <div class="column">
+                                        <div class="field">
+                                            <label class="label">Full Name <span class="has-text-danger">*</span></label>
+                                            <div class="control has-icons-left">
+                                                <InputText @bind-Value="redemptionRequest.Name" class="input is-medium" placeholder="Enter your full name" />
+                                                <span class="icon is-left">
+                                                    <i class="fas fa-user"></i>
+                                                </span>
+                                            </div>
+                                            <ValidationMessage For="@(() => redemptionRequest.Name)" class="help is-danger" />
+                                            <p class="help">This name will appear on your badge and can be changed later.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="column">
+                                        <div class="field">
+                                            <label class="label">Profile URL</label>
+                                            <div class="control has-icons-left">
+                                                <InputText @bind-Value="redemptionRequest.ProfileUri" class="input is-medium" placeholder="https://yourwebsite.com" />
+                                                <span class="icon is-left">
+                                                    <i class="fas fa-link"></i>
+                                                </span>
+                                            </div>
+                                            <ValidationMessage For="@(() => redemptionRequest.ProfileUri)" class="help is-danger" />
+                                            <p class="help">Your personal website, portfolio, or social profile.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field mt-5">
+                                    <div class="control">
+                                        <button type="submit" class="button is-primary is-large is-fullwidth is-rounded" disabled="@isSubmitting">
+                                            @if (isSubmitting)
+                                            {
+                                                <span class="icon">
+                                                    <i class="fas fa-spinner fa-pulse"></i>
+                                                </span>
+                                                <span>Claiming Your Badge...</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="icon">
+                                                    <i class="fas fa-award"></i>
+                                                </span>
+                                                <span>Claim Badge</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+
+                    <div class="has-text-centered mt-5">
+                        <p class="is-size-7 has-text-grey-light">
+                            Powered by <a href="https://github.com/tryvocalcat/badgefed" target="_blank" class="has-text-primary">BadgeFed</a>
+                        </p>
+                    </div>
+                }   </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string ShortCode { get; set; } = string.Empty;
+
+    private TokenGrant? tokenGrant;
+    private TokenRedemptionRequest redemptionRequest = new();
+    private TokenGrantService.TokenRedemptionResult? redemptionResult;
+    
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool isSubmitted = false;
+    private string errorMessage = string.Empty;
+
+    public class TokenRedemptionRequest
+    {
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(200, ErrorMessage = "Name cannot exceed 200 characters")]
+        public string Name { get; set; } = string.Empty;
+
+        [Url(ErrorMessage = "Profile URI must be a valid URL")]
+        [StringLength(500, ErrorMessage = "Profile URI cannot exceed 500 characters")]
+        public string? ProfileUri { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTokenGrant();
+    }
+
+    private async Task LoadTokenGrant()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(ShortCode))
+            {
+                tokenGrant = null;
+                return;
+            }
+
+            tokenGrant = TokenGrantService.GetTokenGrantByShortCode(ShortCode);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show it to user
+            tokenGrant = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RedeemBadge()
+    {
+        errorMessage = string.Empty;
+        
+        // Validate that either email or profile URI is provided
+        if (string.IsNullOrWhiteSpace(redemptionRequest.ProfileUri))
+        {
+            errorMessage = "Please provide a profile URL.";
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get client info
+            var userAgent = await JSRuntime.InvokeAsync<string>("eval", "navigator.userAgent");
+            // Note: Getting real IP address would require server-side handling
+            
+            var request = new TokenGrantService.TokenRedemptionRequest
+            {
+                Name = redemptionRequest.Name.Trim(),
+                ProfileUri = string.IsNullOrWhiteSpace(redemptionRequest.ProfileUri) ? null : redemptionRequest.ProfileUri.Trim(),
+                UserAgent = userAgent,
+                IpAddress = "Unknown" // Would need server-side component to get real IP
+            };
+
+            redemptionResult = TokenGrantService.RedeemToken(ShortCode, request);
+
+            if (redemptionResult.Success)
+            {
+                isSubmitted = true;
+            }
+            else
+            {
+                errorMessage = redemptionResult.ErrorMessage ?? "An error occurred while claiming the badge.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    body {
+        background-color: #fafbfc;
+    }
+    
+    .section {
+        min-height: 100vh;
+    }
+    
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e8eaed;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 8px 35px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .badge-showcase {
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fc 100%);
+        border: 2px solid #e3f2fd;
+    }
+    
+    .badge-image-large {
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        transition: transform 0.3s ease;
+    }
+    
+    .badge-image-large:hover {
+        transform: scale(1.05);
+    }
+    
+    .redemption-form {
+        background: white;
+    }
+    
+    .success-card {
+        background: linear-gradient(145deg, #f0fff4 0%, #e8f8f0 100%);
+        border: 2px solid #c6f6d5;
+    }
+    
+    .input.is-medium {
+        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .input.is-medium:focus {
+        border-color: #3273dc;
+        box-shadow: 0 0 0 3px rgba(50, 115, 220, 0.1);
+    }
+    
+    .button.is-primary.is-large.is-rounded {
+        padding: 1rem 2rem;
+        font-weight: 600;
+        border-radius: 50px;
+        box-shadow: 0 4px 20px rgba(50, 115, 220, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .button.is-primary.is-large.is-rounded:hover:not([disabled]) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 30px rgba(50, 115, 220, 0.4);
+    }
+    
+    .notification.is-light {
+        background-color: #f8f9fa;
+        border-left: 4px solid #3273dc;
+        border-radius: 8px;
+    }
+    
+    .title.is-2 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    .title.is-4, .title.is-5 {
+        color: #2d3748;
+        font-weight: 600;
+    }
+    
+    .help {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+    
+    .has-text-grey {
+        color: #6c757d !important;
+    }
+    
+    .has-text-grey-light {
+        color: #9ca3af !important;
+    }
+</style>

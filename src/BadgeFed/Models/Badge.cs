@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace BadgeFed.Models
 {
     public class Badge
@@ -8,6 +10,7 @@ namespace BadgeFed.Models
 
         public string Description { get; set; } = "";
 
+        [Range(1, long.MaxValue, ErrorMessage = "Please select an issuer")]
         public long IssuedBy { get; set; }
 
         public Actor? Issuer { get; set; }
@@ -15,6 +18,7 @@ namespace BadgeFed.Models
         public string Image { get; set; } = "";
         public string ImageAltText { get; set; } = "";
 
+        [Required(ErrorMessage = "Earning criteria is required")]
         public string EarningCriteria { get; set; } = "";
 
         public string BadgeType { get; set; } = "Badge";
@@ -35,6 +39,11 @@ namespace BadgeFed.Models
                         .ToList();
             }
         }
+
+        [Url(ErrorMessage = "Please enter a valid URL")]
+        public string InfoUri { get; set; } = "";
+
+        public bool IsCertificate { get; set; } = false;
 
         public string OwnerId { get; set; } = string.Empty;
     }

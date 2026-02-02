@@ -125,3 +125,19 @@ img {
     margin: 1em 0;
 }
 
+@media screen and (max-width: 768px) {
+.section {
+    padding: 0.5em;
+ 
+}
+
+.media {
+    flex-wrap: wrap !important;
+}
+}
+
+.level-item .title {
+    margin-bottom: 1.5rem !important;
+}
+
+

@@ -1,0 +1,873 @@
+@page "/admin/settings/content"
+
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+
+@inject LocalScopedDb LocalDbService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Environment
+@inject ICustomAssetPathService CustomAssetPathService
+@layout BadgeFed.Components.Layouts.AdminLayout
+@rendermode InteractiveServer
+
+@inject CurrentUser CurrentUser
+
+@attribute [Authorize(Roles = "admin")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/settings">Settings</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Content Management</a></li>
+        </ul>
+    </nav>
+
+    <h1 class="title">Content Management</h1>
+    <h2 class="subtitle">Manage your instance landing page, static pages, and content</h2>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <!-- Landing Page Configuration -->
+    <div class="box">
+        <h3 class="title is-4">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-home"></i>
+                </span>
+                <span>Landing Page Configuration</span>
+            </span>
+        </h3>
+        
+        <div class="notification is-info is-light">
+            <p><strong>Note:</strong> Choose how your homepage should appear to visitors. You can use the default BadgeFed layout with custom content, replace it entirely with custom HTML, or redirect to a static page.</p>
+        </div>
+
+        <form @onsubmit="@SaveInstanceSettings" @onsubmit:preventDefault="true">
+            <!-- Landing Page Type Selection -->
+            <div class="field">
+                <label class="label">Landing Page Type</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select @bind="instanceDescription.LandingPageType">
+                            <option value="default">Default - Use standard BadgeFed layout</option>
+                            <option value="static_page">Static Page - Redirect to uploaded HTML page</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="help">Choose how you want your homepage to appear to visitors</p>
+            </div>
+
+            <!-- Static Page Selection (only shown when static_page is selected) -->
+            @if (instanceDescription.LandingPageType == "static_page")
+            {
+                <div class="field">
+                    <label class="label">Select Static Page</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select @bind="instanceDescription.StaticPageFilename">
+                                <option value="">-- Select a static page --</option>
+                                @foreach (var staticPage in staticPages)
+                                {
+                                    <option value="@staticPage.Filename">@staticPage.Title (@staticPage.Filename)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">Select which uploaded HTML page to redirect to</p>
+                </div>
+            }
+
+            <!-- Custom HTML Editor (only shown when custom_html is selected) -->
+            @if (instanceDescription.LandingPageType == "custom_html")
+            {
+                <div class="field">
+                    <label class="label">Custom Landing Page HTML</label>
+                    <div class="control">
+                        <textarea @bind="instanceDescription.CustomLandingPageHtml" 
+                                  class="textarea" 
+                                  rows="15" 
+                                  placeholder="Enter your complete HTML content here. This will replace the entire homepage. Bulma CSS framework is available for styling."></textarea>
+                    </div>
+                    <p class="help">
+                        <strong>This HTML will completely replace the homepage.</strong><br/>
+                        • Bulma CSS framework is available for styling (use classes like <code>container</code>, <code>section</code>, <code>hero</code>, etc.)<br/>
+                        • Include your own CSS by wrapping it in <code>&lt;style&gt;</code> tags<br/>
+                        • Make sure to include proper HTML structure (<code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code>)
+                    </p>
+                </div>
+            }
+
+            <!-- Instance Description (only shown when default is selected) -->
+            @if (instanceDescription.LandingPageType == "default")
+            {
+                <div class="field">
+                    <label class="label">Enable Instance Description Section</label>
+                    <div class="control">
+                        <label class="checkbox">
+                            <input type="checkbox" @bind="instanceDescription.IsEnabled" />
+                            Display instance description section on the default homepage
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Instance Name</label>
+                    <div class="control">
+                        <input @bind="instanceDescription.Name" class="input" placeholder="e.g., Community Tech Hub" maxlength="100" />
+                    </div>
+                    <p class="help">The name of your instance (max 100 characters, no HTML allowed)</p>
+                </div>
+
+                <div class="field">
+                    <label class="label">Description</label>
+                    <div class="control">
+                        <textarea @bind="instanceDescription.Description" class="textarea" placeholder="Brief description of your instance" rows="3" maxlength="500"></textarea>
+                    </div>
+                    <p class="help">A brief description of your instance (max 500 characters, no HTML allowed)</p>
+                </div>
+
+                <div class="field">
+                    <label class="label">Purpose</label>
+                    <div class="control">
+                        <textarea @bind="instanceDescription.Purpose" class="textarea" placeholder="What is the purpose of your instance?" rows="4" maxlength="1000"></textarea>
+                    </div>
+                    <p class="help">Explain the purpose and goals of your instance (max 1000 characters, no HTML allowed)</p>
+                </div>
+
+                <div class="field">
+                    <label class="label">Contact Information</label>
+                    <div class="control">
+                        <textarea @bind="instanceDescription.ContactInfo" class="textarea" placeholder="How can people contact you?" rows="3" maxlength="300"></textarea>
+                    </div>
+                    <p class="help">Contact information for your instance (max 300 characters, no HTML allowed)</p>
+                </div>
+            }
+
+            <div class="field is-grouped">
+                <div class="control">
+                    <button type="submit" class="button is-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span class="icon"><i class="fas fa-save"></i></span>
+                            <span>Save Landing Page Settings</span>
+                        }
+                    </button>
+                </div>
+                <div class="control">
+                    <button type="button" class="button is-light" @onclick="ResetForm">
+                        <span class="icon"><i class="fas fa-undo"></i></span>
+                        <span>Reset</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <a href="/" class="button is-info is-outlined" target="_blank">
+                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                        <span>Preview Homepage</span>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Static Pages Management -->
+    <div class="box">
+        <h3 class="title is-4">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-file-code"></i>
+                </span>
+                <span>Static Pages Management</span>
+            </span>
+        </h3>
+        
+        <div class="content">
+            <p>Upload HTML files to use as static pages. These files are saved in <code>wwwroot/pages/</code> and can be used as landing pages or linked to from your content.</p>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="field">
+            <label class="label">Upload HTML File</label>
+            <div class="control">
+                <div class="file has-name">
+                    <label class="file-label">
+                        <InputFile OnChange="OnStaticPageFileSelected" accept=".html,.htm" class="file-input" />
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">Choose HTML file…</span>
+                        </span>
+                        <span class="file-name">@(selectedStaticPageFile?.Name ?? "No file selected")</span>
+                    </label>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(staticPageUploadError))
+            {
+                <p class="help is-danger">@staticPageUploadError</p>
+            }
+        </div>
+
+        @if (selectedStaticPageFile != null)
+        {
+            <div class="field">
+                <label class="label">Page Title</label>
+                <div class="control">
+                    <input @bind="newPageTitle" class="input" placeholder="Enter a descriptive title for this page" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Page Description</label>
+                <div class="control">
+                    <input @bind="newPageDescription" class="input" placeholder="Brief description of this page" />
+                </div>
+            </div>
+        }
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="UploadStaticPage" disabled="@(selectedStaticPageFile == null)">
+                    <span class="icon">
+                        <i class="fas fa-upload"></i>
+                    </span>
+                    <span>Upload Static Page</span>
+                </button>
+            </div>
+        </div>
+
+        @if (selectedStaticPageFile != null && WillOverwriteExistingFile())
+        {
+            <div class="notification is-warning is-light">
+                <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
+                <strong>Warning:</strong> A file named "@selectedStaticPageFile.Name" already exists and will be overwritten.
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(staticPageUploadMessage))
+        {
+            <div class="notification is-success is-light">
+                @staticPageUploadMessage
+            </div>
+        }
+
+        <!-- Static Pages List -->
+        <h4 class="title is-5 mt-5">Uploaded Static Pages</h4>
+        @if (staticPages.Any())
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Filename</th>
+                            <th>Description</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var staticPage in staticPages)
+                        {
+                            <tr>
+                                <td><strong>@staticPage.Title</strong></td>
+                                <td><code>@staticPage.Filename</code></td>
+                                <td>@staticPage.Description</td>
+                                <td>@FormatFileSize(staticPage.FileSize)</td>
+                                <td>@staticPage.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <a href="/pages/@staticPage.Filename" target="_blank" class="button is-small is-info">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </span>
+                                            <span>View</span>
+                                        </a>
+                                        <button class="button is-small is-danger" @onclick="() => DeleteStaticPage(staticPage)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-trash"></i>
+                                            </span>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="notification is-info is-light">
+                <p>No static pages uploaded yet. Upload an HTML file to get started.</p>
+            </div>
+        }
+    </div>
+
+    <!-- Image Management -->
+    <div class="box">
+        <h3 class="title is-4">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-image"></i>
+                </span>
+                <span>Image Management</span>
+            </span>
+        </h3>
+        
+        <div class="content">
+            <p>Upload image files (PNG, JPG) for use in your content. These files are saved in <code>wwwroot/img/</code> and can be referenced in your HTML content.</p>
+        </div>
+
+        <!-- Image Upload Form -->
+        <div class="field">
+            <label class="label">Upload Image File</label>
+            <div class="control">
+                <div class="file has-name">
+                    <label class="file-label">
+                        <InputFile OnChange="OnImageFileSelected" accept=".png,.jpg,.jpeg" class="file-input" />
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">Choose image file…</span>
+                        </span>
+                        <span class="file-name">@(selectedImageFile?.Name ?? "No file selected")</span>
+                    </label>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(imageUploadError))
+            {
+                <p class="help is-danger">@imageUploadError</p>
+            }
+        </div>
+
+        @if (selectedImageFile != null)
+        {
+            <div class="field">
+                <label class="label">Image Title</label>
+                <div class="control">
+                    <input @bind="newImageTitle" class="input" placeholder="Enter a descriptive title for this image" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Image Description</label>
+                <div class="control">
+                    <input @bind="newImageDescription" class="input" placeholder="Brief description of this image" />
+                </div>
+            </div>
+        }
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="UploadImage" disabled="@(selectedImageFile == null)">
+                    <span class="icon">
+                        <i class="fas fa-upload"></i>
+                    </span>
+                    <span>Upload Image</span>
+                </button>
+            </div>
+        </div>
+
+        @if (selectedImageFile != null && WillOverwriteExistingImage())
+        {
+            <div class="notification is-warning is-light">
+                <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
+                <strong>Warning:</strong> An image named "@selectedImageFile.Name" already exists and will be overwritten.
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(imageUploadMessage))
+        {
+            <div class="notification is-success is-light">
+                @imageUploadMessage
+            </div>
+        }
+
+        <!-- Images List -->
+        <h4 class="title is-5 mt-5">Uploaded Images</h4>
+        @if (uploadedImages.Any())
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Title</th>
+                            <th>Filename</th>
+                            <th>Description</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var image in uploadedImages)
+                        {
+                            <tr>
+                                <td>
+                                    <figure class="image is-48x48">
+                                        <img src="/img/@image.Filename" alt="@image.Title" style="object-fit: cover;" />
+                                    </figure>
+                                </td>
+                                <td><strong>@image.Title</strong></td>
+                                <td><code>@image.Filename</code></td>
+                                <td>@image.Description</td>
+                                <td>@FormatFileSize(image.FileSize)</td>
+                                <td>@image.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <a href="/img/@image.Filename" target="_blank" class="button is-small is-info">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </span>
+                                            <span>View</span>
+                                        </a>
+                                        <button class="button is-small is-primary" @onclick="() => CopyImageUrl(image)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                            <span>Copy URL</span>
+                                        </button>
+                                        <button class="button is-small is-danger" @onclick="() => DeleteImage(image)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-trash"></i>
+                                            </span>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="notification is-info is-light">
+                <p>No images uploaded yet. Upload an image file to get started.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private InstanceDescription instanceDescription = new();
+    private List<StaticPage> staticPages = new();
+    private bool isSaving = false;
+    private string successMessage = "";
+    private string errorMessage = "";
+
+    // Static page upload
+    private IBrowserFile? selectedStaticPageFile;
+    private string staticPageUploadError = "";
+    private string staticPageUploadMessage = "";
+    private string newPageTitle = "";
+    private string newPageDescription = "";
+
+    // Image upload
+    private IBrowserFile? selectedImageFile;
+    private string imageUploadError = "";
+    private string imageUploadMessage = "";
+    private string newImageTitle = "";
+    private string newImageDescription = "";
+    private List<UploadedImage> uploadedImages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Initialize the tables if they don't exist
+            LocalDbService.InitializeInstanceDescriptionTable();
+            
+            // Load existing settings
+            instanceDescription = LocalDbService.GetInstanceDescription();
+            staticPages = LocalDbService.GetAllStaticPages();
+            LoadUploadedImages();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading settings: {ex.Message}";
+        }
+    }
+
+    private async Task OnLandingPageTypeChanged(ChangeEventArgs e)
+    {
+        instanceDescription.LandingPageType = e.Value?.ToString() ?? "default";
+        
+        // Clear related fields when switching types
+        if (instanceDescription.LandingPageType != "custom_html")
+        {
+            instanceDescription.CustomLandingPageHtml = "";
+        }
+        if (instanceDescription.LandingPageType != "static_page")
+        {
+            instanceDescription.StaticPageFilename = "";
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task SaveInstanceSettings()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = "";
+            
+            LocalDbService.SaveInstanceDescription(instanceDescription);
+            
+            successMessage = "Landing page settings saved successfully!";
+            
+            await Task.Delay(100); // Brief delay for UI feedback
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnStaticPageFileSelected(InputFileChangeEventArgs e)
+    {
+        staticPageUploadMessage = "";
+        staticPageUploadError = "";
+        var file = e.File;
+        
+        if (file != null)
+        {
+            var extension = Path.GetExtension(file.Name).ToLower();
+            if (extension != ".html" && extension != ".htm")
+            {
+                staticPageUploadError = "Only HTML files (.html, .htm) are allowed.";
+                selectedStaticPageFile = null;
+            }
+            else if (file.Size > 10 * 1024 * 1024) // 10MB limit
+            {
+                staticPageUploadError = "File size must be less than 10MB.";
+                selectedStaticPageFile = null;
+            }
+            else
+            {
+                selectedStaticPageFile = file;
+                newPageTitle = Path.GetFileNameWithoutExtension(file.Name);
+                newPageDescription = "";
+            }
+        }
+    }
+
+    private async Task UploadStaticPage()
+    {
+        if (selectedStaticPageFile == null)
+        {
+            staticPageUploadError = "No file selected.";
+            return;
+        }
+
+        try
+        {
+            // Create pages directory if it doesn't exist
+            var pagesDir = CustomAssetPathService.GetPagesPath();
+            Directory.CreateDirectory(pagesDir);
+
+            // Use the original filename
+            var fileName = selectedStaticPageFile.Name;
+            var filePath = Path.Combine(pagesDir, fileName);
+
+            // Save file to disk (this will overwrite if exists)
+            using (var stream = selectedStaticPageFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
+            using (var fs = File.Create(filePath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Save to database
+            var staticPage = new StaticPage
+            {
+                Filename = fileName,
+                Title = !string.IsNullOrWhiteSpace(newPageTitle) ? newPageTitle : Path.GetFileNameWithoutExtension(fileName),
+                Description = newPageDescription ?? "",
+                FileSize = selectedStaticPageFile.Size,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
+            LocalDbService.UpsertStaticPage(staticPage);
+
+            // Refresh the list
+            staticPages = LocalDbService.GetAllStaticPages();
+
+            staticPageUploadMessage = $"Static page '{staticPage.Title}' uploaded successfully as {fileName}";
+            selectedStaticPageFile = null;
+            newPageTitle = "";
+            newPageDescription = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            staticPageUploadError = $"Error uploading static page: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteStaticPage(StaticPage page)
+    {
+        try
+        {
+            // Delete file from disk
+            var filePath = CustomAssetPathService.GetCustomAssetPath("pages", page.Filename);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            // Delete from database
+            LocalDbService.DeleteStaticPage(page.Id);
+
+            // If this page was selected as the landing page, reset it
+            if (instanceDescription.StaticPageFilename == page.Filename)
+            {
+                instanceDescription.StaticPageFilename = "";
+                instanceDescription.LandingPageType = "default";
+                LocalDbService.SaveInstanceDescription(instanceDescription);
+            }
+
+            // Refresh the list
+            staticPages = LocalDbService.GetAllStaticPages();
+
+            successMessage = $"Static page '{page.Title}' deleted successfully.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting static page: {ex.Message}";
+        }
+    }
+
+    private void ResetForm()
+    {
+        instanceDescription = LocalDbService.GetInstanceDescription();
+        successMessage = "";
+        errorMessage = "";
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size = size / 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private bool WillOverwriteExistingFile()
+    {
+        if (selectedStaticPageFile == null) return false;
+        
+        var pagesDir = CustomAssetPathService.GetPagesPath();
+        var filePath = Path.Combine(pagesDir, selectedStaticPageFile.Name);
+        return File.Exists(filePath);
+    }
+
+    // Image management methods
+    private void OnImageFileSelected(InputFileChangeEventArgs e)
+    {
+        imageUploadMessage = "";
+        imageUploadError = "";
+        var file = e.File;
+        
+        if (file != null)
+        {
+            var extension = Path.GetExtension(file.Name).ToLower();
+            if (extension != ".png" && extension != ".jpg" && extension != ".jpeg")
+            {
+                imageUploadError = "Only image files (.png, .jpg, .jpeg) are allowed.";
+                selectedImageFile = null;
+            }
+            else if (file.Size > 10 * 1024 * 1024) // 10MB limit
+            {
+                imageUploadError = "File size must be less than 10MB.";
+                selectedImageFile = null;
+            }
+            else
+            {
+                selectedImageFile = file;
+                newImageTitle = Path.GetFileNameWithoutExtension(file.Name);
+                newImageDescription = "";
+            }
+        }
+    }
+
+    private async Task UploadImage()
+    {
+        if (selectedImageFile == null)
+        {
+            imageUploadError = "No file selected.";
+            return;
+        }
+
+        try
+        {
+            // Create img directory if it doesn't exist
+            var imgDir = CustomAssetPathService.GetImagesPath();
+            Directory.CreateDirectory(imgDir);
+
+            // Use the original filename
+            var fileName = selectedImageFile.Name;
+            var filePath = Path.Combine(imgDir, fileName);
+
+            // Save file to disk (this will overwrite if exists)
+            using (var stream = selectedImageFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
+            using (var fs = File.Create(filePath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Refresh the list
+            LoadUploadedImages();
+
+            imageUploadMessage = $"Image '{newImageTitle}' uploaded successfully as {fileName}";
+            selectedImageFile = null;
+            newImageTitle = "";
+            newImageDescription = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            imageUploadError = $"Error uploading image: {ex.Message}";
+        }
+    }
+
+    private bool WillOverwriteExistingImage()
+    {
+        if (selectedImageFile == null) return false;
+        
+        var imgDir = CustomAssetPathService.GetImagesPath();
+        var filePath = Path.Combine(imgDir, selectedImageFile.Name);
+        return File.Exists(filePath);
+    }
+
+    private async Task CopyImageUrl(UploadedImage image)
+    {
+        var url = CustomAssetPathService.GetImageUrl(image.Filename);
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+        imageUploadMessage = $"URL copied to clipboard: {url}";
+        StateHasChanged();
+    }
+
+    private async Task DeleteImage(UploadedImage image)
+    {
+        try
+        {
+            // Delete file from disk
+            var filePath = CustomAssetPathService.GetCustomAssetPath("img", image.Filename);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            // Refresh the list
+            LoadUploadedImages();
+
+            successMessage = $"Image '{image.Title}' deleted successfully.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting image: {ex.Message}";
+        }
+    }
+
+    private void LoadUploadedImages()
+    {
+        try
+        {
+            uploadedImages.Clear();
+            var imgDir = CustomAssetPathService.GetImagesPath();
+            
+            if (Directory.Exists(imgDir))
+            {
+                var imageFiles = Directory.GetFiles(imgDir, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f => IsImageFile(f))
+                    .ToList();
+
+                foreach (var filePath in imageFiles)
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    var fileName = fileInfo.Name;
+                    
+                    uploadedImages.Add(new UploadedImage
+                    {
+                        Filename = fileName,
+                        Title = Path.GetFileNameWithoutExtension(fileName),
+                        Description = "",
+                        FileSize = fileInfo.Length,
+                        CreatedAt = fileInfo.CreationTime
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the page load
+            Console.WriteLine($"Error loading images: {ex.Message}");
+        }
+    }
+
+    private bool IsImageFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLower();
+        return extension == ".png" || extension == ".jpg" || extension == ".jpeg";
+    }
+
+    // Helper class for uploaded images
+    public class UploadedImage
+    {
+        public string Filename { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public long FileSize { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}

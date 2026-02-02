@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeFed.Services;
 using Microsoft.Extensions.Logging;
+using BadgeFed.Models;
 
 namespace ActivityPubDotNet.Core
 {
@@ -12,13 +13,10 @@ namespace ActivityPubDotNet.Core
 
         private readonly ExternalBadgeService _externalBadgeService;
 
-        private readonly LocalDbService _localDbService;
-
-        public CreateNoteService(RepliesService repliesService, ExternalBadgeService externalBadgeService, LocalDbService localDbService)
+        public CreateNoteService(RepliesService repliesService, ExternalBadgeService externalBadgeService)
         {
             _externalBadgeService = externalBadgeService;
             _repliesService = repliesService;
-            _localDbService = localDbService;
         }
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -26,14 +24,14 @@ namespace ActivityPubDotNet.Core
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
 
-        public async Task ProcessAnnounce(InboxMessage message)
+        public async Task<CreateNoteResult> ProcessAnnounce(InboxMessage message, Actor mainActor, LocalScopedDb db)
         {
             Logger?.LogInformation($"Processing announce for actor: {message.Actor}");
 
             if (message.Object == null)
             {
                 Logger?.LogError("Announce message has no object");
-                return;
+                return CreateNoteResult.Error("Announce message has no object");
             }
 
             // The object in an Announce is typically a URL to the original note
@@ -42,7 +40,7 @@ namespace ActivityPubDotNet.Core
             if (string.IsNullOrEmpty(originalNoteUrl))
             {
                 Logger?.LogError("Announce message object is null or empty");
-                return;
+                return CreateNoteResult.Error("Announce message object is null or empty");
             }
 
             Logger?.LogInformation($"Fetching original note from: {originalNoteUrl}");
@@ -52,12 +50,19 @@ namespace ActivityPubDotNet.Core
                 // We need to fetch the original note from the URL
                 // For this, we'll need an actor to make the signed request
                 // Let's get the main actor to make the request
-                var mainActor = _localDbService.GetActorByFilter("IsMain = 1");
-
+                
+                // Get the domain from the URL
+                Uri originalNoteUri;
+                if (!Uri.TryCreate(originalNoteUrl, UriKind.Absolute, out originalNoteUri))
+                {
+                    Logger?.LogError($"Invalid note URI format: {originalNoteUrl}");
+                    return CreateNoteResult.Error("Invalid note URI format");
+                }
+                
                 if (mainActor == null)
                 {
                     Logger?.LogError("No main actor found to fetch the original note");
-                    return;
+                    return CreateNoteResult.Error("No main actor found to fetch the original note");
                 }
 
                 var actorHelper = new ActorHelper(mainActor.PrivateKeyPemClean!, mainActor.KeyId, Logger);
@@ -69,52 +74,81 @@ namespace ActivityPubDotNet.Core
                 if (fetchedNote == null)
                 {
                     Logger?.LogError($"Failed to deserialize fetched note from {originalNoteUrl}");
-                    return;
+                    return CreateNoteResult.Error($"Failed to deserialize fetched note from {originalNoteUrl}");
                 }
 
                 if (fetchedNote.Attachment != null && fetchedNote.Attachment.Count > 0)
                 {
                     Logger?.LogInformation($"Processing external badge for announced note: {fetchedNote.Id}");
                     _externalBadgeService.Logger = Logger;
-                    await _externalBadgeService.ProcessExternalBadge(fetchedNote);
+                    var records = await _externalBadgeService.ProcessExternalBadge(fetchedNote, db);
+
+                    var badgeRecord = records.FirstOrDefault();
+                    // FIXME: Support multiple badges in a single note
+                    if (badgeRecord != null)
+                    {
+                        return CreateNoteResult.ExternalBadgeProcessed(badgeRecord, fetchedNote);
+                    }
+                    else
+                    {
+                        Logger?.LogInformation($"No valid external badge found in announced note: {fetchedNote.Id}");
+                        return CreateNoteResult.NotProcessed();
+                    }
+                
                 }
                 else
                 {
                     Logger?.LogInformation($"No specific action for announced note: {fetchedNote.Id}");
+                    return CreateNoteResult.NotProcessed();
                 }
             }
             catch (Exception ex)
             {
                 Logger?.LogError($"Error processing announce: {ex.Message}");
+                return CreateNoteResult.Error($"Error processing announce: {ex.Message}", ex);
             }
         }
 
-        public Task ProcessMessage(InboxMessage message)
+        public async Task<CreateNoteResult> ProcessMessage(InboxMessage message, LocalScopedDb db)
         {
             var objectNote = JsonSerializer.Deserialize<ActivityPubNote>(JsonSerializer.Serialize(message!.Object!, SerializerOptions), SerializerOptions);
 
             if (objectNote == null)
             {
                 Logger?.LogError("Failed to deserialize object note");
-                return Task.CompletedTask;
+                return CreateNoteResult.Error("Failed to deserialize object note");
             }
 
             if (objectNote!.InReplyTo != null)
             {
                 Logger?.LogInformation($"Processing reply for note: {objectNote.Id}");
-                return _repliesService.ProcessReply(objectNote);
+                await _repliesService.ProcessReply(objectNote, db);
+                return CreateNoteResult.Reply();
             }
 
             if (objectNote.Attachment != null && objectNote.Attachment.Count > 0)
             {
-                Logger?.LogInformation($"Processing external badge for note: {objectNote.Id}");
+                Logger?.LogInformation($"Processing external badge for note in process message: {objectNote.Id}");
                 _externalBadgeService.Logger = Logger;
-                return _externalBadgeService.ProcessExternalBadge(objectNote);
+
+                //FIXME: Support multiple badges in a single note
+                var records = await _externalBadgeService.ProcessExternalBadge(objectNote, db);
+
+                var badgeRecord = records.FirstOrDefault();
+                
+                if (badgeRecord != null)
+                {
+                    return CreateNoteResult.ExternalBadgeProcessed(badgeRecord, objectNote);
+                }
+                else
+                {
+                    Logger?.LogInformation($"No valid external badge found in note: {objectNote.Id}");
+                    return CreateNoteResult.NotProcessed();
+                }
             }
 
             Logger?.LogInformation($"No action for note: {objectNote.Id}");
-
-            return Task.CompletedTask;
+            return CreateNoteResult.NotProcessed();
         }
     }
 }

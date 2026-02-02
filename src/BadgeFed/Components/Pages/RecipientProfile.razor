@@ -2,7 +2,7 @@
 @page "/wallet/{recipientUri}"
 @using BadgeFed.Models
 @using Microsoft.AspNetCore.Components.Web
-@inject LocalDbService LocalDbService
+@inject LocalScopedDb LocalDbService
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpContextAccessor
 @layout BadgeFed.Components.Layouts.MainLayout
@@ -519,6 +519,7 @@
                 FingerPrint IS NOT NULL 
                 AND NoteId IS NOT NULL 
                 AND Visibility = 'Public' 
+                AND RevokedAt IS NULL
                 AND LOWER(IssuedToSubjectUri) = '{decodedRecipientUri.ToLower()}'
             ";
 
