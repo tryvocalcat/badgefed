@@ -92,10 +92,12 @@ namespace BadgeFed.Controllers
                 {
                     return NotFound(new { error = result.ErrorMessage });
                 }
+
                 if (result.ErrorMessage?.Contains("already been granted") == true)
                 {
                     return Conflict(new { error = result.ErrorMessage });
                 }
+                
                 return BadRequest(new { error = result.ErrorMessage });
             }
 
