@@ -6,6 +6,7 @@ namespace BadgeFed.Controllers
 {
     [ApiController]
     [Route("actors/{domain}/{actorName}")]
+    [Route("actor/{actorName}")]
     public class ActorController : ControllerBase
     {
         private readonly IConfiguration _configuration;
@@ -20,8 +21,13 @@ namespace BadgeFed.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetActor(string domain, string actorName)
+        public IActionResult GetActor(string? domain, string actorName)
         {
+            if (string.IsNullOrEmpty(domain))
+            {
+                domain = HttpContext.Request.Host.Host;
+            }
+
             _logger.LogInformation("[{RequestHost}] Fetching actor {ActorName} for domain {Domain}", Request.Host, actorName, domain);
             
             var accept = Request.Headers["Accept"].ToString();

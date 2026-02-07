@@ -59,10 +59,6 @@ else
                                 <button class="button is-primary is-small" @onclick="() => EditActor(actor)">Edit</button>
                                 @if (!actor.IsMain)
                                 {
-                                    if (CurrentUser.IsAdmin())
-                                    {
-                                        <button class="button is-warning is-small" @onclick="() => MarkAsMain(actor)">Mark as Main</button>
-                                    }
                                     <button class="button is-danger is-small" @onclick="() => DeleteActor(actor)">Delete</button>
                                 }
                             </div>
