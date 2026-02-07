@@ -77,18 +77,34 @@ namespace BadgeFed.Services
                     sqlExisting += $" AND IssuedToSubjectUri = '{request.ProfileUri}'";
                 }
 
+                BadgeRecord badgeRecord = null;
+
                 var existing = _localDbService.GetBadgeRecords(sqlExisting);
                 if (existing != null && existing.Count > 0)
                 {
+                    badgeRecord = existing.First();
+
+                    if (badgeRecord.AcceptedOn.HasValue)
+                    {
+                        return new BadgeGrantResult 
+                        { 
+                            Success = false, 
+                            ErrorMessage = $"Badge {badge.Title} has already been accepted by this recipient.",
+                            BadgeRecord = badgeRecord
+                        };
+                    }
+                    
                     return new BadgeGrantResult 
                     { 
-                        Success = false, 
-                        ErrorMessage = $"Badge {badge.Title} has already been granted to this recipient." 
+                        Success = true,
+                        ErrorMessage = $"Badge {badge.Title} has already been granted to this recipient and is pending acceptance.",
+                        BadgeRecord = badgeRecord,
+                        AcceptUrl = GenerateAcceptUrl(badgeRecord)
                     };
                 }
 
                 // Create badge record
-                var badgeRecord = _badgeService.GetGrantBadgeRecord(badge, recipient);
+                badgeRecord = _badgeService.GetGrantBadgeRecord(badge, recipient);
                 
                 // Set evidence if provided, otherwise use badge's earning criteria
                 badgeRecord.EarningCriteria = !string.IsNullOrEmpty(request.Evidence) ? request.Evidence : badge.EarningCriteria;
@@ -122,11 +138,17 @@ namespace BadgeFed.Services
 
         private string GenerateAcceptUrl(BadgeRecord badgeRecord)
         {
+            if (badgeRecord.AcceptedOn.HasValue)
+            {
+                return string.Empty; // Badge already accepted, no accept URL needed
+            }
+
             // Generate the accept URL - you may need to adjust this based on your routing
             if (!string.IsNullOrEmpty(badgeRecord.AcceptKey))
             {
                 return $"/accept/grant/{badgeRecord.Id}/{badgeRecord.AcceptKey}";
             }
+
             return $"/accept/grant/{badgeRecord.Id}";
         }
     }
