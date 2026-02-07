@@ -6,6 +6,12 @@ namespace ActivityPubDotNet.Core
     {
         public class PublicKeyDefinition
         {
+            [JsonPropertyName("@context")]
+            public object Context { get; set; } = "https://w3id.org/security/v1";
+
+            [JsonPropertyName("@type")]
+            public string Type { get; set; } = "Key";
+
             public string Id { get; set; } = default!;
             public string Owner { get; set; } = default!;
             public string PublicKeyPem { get; set; } = default!;
