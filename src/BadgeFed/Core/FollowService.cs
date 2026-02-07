@@ -23,6 +23,10 @@ namespace ActivityPubDotNet.Core
         
         public async Task<ActivityPubActor?> FollowIssuer(Actor fromIssuer, string issuerToFollowUri)
         {
+            if (string.IsNullOrEmpty(issuerToFollowUri))            {
+                throw new ArgumentException("Issuer URI to follow cannot be null or empty", nameof(issuerToFollowUri));
+            }
+
             try
             {
                 Console.WriteLine($"Following {issuerToFollowUri} from {fromIssuer.Uri}");

@@ -250,10 +250,12 @@
                                     }
                                     else
                                     {
-                                        <span class="has-text-success">
-                                            <i class="fas fa-check-circle"></i>
-                                            Following
-                                        </span>
+                                        <button class="button is-small is-danger is-outlined" @onclick="() => UnfollowServer(server.Id)" disabled="@isLoading">
+                                            <span class="icon">
+                                                <i class="fas fa-user-minus"></i>
+                                            </span>
+                                            <span>Unfollow</span>
+                                        </button>
                                     }
                                     <a href="@server.Actor" target="_blank" class="button is-small is-light ml-2">
                                         <span class="icon">
@@ -360,7 +362,7 @@
                 return;
             }
 
-            var success = await ServerDiscoveryService.FollowServerAsync(serverId, (int)currentActor.Id);
+            var success = await ServerDiscoveryService.FollowServerAsync(serverId);
             if (success)
             {
                 if (server != null)
@@ -409,6 +411,50 @@
         catch (Exception ex)
         {
             errorMessage = $"Error following servers: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UnfollowServer(int serverId)
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var server = discoveredServers.FirstOrDefault(s => s.Id == serverId);
+            
+            var currentActor = LocalDbService.GetMainActor();
+            if (currentActor == null)
+            {
+                errorMessage = "No current actor found. Please ensure you're logged in properly.";
+                return;
+            }
+
+            var success = await ServerDiscoveryService.UnfollowServerAsync(serverId, (int)currentActor.Id);
+            if (success)
+            {
+                if (server != null)
+                {
+                    server.IsFollowed = false;
+                    server.FollowedAt = null;
+                    successMessage = $"Successfully unfollowed {server.Name}";
+                }
+                UpdateFilteredServers();
+                UpdateStatistics();
+            }
+            else
+            {
+                errorMessage = "Failed to unfollow server. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error unfollowing server: {ex.Message}";
         }
         finally
         {
