@@ -1,0 +1,1 @@
+DELETE FROM Actor WHERE Username != "_relaybot" AND IsMain = 1;

@@ -44,6 +44,6 @@ namespace BadgeFed.Models
         public string description { get; set; } = string.Empty;
         public List<string> categories { get; set; } = new();
         public string admin { get; set; } = string.Empty;
-        public string actor { get; set; } = string.Empty;
+        public string? actor { get; set; } = string.Empty;
     }
 }

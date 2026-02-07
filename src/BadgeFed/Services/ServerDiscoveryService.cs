@@ -50,7 +50,7 @@ namespace BadgeFed.Services
                         Url = serverJson.url,
                         Description = serverJson.description,
                         Admin = serverJson.admin,
-                        Actor = serverJson.actor,
+                        Actor = string.IsNullOrEmpty(serverJson.actor) ? defaultActor : serverJson.actor,
                         IsFollowed = existingServer?.IsFollowed ?? false,
                         FollowedAt = existingServer?.FollowedAt,
                         CreatedAt = existingServer?.CreatedAt ?? DateTime.UtcNow,
@@ -109,18 +109,19 @@ namespace BadgeFed.Services
             _localDbService.UpsertDiscoveredServer(server);
         }
 
-        public async Task<bool> FollowServerAsync(int serverId, int actorId)
+        public async Task<bool> FollowServerAsync(int serverId)
         {
             try
             {
                 var server = _localDbService.GetDiscoveredServerById(serverId);
-                var actor = _localDbService.GetActorById(actorId);
+                var actor = _localDbService.GetMainActor();
                 
                 if (server == null || actor == null)
                 {
-                    _logger.LogWarning($"Server {serverId} or Actor {actorId} not found");
+                    _logger.LogWarning($"Server {serverId} or main actor not found");
                     return false;
                 }
+
 
                 // Use the existing FollowService to follow the server's actor
                 var followedActor = await _followService.FollowIssuer(actor, server.Actor);
@@ -139,7 +140,7 @@ namespace BadgeFed.Services
                         Url = server.Actor,
                         Inbox = followedActor.Inbox,
                         Outbox = followedActor.Outbox,
-                        ActorId = actorId,
+                        ActorId = actor.Id,
                         AvatarUri = followedActor.Icon?.Url ?? string.Empty
                     };
 
@@ -170,7 +171,7 @@ namespace BadgeFed.Services
             
             foreach (var server in servers)
             {
-                if (await FollowServerAsync(server.Id, actorId))
+                if (await FollowServerAsync(server.Id))
                 {
                     successCount++;
                 }
@@ -180,6 +181,76 @@ namespace BadgeFed.Services
             }
 
             return successCount;
+        }
+
+        public async Task<bool> UnfollowServerAsync(int serverId, int actorId)
+        {
+            try
+            {
+                var server = _localDbService.GetDiscoveredServerById(serverId);
+                var actor = _localDbService.GetActorById(actorId);
+                
+                if (server == null || actor == null)
+                {
+                    _logger.LogWarning($"Server {serverId} or Actor {actorId} not found");
+                    return false;
+                }
+
+                // Find and delete the followed issuer
+                var followedIssuer = _localDbService.GetFollowedIssuerByUrl(server.Actor);
+                if (followedIssuer != null)
+                {
+                    _localDbService.DeleteFollowedIssuer(followedIssuer.Id);
+                }
+
+                // Send Undo Follow activity to the server
+                var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, _logger);
+                var targetActor = await actorHelper.FetchActorInformationAsync(server.Actor);
+
+                if (targetActor != null)
+                {
+                    var undoId = $"{actor.Uri}/undo/{Guid.NewGuid()}";
+                    var followId = $"{actor.Uri}/follow/{Guid.NewGuid()}";
+
+                    var undoActivity = new
+                    {
+                        @context = "https://www.w3.org/ns/activitystreams",
+                        id = undoId,
+                        type = "Undo",
+                        actor = actor.Uri?.ToString(),
+                        @object = new
+                        {
+                            id = followId,
+                            type = "Follow",
+                            actor = actor.Uri?.ToString(),
+                            @object = server.Actor
+                        }
+                    };
+
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    };
+
+                    var undoJson = JsonSerializer.Serialize(undoActivity, options);
+                    _logger.LogInformation($"Sending unfollow request: {undoJson}");
+
+                    await actorHelper.SendPostSignedRequest(undoJson, new Uri(targetActor.Inbox));
+                }
+
+                // Update the server as unfollowed
+                server.IsFollowed = false;
+                server.FollowedAt = null;
+                UpsertDiscoveredServer(server);
+                
+                _logger.LogInformation($"Successfully unfollowed server {server.Name}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error unfollowing server {serverId}");
+                return false;
+            }
         }
     }
 }
