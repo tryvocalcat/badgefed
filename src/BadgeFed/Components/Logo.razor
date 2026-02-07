@@ -1,9 +1,12 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ICustomAssetPathService CustomAssetPathService
-<a class="navbar-item navbar-logo" href="/">
+<a class="navbar-item navbar-logo" href="@Href">
     <img src="@logoSrc" style="max-width: 400px" />
 </a>
 @code {
+    [Parameter]
+    public string Href { get; set; } = "/";
+
     private string logoSrc = "/logo.h.png";
 
     protected override void OnInitialized()

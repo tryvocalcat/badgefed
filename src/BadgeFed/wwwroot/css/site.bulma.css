@@ -99,9 +99,22 @@ img {
 }
 
 .container {
-    width: 90%;
-    max-width: 800px;
-    margin: 2em auto;
+    width: 95%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Reduce Bulma's generous default spacing */
+.section {
+    padding: 1.5rem 1.5rem;
+}
+
+.navbar.is-spaced {
+    padding: 0.5rem 1rem;
+}
+
+.footer {
+    padding: 1.5rem 1.5rem;
 }
 
 /* Badge-specific styling */
@@ -127,8 +140,7 @@ img {
 
 @media screen and (max-width: 768px) {
 .section {
-    padding: 0.5em;
- 
+    padding: 0.75rem 0.75rem;
 }
 
 .media {

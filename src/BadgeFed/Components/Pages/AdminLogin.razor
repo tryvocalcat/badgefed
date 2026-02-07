@@ -12,11 +12,14 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<section class="section">
+@layout BadgeFed.Components.Layouts.MinimalLayout
+
+
+<section class="section login-section">
     <div class="container">
         <div class="columns is-centered">
             <div class="column is-4">
-                <div class="box">
+                <div class="box login-box">
                     <h2 class="title is-4 has-text-centered">Welcome to BadgeFed Admin</h2>
                     
                     @if (User.Identity.Name != null)
@@ -154,34 +157,109 @@
 </section>
 
 <style>
+    /* Modern Login Page Styles */
+    .login-section {
+        min-height: calc(100vh - 8rem);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    .login-box {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 3rem 2.5rem;
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+        animation: slideUp 0.5s ease-out;
+    }
+
+    .login-box .title {
+        color: #1a1a2e;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-box p.has-text-centered {
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+    /* Button Styles */
+    .login-box .button {
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 1.25rem 1.5rem;
+        height: auto;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    .login-box .button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .login-box .button:active {
+        transform: translateY(0);
+    }
+
     .has-background-purple {
-        background-color: #6d00b6 !important;
+        background: linear-gradient(135deg, #6d00b6 0%, #9b30ff 100%) !important;
         color: white !important;
     }
     .has-background-purple:hover {
-        background-color: #5b009a !important;
+        background: linear-gradient(135deg, #5b009a 0%, #8a2be2 100%) !important;
     }
 
     .has-background-orange {
-        background-color: #ff8c00 !important;
+        background: linear-gradient(135deg, #ff8c00 0%, #ffb347 100%) !important;
         color: white !important;
     }
 
     .has-background-orange:hover {
-        background-color: #e07b00 !important;
+        background: linear-gradient(135deg, #e07b00 0%, #ff9f1c 100%) !important;
     }
 
+    .login-box .button.is-info {
+        background: linear-gradient(135deg, #0077b5 0%, #00a0dc 100%) !important;
+    }
+
+    .login-box .button.is-info:hover {
+        background: linear-gradient(135deg, #006699 0%, #0088bf 100%) !important;
+    }
+
+    .login-box .button.is-danger {
+        background: linear-gradient(135deg, #ea4335 0%, #ff6b6b 100%) !important;
+    }
+
+    .login-box .button.is-danger:hover {
+        background: linear-gradient(135deg, #d33426 0%, #ee5a5a 100%) !important;
+    }
+
+    .login-box .button .icon {
+        font-size: 1.25rem;
+    }
+
+    /* Mastodon Dropdown */
     .mastodon-login-container {
         position: relative;
     }
 
     .mastodon-dropdown-card {
-        background: white;
-        border: 1px solid #dbdbdb;
-        border-radius: 6px;
+        background: #fafbfc;
+        border: 1px solid #e1e4e8;
+        border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 8px 16px rgba(10, 10, 10, 0.1);
-        animation: fadeInDown 0.2s ease-out;
+        box-shadow: 
+            0 10px 40px rgba(0, 0, 0, 0.08),
+            0 2px 8px rgba(0, 0, 0, 0.04);
+        animation: fadeInScale 0.25s ease-out;
     }
 
     .dropdown-header {
@@ -191,22 +269,42 @@
         margin-bottom: 1rem;
     }
 
+    .dropdown-header .title {
+        color: #6d00b6;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mastodon-dropdown-card .input {
+        border-radius: 10px;
+        border: 2px solid #e1e4e8;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .mastodon-dropdown-card .input:focus {
+        border-color: #6d00b6;
+        box-shadow: 0 0 0 3px rgba(109, 0, 182, 0.1);
+    }
+
     .server-suggestions {
         max-height: 200px;
         overflow-y: auto;
-        border: 1px solid #dbdbdb;
-        border-radius: 4px;
-        margin-top: 0.5rem;
+        border: 1px solid #e1e4e8;
+        border-radius: 12px;
+        margin-top: 0.75rem;
+        background: white;
     }
 
     .server-suggestion {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #f5f5f5;
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: all 0.2s ease;
     }
 
     .server-suggestion:last-child {
@@ -214,7 +312,7 @@
     }
 
     .server-suggestion:hover {
-        background-color: #f8f9fa;
+        background: linear-gradient(135deg, rgba(109, 0, 182, 0.05) 0%, rgba(155, 48, 255, 0.05) 100%);
     }
 
     .server-info {
@@ -223,9 +321,37 @@
         flex: 1;
     }
 
+    .server-info strong {
+        color: #1a1a2e;
+    }
+
     .server-info small {
         margin-top: 0.25rem;
         font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    /* Animations */
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
     }
 
     @@keyframes fadeInDown {
@@ -270,51 +396,6 @@
         color: white;
     }
 
-    .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 80vh;
-        background-color: #f5f5f5;
-    }
-
-    .login-box {
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-
-    .oauth-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-top: 2rem;
-    }
-
-    .btn {
-        padding: 0.8rem 1.5rem;
-        border: none;
-        border-radius: 4px;
-        font-size: 1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: opacity 0.2s;
-    }
-
-    .btn:hover {
-        opacity: 0.9;
-    }
-
-    .btn-mastodon {
-        background-color: #6d00b6;
-        color: white;
-    }
-
     .logged-in-container {
         display: flex;
         flex-direction: column;
@@ -330,19 +411,20 @@
     }
 
     .user-avatar, .avatar-placeholder {
-        width: 64px;
-        height: 64px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
         margin: 0 auto;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
     }
 
     .avatar-placeholder {
-        background-color: #4a90e2;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: bold;
         text-transform: uppercase;
     }
@@ -364,17 +446,25 @@
     }
 
     .btn-logout {
-        background-color: #ff4d4d;
+        background: linear-gradient(135deg, #ff4d4d 0%, #ff6b6b 100%);
         color: white;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
         min-width: 120px;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
 
     .btn-logout:hover {
-        background-color: #e60000;
+        background: linear-gradient(135deg, #e60000 0%, #ff4d4d 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 77, 77, 0.4);
     }
 </style>
 
@@ -433,11 +523,19 @@
 
             // Check if MastodonConfig is present
             var mastodonSection = Configuration.GetSection("MastodonConfig");
-            IsMastodonConfigured = !string.IsNullOrEmpty(mastodonSection["ClientId"]) &&
+
+            var hasMastodonConfig = !string.IsNullOrEmpty(mastodonSection["ClientId"]) &&
                                    !string.IsNullOrEmpty(mastodonSection["ClientSecret"]) &&
                                    !string.IsNullOrEmpty(mastodonSection["Server"]);
 
-            if (IsMastodonConfigured) {
+            // Also check if there are AdminUsers with Type "Mastodon"
+            var adminAuthSection = Configuration.GetSection("AdminAuthentication:AdminUsers");
+            var hasMastodonAdminUsers = adminAuthSection.GetChildren()
+                .Any(u => string.Equals(u["Type"], "Mastodon", StringComparison.OrdinalIgnoreCase));
+
+            IsMastodonConfigured = hasMastodonConfig || hasMastodonAdminUsers;
+
+            if (hasMastodonConfig) {
                 mastodonServer = mastodonSection["Server"];
             }
 
@@ -533,7 +631,7 @@
     private void ToggleMastodonDropdown()
     {
         showMastodonDropdown = true;
-        selectedMastodonServer = mastodonServer; // Default to configured server
+        selectedMastodonServer = mastodonServer ?? ""; // Default to configured server if available
         StateHasChanged();
         
         // Focus the input after the DOM updates

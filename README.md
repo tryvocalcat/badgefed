@@ -106,7 +106,8 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
 - **Example:**
   ```json
   "BadgesDomains": [
-    "badgefed.example.com"
+    "badgefed.example.com",
+    "localhost:5000"
   ]
   ```
 - **Usage:** Update this setting with the domain(s) where your application is hosted.
@@ -136,6 +137,26 @@ BadgeFed uses a layered configuration system in .NET, allowing settings to be de
 - **Location:** No configuration required.
 - **Example:** N/A
 - **Usage:** Mastodon authentication works with any Mastodon server without requiring any configuration. The system automatically registers OAuth applications dynamically when users log in from their Mastodon instances. For more details about Mastodon authentication, visit the [Mastodon Developer Documentation](https://docs.joinmastodon.org/client/token/).
+
+##### Custom Mastodon OAuth Application (Optional)
+
+If you want to use your own pre-registered Mastodon OAuth application instead of the automatic dynamic registration, you can configure it in `appsettings.json`:
+
+```json
+"MastodonConfig": {
+  "Server": "mastodon.social",
+  "ClientId": "your-client-id",
+  "ClientSecret": "your-client-secret"
+}
+```
+
+To register your own OAuth application on your Mastodon server:
+1. Go to your Mastodon instance's **Preferences > Development > New Application**
+2. Set the required scopes: `read`, `read:accounts`, and `profile`
+3. Set the redirect URI to: `https://your-badgefed-domain/signin-mastodon-dynamic`
+4. Copy the **Client ID** and **Client Secret** to your configuration
+
+**Note:** When `MastodonConfig` is configured, the specified server will be pre-selected in the login dropdown. If only `AdminAuthentication` with Mastodon users is configured (without `MastodonConfig`), the dropdown will appear but without a pre-selected server, allowing users to choose or enter their server.
 
 #### 6. **LinkedIn Configuration**
 - **Purpose:** Configures LinkedIn OAuth for authentication.
