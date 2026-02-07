@@ -1,0 +1,1 @@
+UPDATE Actor SET Username = "_relaybot" WHERE IsMain = 1;
