@@ -1,4 +1,5 @@
 @page "/view/actor/{domain}/{username}"
+@page "/view/actor/{username}"
 
 @using System.Linq
 @using BadgeFed.Services
@@ -335,6 +336,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
+
+        if (string.IsNullOrEmpty(Domain))
+        {
+            Domain = HttpContextAccessor.HttpContext?.Request.Host.Host;
+        }
 
         if (BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(acceptHeader))
         {

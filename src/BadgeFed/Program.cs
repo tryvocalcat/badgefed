@@ -107,6 +107,8 @@ builder.Services.AddScoped<RegistrationService>();
 
 builder.Services.AddScoped<UserService>();
 
+builder.Services.AddScoped<RelayActorService>();
+
 // Add custom asset path service
 builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
 
@@ -237,7 +239,7 @@ var app = builder.Build();
 try
 {
     // Setup default actor on first run
-    await SetupDefaultActor(app.Services);
+    await SetupRelayActors(app.Services);
 }
 catch (Exception e)
 {
@@ -326,45 +328,19 @@ app.MapGroup("/admin").MapLoginAndLogout(loginSchemas);
 
 app.Run();
 
-async Task SetupDefaultActor(IServiceProvider services)
+async Task SetupRelayActors(IServiceProvider services)
 {
     using var scope = services.CreateScope();
     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var relayActorService = scope.ServiceProvider.GetRequiredService<RelayActorService>();
 
     // Get all domains from configuration
     var domains = configuration.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "example.com" };
-    var defaultUsername = "badgerelay";
 
     foreach (var domainRaw in domains)
     {
         var domain = domainRaw.Split(':')[0];
-
-        Console.WriteLine($"Setting up default actor for domain: {domain}");
-        // domain could be localhost:5000 we need to take just the hostname portion of it
-        var localDbService = new LocalScopedDb(domain);
-        var existingActor = localDbService.GetActorByFilter($"Username = \"{defaultUsername}\" AND Domain = \"{domain}\"");
-        if (existingActor == null)
-        {
-            // Generate public/private key pair
-            var keyPair = await CryptoService.GenerateKeyPairAsync();
-
-            // Create the default actor
-            var defaultActor = new Actor
-            {
-                FullName = $"{domain.ToTitleCase()} Relay Bot",
-                Username = defaultUsername,
-                Domain = domain,
-                Summary = $"Official relay bot for badge announcements on {domain}. Automatically boosts badge grants and credential updates to help spread the word about achievements across the ActivityPub network.",
-                PublicKeyPem = keyPair.PublicKeyPem,
-                PrivateKeyPem = keyPair.PrivateKeyPem,
-                InformationUri = $"https://{domain}/about",
-                AvatarPath = "img/defaultavatar.png",
-                IsMain = true
-            };
-
-            localDbService.UpsertActor(defaultActor);
-            Console.WriteLine($"Default actor created with username '{defaultUsername}' and domain '{domain}'.");
-        }
+        await relayActorService.SetupRelayActorForDomain(domain);
     }
 }
 
