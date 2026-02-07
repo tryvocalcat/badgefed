@@ -1,45 +1,11 @@
 
-/** BULMA.CSS **/
+/** BULMA.CSS — base overrides **/
 
-.rootXX {
-    --black: hsl(0, 0%, 10%);
-    --black-bis: hsl(0, 0%, 12%);
-    --black-ter: hsl(0, 0%, 18%);
-    --grey-darker: hsl(0, 0%, 22%);
-    --grey-dark: hsl(0, 0%, 30%);
-    --grey: hsl(0, 0%, 40%);
-    --grey-light: hsl(0, 0%, 55%);
-    --grey-lighter: hsl(0, 0%, 70%);
-    --grey-lightest: hsl(0, 0%, 85%);
-    --white-ter: hsl(0, 0%, 90%);
-    --white-bis: hsl(0, 0%, 96%);
-    --white: hsl(0, 0%, 100%);
-    --blue: hsl(220, 40%, 50%);
-    --blue-dark: hsl(220, 40%, 35%);
-    --success: hsl(160, 20%, 40%);
-    --warning: hsl(40, 30%, 50%);
-    --danger: hsl(0, 50%, 40%);
-  
-    /* Override Bulma Colors */
-    --primary: var(--blue);
-    --link: var(--blue-dark);
-    --info: var(--blue);
-    --success: var(--success);
-    --warning: var(--warning);
-    --danger: var(--danger);
-  
-    /* Background and Text */
-    --background: var(--black-bis);
-    --text-color: var(--grey-lightest);
-    --navbar-background-color: var(--black-bis);
-    --navbar-item-color: var(--grey-lightest);
-    --navbar-item-hover-color: var(--white);
-    --navbar-item-hover-background-color: var(--black-ter);
-  
-    --bulma-family-primary: Inter, SF Pro, Segoe UI, Roboto, Oxygen, Ubuntu, Helvetica Neue, Helvetica, Arial, sans-serif;
-    --bulma-family-secondary: Inter, SF Pro, Segoe UI, Roboto, Oxygen, Ubuntu, Helvetica Neue, Helvetica, Arial, sans-serif;
-    --bulma-family-code: Inconsolata, Hack, SF Mono, Roboto Mono, Source Code Pro, Ubuntu Mono, monospace;
-  }
+:root {
+    --bulma-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --bulma-family-secondary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --bulma-family-code: 'JetBrains Mono', Inconsolata, Hack, SF Mono, Roboto Mono, Source Code Pro, Ubuntu Mono, monospace;
+}
 
   
 #blazor-error-ui {
@@ -79,8 +45,8 @@
 }
 
 body {
-    font-family: Inter, SF Pro, Segoe UI, Roboto, Oxygen, Ubuntu, Helvetica Neue, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
+    font-family: var(--bf-font, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif);
+    line-height: 1.6;
 }
 
 h1,
@@ -98,17 +64,15 @@ img {
     margin: 1em 0;
 }
 
-.container {
-    width: 90%;
-    max-width: 800px;
-    margin: 2em auto;
-}
+/* Container uses Bulma defaults */
 
 /* Badge-specific styling */
 .badge-view {
-    border-radius: 8px;
+    border-radius: var(--bf-radius-lg);
     padding: 2em;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--bf-shadow-sm);
+    border: 1px solid var(--bf-gray-200);
+    background: #fff;
 }
 
 .badge-view h3 {
@@ -137,7 +101,7 @@ img {
 }
 
 .level-item .title {
-    margin-bottom: 1.5rem !important;
+    margin-bottom: 0.25rem !important;
 }
 
 

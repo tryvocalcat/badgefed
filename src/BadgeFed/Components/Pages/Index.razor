@@ -12,68 +12,7 @@
 }
 else
 {
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: white;
-            padding: 4rem 0;
-            margin-bottom: 3rem;
-        }
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-        .hero-subtitle {
-            font-size: 1.5rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-        }
-        .feature-card {
-            border-radius: 12px;
-            padding: 2rem;
-            height: 100%;
-            transition: transform 0.3s ease;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: #4f46e5;
-        }
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .stats-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #4f46e5;
-        }
-        .stats-label {
-            font-size: 1rem;
-            color: #6b7280;
-        }
-        .actor-card {
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform 0.3s ease;
-        }
-        .actor-card:hover {
-            transform: translateY(-5px);
-        }
-        .cta-section {
-            background: #f9fafb;
-            padding: 4rem 0;
-            margin-top: 4rem;
-        }
-    </style>
-
+    <div class="page-index">
     <div class="hero-section">
         <div class="container">
             <div class="columns is-vcentered">
@@ -183,19 +122,19 @@ else
         {
             <section class="section has-background-white-ter py-6 rounded-lg shadow-sm">
                 <div class="container">
-                    <div class="box has-background-white px-5 py-6" style="border-radius: 16px;">
-                        <h2 class="title is-2 has-text-centered mb-2" style="color: #4f46e5;">
+                    <div class="box has-background-white px-5 py-6" style="border-radius: var(--bf-radius-lg);">
+                        <h2 class="title is-2 has-text-centered mb-2" style="color: var(--bf-primary);">
                             <span class="icon is-large mr-2"><i class="fas fa-info-circle"></i></span>
                             @InstanceDescriptionData.Name
                         </h2>
                         <br />
-                        <p class="subtitle is-5 has-text-centered mb-5" style="color: #374151;">
+                        <p class="subtitle is-5 has-text-centered mb-5" style="color: var(--bf-gray-700);">
                             @InstanceDescriptionData.Description
                         </p>
                         
                         @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.Purpose))
                         {
-                            <div class="notification is-info is-light mt-4 px-4 py-3" style="border-radius: 12px;">
+                            <div class="notification is-info is-light mt-4 px-4 py-3" style="border-radius: var(--bf-radius);">
                                 <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-bullseye"></i></span> Our Purpose</h3>
                                 <p>@InstanceDescriptionData.Purpose</p>
                             </div>
@@ -203,7 +142,7 @@ else
                         
                         @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.ContactInfo))
                         {
-                            <div class="notification is-link is-light mt-3 px-4 py-3" style="border-radius: 12px;">
+                            <div class="notification is-link is-light mt-3 px-4 py-3" style="border-radius: var(--bf-radius);">
                                 <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-envelope"></i></span> Contact Information</h3>
                                 <p>@InstanceDescriptionData.ContactInfo</p>
                             </div>
@@ -247,7 +186,7 @@ else
                                             else
                                             {
                                                 <div class="issuer-avatar has-background-light" style="display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 64px; height: 64px;">
-                                                    <span class="icon is-large" style="color: #4f46e5;"><i class="fas fa-users fa-2x"></i></span>
+                                                    <span class="icon is-large" style="color: var(--bf-primary);"><i class="fas fa-users fa-2x"></i></span>
                                                 </div>
                                             }
                                         </figure>
@@ -410,6 +349,7 @@ else
                 </div>
             </div>
         </section>
+    </div>
     </div>
 }
 

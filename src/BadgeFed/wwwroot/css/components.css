@@ -1,0 +1,222 @@
+/* ============================================
+   BadgeFed Component & Layout Styles
+   Extracted from inline <style> blocks in
+   NavMenu.razor, MainLayout.razor,
+   MinimalLayout.razor, Logout.razor
+   ============================================ */
+
+/* ---------- Admin Navbar (NavMenu.razor) ---------- */
+.admin-nav .navbar {
+    background: linear-gradient(135deg, var(--bf-gray-900) 0%, var(--bf-primary-dark) 100%);
+    min-height: 4rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.admin-nav .navbar-item {
+    color: rgba(255, 255, 255, 0.85);
+    transition: all var(--bf-transition);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.admin-nav .navbar-item:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.admin-nav .navbar-brand .navbar-item {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+.admin-nav .navbar-brand .navbar-item small {
+    font-size: 0.82rem;
+    opacity: 0.75;
+}
+.admin-nav .navbar-burger {
+    color: white;
+}
+.admin-nav .navbar-logo img {
+    max-height: 3rem !important;
+    margin: 0px;
+}
+.admin-nav .navbar-burger:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.admin-nav .navbar-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.admin-nav .navbar-link:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.admin-nav .navbar-link::after {
+    border-color: rgba(255,255,255,.5);
+}
+.admin-nav .navbar-dropdown {
+    background-color: white;
+    border-radius: var(--bf-radius);
+    box-shadow: var(--bf-shadow-md);
+    border: 1px solid var(--bf-gray-200);
+    padding: 0.35rem;
+    margin-top: 0;
+}
+.admin-nav .navbar-dropdown .navbar-item {
+    color: var(--bf-gray-700);
+    padding: 0.55rem 1rem;
+    border-radius: var(--bf-radius-sm);
+    font-size: 0.875rem;
+}
+.admin-nav .navbar-dropdown .navbar-item:hover {
+    background-color: var(--bf-primary-50);
+    color: var(--bf-primary);
+}
+.admin-nav .navbar-dropdown .navbar-item .icon {
+    color: var(--bf-gray-400);
+    transition: color var(--bf-transition);
+}
+.admin-nav .navbar-dropdown .navbar-item:hover .icon {
+    color: var(--bf-primary);
+}
+.admin-nav .navbar-divider {
+    background-color: rgba(255, 255, 255, 0.08);
+    margin: 0.35rem 0;
+}
+.admin-nav .user-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.admin-nav .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.admin-nav .dropdown-trigger {
+    cursor: pointer;
+}
+.admin-nav .dropdown-menu {
+    min-width: 200px;
+}
+
+/* ---------- Public Navbar (MainLayout / MinimalLayout) ---------- */
+.public-nav .navbar {
+    background: linear-gradient(135deg, var(--bf-primary-light) 0%, var(--bf-primary) 50%, var(--bf-primary-dark) 100%);
+    min-height: 4rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+.public-nav .navbar-item {
+    color: rgba(255, 255, 255, 0.88);
+    transition: all var(--bf-transition);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.public-nav .navbar-item:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.public-nav .navbar-brand .navbar-item {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+.public-nav .navbar-burger {
+    color: white;
+}
+.public-nav .navbar-burger:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Footer (MainLayout) ---------- */
+.bf-footer {
+    background-color: var(--bf-gray-50);
+    border-top: 1px solid var(--bf-gray-200);
+    padding: 2.5rem 1.5rem;
+}
+.bf-footer .footer-links {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+.bf-footer .footer-links a {
+    color: var(--bf-gray-500);
+    transition: color var(--bf-transition);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.bf-footer .footer-links a:hover {
+    color: var(--bf-primary);
+}
+.bf-footer .footer-text {
+    color: var(--bf-gray-400);
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+/* ---------- Minimal Footer ---------- */
+.bf-footer-minimal {
+    background: var(--bf-gray-50);
+    border-top: 1px solid var(--bf-gray-200);
+}
+.bf-footer-minimal p {
+    font-size: 0.82rem;
+    color: var(--bf-gray-400);
+}
+.bf-footer-minimal a {
+    color: var(--bf-gray-500);
+}
+
+/* ---------- Admin Footer ---------- */
+.bf-footer-admin {
+    background: var(--bf-gray-50);
+    border-top: 1px solid var(--bf-gray-200);
+}
+
+/* ---------- Landing Footer ---------- */
+.bf-footer-landing {
+    background: var(--bf-gray-900);
+    border-top: 1px solid var(--bf-gray-700);
+}
+.bf-footer-landing p {
+    color: var(--bf-gray-400);
+    font-size: 0.85rem;
+}
+.bf-footer-landing a {
+    color: var(--bf-gray-300);
+}
+.bf-footer-landing a:hover {
+    color: white;
+}
+
+/* ---------- User Logout (Logout.razor) ---------- */
+.user-logout-container {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    padding: 0.35rem 1rem;
+    transition: background-color var(--bf-transition);
+    gap: 0.65rem;
+}
+.user-logout-container:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+.user-greeting {
+    color: rgba(255,255,255,.9);
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+.logout-link {
+    color: rgba(255,255,255,.7);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: color var(--bf-transition);
+    border-left: 1px solid rgba(255,255,255,.15);
+    padding-left: 0.65rem;
+}
+.logout-link:hover {
+    color: #ffffff;
+}
+.bi-person-circle {
+    margin-right: 4px;
+}

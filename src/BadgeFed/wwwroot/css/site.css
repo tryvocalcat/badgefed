@@ -3,10 +3,16 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    padding: 0.5rem;
-    border: 1px solid #dbdbdb;
-    border-radius: 4px;
+    padding: 0.6rem;
+    border: 1.5px solid var(--bf-gray-300);
+    border-radius: var(--bf-radius-sm);
     background-color: white;
+    transition: border-color var(--bf-transition), box-shadow var(--bf-transition);
+}
+
+.tags-input-container:focus-within {
+    border-color: var(--bf-primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .tags-pills {
@@ -32,8 +38,9 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.825rem;
 }
 
 .tags-input-container .tag .delete {
@@ -50,43 +57,50 @@
 }
 
 .empty-state {
-    padding: 3rem;
-    border-radius: 8px;
-    background: #f8f9fa;
-    transition: all 0.3s ease;
+    padding: 3.5rem 2rem;
+    border-radius: var(--bf-radius-lg);
+    background: var(--bf-gray-50);
+    border: 2px dashed var(--bf-gray-200);
+    transition: all var(--bf-transition);
 }
 
 .empty-state:hover {
-    background: #f1f3f5;
+    background: var(--bf-gray-100);
+    border-color: var(--bf-gray-300);
 }
 
 .search-icon {
-    color: #6c757d;
-    transition: all 0.3s ease;
+    color: var(--bf-gray-400);
+    transition: all var(--bf-transition);
 }
 
 .empty-state:hover .search-icon {
-    color: #495057;
-    transform: scale(1.1);
+    color: var(--bf-gray-600);
 }
 
 .badge-table {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border-radius: 8px;
+    box-shadow: var(--bf-shadow-xs);
+    border-radius: var(--bf-radius);
     overflow: hidden;
+    border: 1px solid var(--bf-gray-200);
 }
 
 .badge-table th {
-    background: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
+    background: var(--bf-gray-50);
+    border-bottom: 2px solid var(--bf-gray-200);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bf-gray-600);
+    font-weight: 600;
 }
 
 .badge-table tr {
-    transition: background-color 0.2s ease;
+    transition: background-color var(--bf-transition);
 }
 
 .badge-table tr:hover {
-    background-color: #f1f3f5 !important;
+    background-color: var(--bf-primary-50) !important;
 }
 
 .loading-spinner {
@@ -109,5 +123,5 @@
 }
 
 .level-item .title {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.25rem;
 }

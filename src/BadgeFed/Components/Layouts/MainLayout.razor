@@ -1,51 +1,6 @@
 ﻿@inherits LayoutComponentBase
 
-<style>
-    .navbar {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        min-height: 4.5rem;
-    }
-    .navbar-item {
-        color: rgba(255, 255, 255, 0.9);
-        transition: all 0.2s ease;
-    }
-    .navbar-item:hover {
-        color: white;
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    .navbar-brand .navbar-item {
-        font-size: 1.25rem;
-        font-weight: 600;
-    }
-    .navbar-burger {
-        color: white;
-    }
-    .navbar-burger:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    .footer {
-        background-color: #f8f9fa;
-        padding: 3rem 1.5rem;
-    }
-    .footer-links {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin-bottom: 1rem;
-    }
-    .footer-links a {
-        color: #4a4a4a;
-        transition: color 0.2s ease;
-    }
-    .footer-links a:hover {
-        color: #4f46e5;
-    }
-    .footer-text {
-        color: #6b7280;
-        font-size: 0.875rem;
-    }
-</style>
-
+<div class="public-nav">
 <nav class="navbar is-dark is-spaced">
     <div class="container">
         <div class="navbar-brand">
@@ -102,6 +57,7 @@
         </div>
     </div>
 </nav>
+</div>
 
 <main class="section">
     <div class="container">
@@ -109,7 +65,7 @@
     </div>
 </main>
 
-<footer class="footer">
+<footer class="footer bf-footer">
     <div class="container">
         <div class="footer-links">
             <a href="https://www.vocalcat.com" target="_blank">

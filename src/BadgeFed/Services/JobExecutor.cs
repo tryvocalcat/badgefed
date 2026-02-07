@@ -10,7 +10,7 @@ public sealed class JobExecutor(
     private const int delayWithJobs = 5_000;
 
     // if we found nothing to process we wait a longer time before checking again
-    private const int delayNoJobs = 180_000;
+    private const int delayNoJobs = 120_000;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

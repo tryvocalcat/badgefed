@@ -12,116 +12,7 @@
 
 @attribute [Authorize(Roles = "admin, manager")]
 
-<style>
-    .table {
-        width: 100%;
-    }
-    
-    .actions-column {
-        min-width: 280px;
-        white-space: nowrap;
-    }
-    
-    .issued-to-column {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    
-    .issued-to-column a {
-        display: block;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        text-decoration: underline;
-    }
-    
-    .issued-to-column a:hover {
-        text-decoration: none;
-        overflow: visible;
-        white-space: normal;
-        word-break: break-all;
-        position: relative;
-        z-index: 10;
-        background: white;
-        padding: 0.25rem;
-        border-radius: 0.25rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    
-    .action-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-        align-items: center;
-    }
-    
-    .action-group:last-child {
-        margin-bottom: 0;
-    }
-    
-    .action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        line-height: 1.25;
-        transition: all 0.15s ease-in-out;
-    }
-    
-    .action-btn .icon {
-        font-size: 0.875rem;
-    }
-    
-    .btn-group {
-        display: flex;
-        border-radius: 0.375rem;
-        overflow: hidden;
-    }
-    
-    .btn-group .action-btn {
-        border-radius: 0;
-        border-right: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .btn-group .action-btn:first-child {
-        border-top-left-radius: 0.375rem;
-        border-bottom-left-radius: 0.375rem;
-    }
-    
-    .btn-group .action-btn:last-child {
-        border-top-right-radius: 0.375rem;
-        border-bottom-right-radius: 0.375rem;
-        border-right: none;
-    }
-    
-    .status-tabs {
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #dbdbdb;
-    }
-    
-    .status-tabs .tabs {
-        margin-bottom: -1px;
-    }
-    
-    .status-tabs .tabs ul {
-        border-bottom: none;
-    }
-    
-    .status-tabs .tabs li.is-active a {
-        border-bottom-color: #3273dc;
-        color: #3273dc;
-    }
-    
-    .status-tab-content {
-        min-height: 400px;
-    }
-</style>
+<div class="page-manage-grants">
 <h1>Manage Badge Grant Records</h1>
 
 <div class="box">
@@ -433,6 +324,7 @@ else
         </div>
     </div>
 }
+</div>
 
 @code {
     private List<BadgeRecord?> records;
