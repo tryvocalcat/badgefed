@@ -7,6 +7,12 @@ namespace ActivityPubDotNet.Core
         public string? Type { get; set; }
 
         public object? Object { get; set; }
+        
+        /// <summary>
+        /// For QuoteRequest activities, this contains the URL of the note that is doing the quoting (interactingObject).
+        /// Can be a string URL or an object with an id property.
+        /// </summary>
+        public ActivityPubObject? Instrument { get; set; }
 
         public bool IsFollow() => Type == "Follow";
         public bool IsUndoFollow() => Type == "Undo";

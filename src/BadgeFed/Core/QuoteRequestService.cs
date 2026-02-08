@@ -56,26 +56,39 @@ namespace BadgeFed.Core
         {
             try
             {
-                // Get the object URL being quoted
-                var noteUrl = message.Object?.ToString();
-                if (string.IsNullOrEmpty(noteUrl))
+                // Get the object URL being quoted (interactionTarget)
+                var interactionTarget = message.Object?.ToString();
+                if (string.IsNullOrEmpty(interactionTarget))
                 {
                     Logger?.LogWarning("Quote request missing object URL");
                     return;
                 }
 
+                // Get the URL of the note doing the quoting (interactingObject)
+                // Per FEP-044f, this should be in the 'instrument' field
+                var interactingObject = message.Instrument?.Id;
+                
+                if (string.IsNullOrEmpty(interactingObject))
+                {
+                    Logger?.LogWarning("Quote request missing instrument/id for interacting object");
+                    return;
+                }
+
                 // Find the actor that owns the quoted object
-                var actor = GetActorForQuotedObject(noteUrl);
+                var actor = GetActorForQuotedObject(interactionTarget);
                 if (actor == null)
                 {
-                    Logger?.LogWarning($"Could not find actor for quoted object: {noteUrl}");
+                    Logger?.LogWarning($"Could not find actor for quoted object: {interactionTarget}");
                     return;
                 }
 
                 // Create Accept response
                 var objectId = Guid.NewGuid().ToString();
                 var quoteId = $"https://{actor.Domain}/activities/accept/{objectId}";
-                var stampId = $"https://{actor.Domain}/stamps/{objectId}";
+                
+                // Clever alternative: encode interactingObject and interactionTarget as base64 in the stamp URL
+                // This allows dynamic generation of QuoteAuthorization without storing static files
+                var stampId = GenerateStampUrl(actor.Domain, interactingObject, interactionTarget);
 
                 var acceptResponse = new QuoteAcceptResponse
                 {
@@ -104,6 +117,23 @@ namespace BadgeFed.Core
             {
                 Logger?.LogError(ex, "Error auto-approving quote request");
             }
+        }
+
+        /// <summary>
+        /// Generates a stamp URL using base64 encoding of the interactingObject and interactionTarget.
+        /// This is the "clever alternative" from FEP-044f that allows dynamic generation of QuoteAuthorization
+        /// without storing static files.
+        /// </summary>
+        private static string GenerateStampUrl(string domain, string interactingObject, string interactionTarget)
+        {
+            var encodedInteractingObject = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(interactingObject));
+            var encodedInteractionTarget = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(interactionTarget));
+            
+            // URL-safe base64: replace + with -, / with _, and remove trailing =
+            encodedInteractingObject = encodedInteractingObject.Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            encodedInteractionTarget = encodedInteractionTarget.Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            
+            return $"https://{domain}/quote-stamps/{encodedInteractingObject}/{encodedInteractionTarget}";
         }
 
         private Actor? GetActorForQuotedObject(string noteUrl)

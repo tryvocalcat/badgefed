@@ -9,12 +9,12 @@ public class ActivityPubObject
     public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
 
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public string Type { get; set; } = string.Empty;
 
     [JsonPropertyName("object")]
-    public string Object { get; set; }
+    public string Object { get; set; } = string.Empty;
 }
 
