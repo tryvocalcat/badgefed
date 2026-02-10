@@ -114,8 +114,15 @@ public class JobProcessor
         {
             try
             {
+                // Skip if any job already exists for this grant (pending, processing, completed, or failed)
+                if (jobQueue.HasExistingJob("process_grant", "BadgeRecord", record.Id.ToString()))
+                {
+                    Logger?.LogInformation("Grant ID {GrantId} already has a job in the queue, skipping.", record.Id);
+                    continue;
+                }
+
                 var payload = new { GrantId = record.Id };
-                await jobQueue.AddJobAsync("process_grant", payload, createdBy: "JobProcessor", notes: $"Auto-queued grant {record.Id}");
+                await jobQueue.AddJobAsync("process_grant", payload, createdBy: "JobProcessor", notes: $"Auto-queued grant {record.Id}", entityType: "BadgeRecord", entityId: record.Id.ToString());
                 queued++;
                 Logger?.LogInformation("Queued grant ID {GrantId} for processing.", record.Id);
             }

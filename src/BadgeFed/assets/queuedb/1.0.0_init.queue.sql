@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS Jobs (
 CREATE INDEX IX_Jobs_Status_Created ON Jobs(Status, CreatedAt);
 CREATE INDEX IX_Jobs_Status_Scheduled ON Jobs(Status, ScheduledFor);
 CREATE INDEX IX_Jobs_Domain ON Jobs(Domain);
+CREATE INDEX IX_Jobs_Entity ON Jobs(JobType, Domain, EntityType, EntityId);
 
 -- Job logs for debugging
 CREATE TABLE IF NOT EXISTS JobLogs (
