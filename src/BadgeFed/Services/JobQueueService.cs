@@ -78,7 +78,7 @@ public class JobQueueService
     /// <summary>
     /// Add a job to the queue
     /// </summary>
-    public async Task<long> AddJobAsync(string jobType, object? payload = null, DateTime? scheduledFor = null, string? createdBy = null, string? notes = null)
+    public async Task<long> AddJobAsync(string jobType, object? payload = null, DateTime? scheduledFor = null, string? createdBy = null, string? notes = null, string? entityType = null, string? entityId = null)
     {
         var domain = GetCurrentDomain();
         using var connection = GetQueueDb().GetConnection();
@@ -86,8 +86,8 @@ public class JobQueueService
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Jobs (JobType, Domain, Payload, ScheduledFor, CreatedBy, Notes)
-            VALUES (@jobType, @domain, @payload, @scheduledFor, @createdBy, @notes);
+            INSERT INTO Jobs (JobType, Domain, Payload, ScheduledFor, CreatedBy, Notes, EntityType, EntityId)
+            VALUES (@jobType, @domain, @payload, @scheduledFor, @createdBy, @notes, @entityType, @entityId);
             SELECT last_insert_rowid();";
 
         command.Parameters.AddWithValue("@jobType", jobType);
@@ -96,6 +96,8 @@ public class JobQueueService
         command.Parameters.AddWithValue("@scheduledFor", scheduledFor ?? DateTime.UtcNow);
         command.Parameters.AddWithValue("@createdBy", createdBy ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@entityType", entityType ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@entityId", entityId ?? (object)DBNull.Value);
 
         var jobId = (long)command.ExecuteScalar();
 
@@ -312,6 +314,32 @@ public class JobQueueService
             if (shouldDisposeConnection)
                 connection.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Check if any job (regardless of status) exists for the given entity type and entity ID
+    /// </summary>
+    public bool HasExistingJob(string jobType, string entityType, string entityId)
+    {
+        var domain = GetCurrentDomain();
+        using var connection = GetQueueDb().GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(*) FROM Jobs 
+            WHERE JobType = @jobType 
+              AND Domain = @domain 
+              AND EntityType = @entityType 
+              AND EntityId = @entityId";
+
+        command.Parameters.AddWithValue("@jobType", jobType);
+        command.Parameters.AddWithValue("@domain", domain);
+        command.Parameters.AddWithValue("@entityType", entityType);
+        command.Parameters.AddWithValue("@entityId", entityId);
+
+        var count = (long)command.ExecuteScalar();
+        return count > 0;
     }
 
     /// <summary>

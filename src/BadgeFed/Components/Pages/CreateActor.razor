@@ -152,6 +152,139 @@
         margin: 0;
         font-size: 0.925rem;
     }
+
+    /* Advanced Settings */
+    .advanced-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 0.925rem;
+        font-weight: 500;
+        padding: 0.75rem 0;
+        user-select: none;
+        transition: color 0.2s ease;
+    }
+    .advanced-toggle:hover {
+        color: #4f46e5;
+    }
+    .advanced-toggle i {
+        transition: transform 0.2s ease;
+        font-size: 0.75rem;
+    }
+    .advanced-toggle i.rotated {
+        transform: rotate(90deg);
+    }
+    .advanced-content {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+    }
+    .advanced-content.expanded {
+        max-height: 600px;
+        opacity: 1;
+    }
+
+    /* Key Status */
+    .key-status-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+    }
+    .key-status-card.no-key {
+        background: #fef3cd;
+        border-color: #ffc107;
+    }
+    .key-status-card .key-status-icon {
+        font-size: 1.5rem;
+    }
+    .key-status-card.no-key .key-status-icon {
+        color: #b45309;
+    }
+    .key-status-card:not(.no-key) .key-status-icon {
+        color: #16a34a;
+    }
+    .key-status-card .key-status-text {
+        flex: 1;
+    }
+    .key-status-card .key-status-title {
+        font-weight: 600;
+        font-size: 0.925rem;
+    }
+    .key-status-card .key-status-desc {
+        font-size: 0.825rem;
+        color: #6b7280;
+        margin-top: 0.15rem;
+    }
+
+    /* Confirmation Modal */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 480px;
+        width: 90%;
+        overflow: hidden;
+    }
+    .modal-card-head {
+        background: #fef2f2;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #fecaca;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .modal-card-head .modal-icon {
+        color: #dc2626;
+        font-size: 1.5rem;
+    }
+    .modal-card-head .modal-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #991b1b;
+    }
+    .modal-card-body {
+        padding: 1.5rem;
+    }
+    .modal-card-body p {
+        margin-bottom: 0.75rem;
+        color: #374151;
+        line-height: 1.6;
+    }
+    .modal-card-body .modal-warning-list {
+        background: #fff7ed;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    .modal-card-body .modal-warning-list li {
+        color: #9a3412;
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+    }
+    .modal-card-foot {
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        border-top: 1px solid #e9ecef;
+    }
 </style>
 
 <div class="form-section">
@@ -336,48 +469,102 @@
                 </div>
             </div>
 
-            @if (string.IsNullOrEmpty(ActorId))
-            {
-                <div class="column is-12">
-                    <div class="field">
-                        <div class="control">
-                            <button type="button" @onclick="GenerateKeyPair" class="button is-info">
-                                <span class="icon">
-                                    <i class="fas fa-key"></i>
-                                </span>
-                                <span>Generate Key Pair</span>
+            <!-- Key Management Section -->
+            <div class="column is-12">
+                <div class="field">
+                    <label class="field-label">Signing Keys</label>
+
+                    @if (HasKeys())
+                    {
+                        <div class="key-status-card">
+                            <div class="key-status-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="key-status-text">
+                                <div class="key-status-title">Keys configured</div>
+                                <div class="key-status-desc">This issuer has a signing key pair for federation.</div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(ActorId) && HasPrivateKey())
+                        {
+                            <button type="button" @onclick="ShowRegenerateConfirmation" class="button is-warning is-small">
+                                <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+                                <span>Regenerate Keys</span>
                             </button>
-                            <p class="help-text mt-2">Click to automatically generate a public/private key pair for this actor</p>
+                        }
+                    }
+                    else
+                    {
+                        <div class="key-status-card no-key">
+                            <div class="key-status-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="key-status-text">
+                                <div class="key-status-title">No keys configured</div>
+                                <div class="key-status-desc">A key pair will be generated automatically when you save, or you can provide your own below.</div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="column is-6">
-                    <div class="field">
-                        <label class="field-label" for="public-key">Public Key</label>
-                        <div class="control">
-                            <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" class="textarea" rows="6" placeholder="Paste the public key in PEM format" />
-                        </div>
-                        <div class="key-label">
-                            <i class="fas fa-key"></i>
-                            <span>Used for verifying actor signatures</span>
-                        </div>
-                    </div>
-                </div>
+                        @if (!string.IsNullOrEmpty(ActorId))
+                        {
+                            <button type="button" @onclick="GenerateAndSaveKeyPair" class="button is-info is-small mt-2">
+                                <span class="icon is-small"><i class="fas fa-key"></i></span>
+                                <span>Generate Keys Now</span>
+                            </button>
+                        }
+                    }
 
-                <div class="column is-6">
-                    <div class="field">
-                        <label class="field-label" for="private-key">Private Key</label>
-                        <div class="control">
-                            <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="Paste the private key in PEM format" />
+                    <!-- Advanced Settings Toggle -->
+                    <div class="advanced-toggle" @onclick="ToggleAdvancedSettings">
+                        <i class="fas fa-chevron-right @(showAdvancedSettings ? "rotated" : "")"></i>
+                        <span>Advanced Settings — manually provide keys</span>
+                    </div>
+
+                    <div class="advanced-content @(showAdvancedSettings ? "expanded" : "")">
+                        <div class="notification is-info is-light" style="border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+                            <p style="margin-bottom: 0.5rem;">
+                                <strong><i class="fas fa-info-circle"></i> Key requirements</strong>
+                            </p>
+                            <p style="margin-bottom: 0.35rem;">
+                                BadgeFed uses <strong>RSA 2048-bit</strong> keys for ActivityPub federation signatures.
+                                If you provide your own keys, they must meet these requirements:
+                            </p>
+                            <ul style="margin-left: 1.25rem; margin-top: 0.25rem; margin-bottom: 0;">
+                                <li><strong>Public key</strong> — PEM-encoded, SPKI format (<code>-----BEGIN PUBLIC KEY-----</code>)</li>
+                                <li><strong>Private key</strong> — PEM-encoded, PKCS#8 format (<code>-----BEGIN PRIVATE KEY-----</code>)</li>
+                                <li><strong>Algorithm</strong> — RSA with a minimum key size of 2048 bits</li>
+                            </ul>
                         </div>
-                        <div class="key-label">
-                            <i class="fas fa-lock"></i>
-                            <span>Used for signing actor activities</span>
+                        <div class="columns">
+                            <div class="column is-6">
+                                <div class="field">
+                                    <label class="field-label" for="public-key">Public Key</label>
+                                    <div class="control">
+                                        <InputTextArea id="public-key" @bind-Value="Model.PublicKeyPem" class="textarea" rows="6" placeholder="-----BEGIN PUBLIC KEY-----&#10;MIIBIjANBgkqhkiG9w...&#10;-----END PUBLIC KEY-----" />
+                                    </div>
+                                    <div class="key-label">
+                                        <i class="fas fa-key"></i>
+                                        <span>SPKI format — used for verifying actor signatures</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column is-6">
+                                <div class="field">
+                                    <label class="field-label" for="private-key">Private Key</label>
+                                    <div class="control">
+                                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhki...&#10;-----END PRIVATE KEY-----" />
+                                    </div>
+                                    <div class="key-label">
+                                        <i class="fas fa-lock"></i>
+                                        <span>PKCS#8 format — used for signing actor activities</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            }
+            </div>
         </div>
 
         <div class="form-actions">
@@ -415,6 +602,36 @@
         </div>
     </EditForm>
 </div>
+
+@if (showRegenerateModal)
+{
+    <div class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-card-head">
+                <span class="modal-icon"><i class="fas fa-exclamation-circle"></i></span>
+                <span class="modal-title">Regenerate Signing Keys?</span>
+            </div>
+            <div class="modal-card-body">
+                <p>You are about to replace this issuer's cryptographic key pair. This is a <strong>destructive action</strong> that cannot be undone.</p>
+                <div class="modal-warning-list">
+                    <ul>
+                        <li>Existing followers will no longer be able to verify your signatures</li>
+                        <li>Previously signed badges may fail verification</li>
+                        <li>Federation with other servers may be disrupted until they re-fetch your keys</li>
+                    </ul>
+                </div>
+                <p>Only proceed if you understand the consequences.</p>
+            </div>
+            <div class="modal-card-foot">
+                <button type="button" class="button" @onclick="CancelRegenerate">Cancel</button>
+                <button type="button" class="button is-danger" @onclick="ConfirmRegenerateKeyPair">
+                    <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+                    <span>Yes, Regenerate Keys</span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @if (!string.IsNullOrEmpty(ActorId))
 {
@@ -467,6 +684,8 @@
     private string newIssuerUrl = string.Empty;
     private bool isIssuerValid;
     private string issuerValidationMessage;
+    private bool showAdvancedSettings = false;
+    private bool showRegenerateModal = false;
 
     protected override void OnInitialized()
     {
@@ -477,8 +696,6 @@
             // initialize domain based on request host
         }
 
-        Console.WriteLine("[DEBUG] Host: " + HttpContextAccessor?.HttpContext?.Request?.Host.Value);
-        
         if (string.IsNullOrEmpty(Model.Domain))
         {
             Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
@@ -520,6 +737,42 @@
         }
     }
 
+    private bool HasKeys()
+    {
+        return !string.IsNullOrWhiteSpace(Model?.PublicKeyPem);
+    }
+
+    private bool HasPrivateKey()
+    {
+        return !string.IsNullOrWhiteSpace(Model?.PrivateKeyPem);
+    }
+
+    private void ToggleAdvancedSettings()
+    {
+        showAdvancedSettings = !showAdvancedSettings;
+    }
+
+    private void ShowRegenerateConfirmation()
+    {
+        showRegenerateModal = true;
+    }
+
+    private void CancelRegenerate()
+    {
+        showRegenerateModal = false;
+    }
+
+    private async Task ConfirmRegenerateKeyPair()
+    {
+        showRegenerateModal = false;
+        await GenerateKeyPair();
+    }
+
+    private async Task GenerateAndSaveKeyPair()
+    {
+        await GenerateKeyPair();
+    }
+
     private async Task GenerateKeyPair()
     {
         var keyPair = await CryptoService.GenerateKeyPairAsync();
@@ -553,6 +806,14 @@
         isSubmitting = true;
         try
         {
+            // Auto-generate keys if none were provided
+            if (string.IsNullOrWhiteSpace(Model.PublicKeyPem) || string.IsNullOrWhiteSpace(Model.PrivateKeyPem))
+            {
+                var keyPair = await CryptoService.GenerateKeyPairAsync();
+                Model.PublicKeyPem = keyPair.PublicKeyPem;
+                Model.PrivateKeyPem = keyPair.PrivateKeyPem;
+            }
+
             if (selectedFile != null)
             {
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
