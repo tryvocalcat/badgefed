@@ -696,8 +696,6 @@
             // initialize domain based on request host
         }
 
-        Console.WriteLine("[DEBUG] Host: " + HttpContextAccessor?.HttpContext?.Request?.Host.Value);
-        
         if (string.IsNullOrEmpty(Model.Domain))
         {
             Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
