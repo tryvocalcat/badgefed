@@ -54,10 +54,14 @@ public class JobProcessor
 
             try
             {
-                await ProcessNextNotifyGrantAsync(db, badgeProcessor);
+                var notifyQueued = await QueuePendingNotifyGrantsAsync(db, domain);
+                if (notifyQueued > 0)
+                {
+                    Logger?.LogInformation("Queued {Count} notify grants for domain {Domain}", notifyQueued, domain);
+                }
             } catch (Exception ex)
             {
-                Logger?.LogError(ex, "Error processing next notify grant for domain {Domain}", domain);
+                Logger?.LogError(ex, "Error queuing notify grants for domain {Domain}", domain);
             }
             
             try {
@@ -80,18 +84,45 @@ public class JobProcessor
         return jobsProcessed;
     }
 
-    private async Task ProcessNextNotifyGrantAsync(LocalScopedDb _dbService, BadgeProcessor _badgeProcessor)
+    private async Task<int> QueuePendingNotifyGrantsAsync(LocalScopedDb dbService, string domain)
     {
-        var grantId = _dbService.PeekNotifyGrantId();
+        Logger?.LogInformation("Checking for pending notify grants to queue.");
 
-     //   Console.WriteLine($"Processing notify grant: {grantId}");
+        var pendingIds = dbService.GetPendingNotifyGrantIds();
 
-        if (grantId == 0)
+        if (pendingIds.Count == 0)
         {
-            return;
+            return 0;
         }
 
-        await _badgeProcessor.NotifyGrantAcceptLink(grantId);
+        Logger?.LogInformation("Found {Count} pending notify grants to queue for domain {Domain}.", pendingIds.Count, domain);
+
+        var jobQueue = new JobQueueService(domain, Logger as ILogger<JobQueueService>);
+        var queued = 0;
+
+        foreach (var grantId in pendingIds)
+        {
+            try
+            {
+                // Skip if any job already exists for this notify grant (pending, processing, completed, or failed)
+                if (jobQueue.HasExistingJob("notify_grant", "BadgeRecord", grantId.ToString()))
+                {
+                    Logger?.LogInformation("Notify grant ID {GrantId} already has a job in the queue, skipping.", grantId);
+                    continue;
+                }
+
+                var payload = new { GrantId = grantId };
+                await jobQueue.AddJobAsync("notify_grant", payload, createdBy: "JobProcessor", notes: $"Auto-queued notify grant {grantId}", entityType: "BadgeRecord", entityId: grantId.ToString());
+                queued++;
+                Logger?.LogInformation("Queued notify grant ID {GrantId} for processing.", grantId);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Failed to queue notify grant ID {GrantId}", grantId);
+            }
+        }
+
+        return queued;
     }
 
     private async Task<int> QueuePendingGrantsAsync(LocalScopedDb dbService, string domain)
@@ -209,6 +240,9 @@ public class JobProcessor
                     case "process_grant":
                         await ProcessGrantJob(job, domain);
                         break;
+                    case "notify_grant":
+                        await ProcessNotifyGrantJob(job, domain);
+                        break;
                     default:
                         Logger?.LogWarning("Unknown job type {JobType} for job {JobId}", job.JobType, job.Id);
                         await jobQueue.AddJobLogAsync(job.Id, $"Unknown job type: {job.JobType}");
@@ -226,6 +260,49 @@ public class JobProcessor
         }
     
         return count;
+    }
+
+    private async Task ProcessNotifyGrantJob(SimpleJob job, string domain)
+    {
+        var jobQueue = new JobQueueService(domain, Logger as ILogger<JobQueueService>);
+
+        try
+        {
+            if (string.IsNullOrEmpty(job.Payload))
+            {
+                throw new InvalidOperationException("Job payload is empty");
+            }
+
+            var payload = JsonDocument.Parse(job.Payload);
+            var grantId = payload.RootElement.GetProperty("GrantId").GetInt64();
+
+            await jobQueue.AddJobLogAsync(job.Id, $"Processing notify grant ID: {grantId}");
+
+            var db = new LocalScopedDb(domain);
+            var openBadgeService = new OpenBadgeService(db);
+            var badgeService = new BadgeService(db, openBadgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService);
+
+            var record = await badgeProcessor.NotifyGrantAcceptLink(grantId);
+
+            if (record != null)
+            {
+                await jobQueue.AddJobLogAsync(job.Id, $"Successfully notified grant {grantId}");
+            }
+            else
+            {
+                await jobQueue.AddJobLogAsync(job.Id, $"NotifyGrantAcceptLink returned null for grant {grantId}");
+            }
+
+            await jobQueue.CompleteJobAsync(job.Id);
+            Logger?.LogInformation("Successfully processed notify grant job {JobId} for grant {GrantId}", job.Id, grantId);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Failed to process notify grant job {JobId}", job.Id);
+            await jobQueue.AddJobLogAsync(job.Id, $"FAILED: {ex.Message}");
+            await jobQueue.FailJobAsync(job.Id, ex.Message);
+        }
     }
 
     private async Task ProcessGrantJob(SimpleJob job, string domain)
