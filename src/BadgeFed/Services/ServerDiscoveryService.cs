@@ -41,7 +41,7 @@ namespace BadgeFed.Services
                 {
                     var existingServer = GetServerByUrl(serverJson.url);
                     
-                    var defaultActor = "https://" + new Uri(serverJson.url).Host + "/actor/_relaybot";
+                    var defaultActor = "https://" + new Uri(serverJson.url).Host + "/actors/" +  new Uri(serverJson.url).Host + "_relaybot";
 
                     var discoveredServer = new DiscoveredServer
                     {

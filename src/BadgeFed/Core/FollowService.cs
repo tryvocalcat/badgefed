@@ -74,24 +74,52 @@ namespace ActivityPubDotNet.Core
             }
         }
 
+        /// <summary>
+        /// Resolves an actor from a URI, trying all known URI formats:
+        ///   1. Exact match (canonical: /actors/{domain}/{username})
+        ///   2. Legacy format: /view/actor/{domain}/{username}
+        ///   3. Short format: /actor/{username} (domain omitted)
+        /// </summary>
+        private Actor? ResolveActor(string? uri, LocalScopedDb db)
+        {
+            if (string.IsNullOrEmpty(uri)) return null;
+
+            // 1. Try exact match
+            var actor = db.GetActorByFilter($"Uri = \"{uri}\"");
+            if (actor != null) return actor;
+
+            // 2. Legacy /view/actor/ -> /actors/
+            if (uri.Contains("/view/actor/"))
+            {
+                var normalized = uri.Replace("/view/actor/", "/actors/");
+                actor = db.GetActorByFilter($"Uri = \"{normalized}\"");
+                if (actor != null) return actor;
+            }
+
+            // 3. Short /actor/{username} -> /actors/{domain}/{username}
+            if (uri.Contains("/actor/"))
+            {
+                var parsed = new Uri(uri);
+                var username = uri.Split('/').Last();
+                var domain = parsed.Host;
+                var canonical = $"https://{domain}/actors/{domain}/{username}";
+                actor = db.GetActorByFilter($"Uri = \"{canonical}\"");
+                if (actor != null) return actor;
+            }
+
+            return null;
+        }
+
         public async Task CreateFollower(InboxMessage message, LocalScopedDb db)
         {
             Logger?.LogInformation($"Follow request from: {message.Actor} to {message.Object}");
 
-            var actor = db.GetActorByFilter($"Uri = \"{message.Object}\"")!;
+            var actor = ResolveActor(message.Object?.ToString(), db);
 
             if (actor == null)
             {
-                // https://badges.vocalcat.com/view/actor/badges.vocalcat.com/admin to https://badges.vocalcat.com/actors/badges.vocalcat.com/admin
-                var newUri = message.Object!.ToString().Replace("/view/actor/", "/actors/");
-                
-                actor = db.GetActorByFilter($"Uri = \"{newUri}\"")!;
-
-                if (actor == null)
-                {
-                    Logger?.LogWarning($"Actor not found for URI: {newUri} or {message.Object}");
-                    return;
-                }
+                Logger?.LogWarning($"Actor not found for URI: {message.Object}");
+                return;
             }
 
             var follower = new Follower()
@@ -145,16 +173,12 @@ namespace ActivityPubDotNet.Core
             // Target is the account to be followed
             var target = message.Object!.ToString();
 
-            // target could be https://communitycredentials.org/view/actor/communitycredentials.org/issuer
-            // but we need to check https://communitycredentials.org/actors/communitycredentials.org/issuer
-            var targetClean = target!.Replace("/view/actor/", "/actors/");
-           
-            var actor = db.GetActorByFilter($"Uri = \"{targetClean}\"")!;
+            var actor = ResolveActor(target, db);
 
             if (actor == null)
             {
-                Logger?.LogWarning($"Actor not found for URI: {targetClean} or {target}");
-                throw new Exception($"Actor not found for uri: {targetClean}");
+                Logger?.LogWarning($"Actor not found for URI: {target}");
+                throw new Exception($"Actor not found for uri: {target}");
             }
 
             var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, Logger);
