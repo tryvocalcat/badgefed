@@ -44,7 +44,11 @@ namespace BadgeFed.Controllers
             _logger.LogInformation("[{RequestHost}] Successfully processed WebFinger request for: {Account}", Request.Host, account);
 
             var subject = $"acct:{actorName}@{domain}";
-            var aliases = new[] { $"https://{domain}/actors/{domain}/{actorName}" };
+            var aliases = new[] { 
+                $"https://{domain}/actors/{domain}/{actorName}",
+                $"https://{domain}/actor/{actorName}",
+                $"https://{domain}/view/actor/{domain}/{actorName}",
+             };
 
             var links = new[]
             {
