@@ -600,6 +600,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
             };
@@ -742,6 +743,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
             };
@@ -789,6 +791,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
             };

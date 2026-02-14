@@ -18,6 +18,12 @@ Welcome to BadgeFed! This guide will help you use BadgeFed effectively and provi
 - Navigate to the issuer management page.
 - Create an issuer that acts as an ActivityPub actor and OpenBadge endpoint.
 
+#### Admin-Only: Advanced Issuer Settings
+Administrators (not managers) have access to an **Advanced (Admin Only)** section when creating or editing an issuer:
+
+- **LinkedIn Organization ID**: Enter your numeric LinkedIn Organization ID to enable LinkedIn certification integration. You can find this ID in your LinkedIn Company Page URL (e.g., `https://www.linkedin.com/company/12345678` → the ID is `12345678`).
+- **Owner (Group)**: Assign or reassign the group that owns the issuer. The dropdown lists all available groups and pre-selects the currently assigned group when editing an existing issuer. This controls which group's managers and collaborators can manage the issuer's badges.
+
 #### Step 2: Create a Badge
 - Associate the badge with an issuer.
 
