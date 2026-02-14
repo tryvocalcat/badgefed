@@ -8,7 +8,7 @@
     },
     {
         "name": "BadgeFed",
-        "url": "https://badges.vocalcat.com",
+        "url": "https://badgefed.org",
         "description": "The main server for emitting badges related to VocalCat and BadgeFed projects.",
         "categories": ["Company", "OpenSource", "Technology", "Innovation"],
         "admin": "VocalCat LLC"
