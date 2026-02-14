@@ -553,7 +553,7 @@
                                 <div class="field">
                                     <label class="field-label" for="private-key">Private Key</label>
                                     <div class="control">
-                                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhki...&#10;-----END PRIVATE KEY-----" />
+                                        <InputTextArea id="private-key" @bind-Value="Model.PrivateKeyPem" class="textarea" rows="6" placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhki...&#10;-----END PRIVATE KEY-----" style="-webkit-text-security: disc; text-security: disc;" />
                                     </div>
                                     <div class="key-label">
                                         <i class="fas fa-lock"></i>
