@@ -1445,6 +1445,27 @@ public class ActorStats
         return 0;
     }
 
+    public List<long> GetPendingNotifyGrantIds()
+    {
+        var ids = new List<long>();
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT Id FROM BadgeRecord WHERE AcceptKey IS NOT NULL AND 
+            AcceptKey != '' AND AcceptedOn IS NULL 
+            AND NotifiedOfGrant = FALSE ORDER BY IssuedOn ASC";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            ids.Add(reader.GetInt64(0));
+        }
+
+        return ids;
+    }
+
     public void NotifyGrant(long id)
     {
         using var connection = GetConnection();
@@ -2025,6 +2046,7 @@ public class ActorStats
                 Badge = badge,
                 Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                 IsExternal = reader["IsExternal"] == DBNull.Value ? false : reader.GetBoolean(reader.GetOrdinal("IsExternal")),
+                NotifiedOfGrant = reader["NotifiedOfGrant"] != DBNull.Value && reader.GetBoolean(reader.GetOrdinal("NotifiedOfGrant")),
             });
         }
 

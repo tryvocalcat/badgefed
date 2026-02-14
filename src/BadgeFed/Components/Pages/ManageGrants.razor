@@ -3,6 +3,8 @@
 @using System.IO
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.JSInterop
 @inject IWebHostEnvironment Environment
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
@@ -15,31 +17,63 @@
 <style>
     .table {
         width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
     }
-    
-    .actions-column {
-        min-width: 280px;
+
+    .table thead th {
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6c757d;
+        padding: 0.75rem 0.75rem;
         white-space: nowrap;
     }
-    
+
+    .table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f5 !important;
+    }
+
+    .table tbody td {
+        vertical-align: middle;
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .actions-cell {
+        min-width: 260px;
+    }
+
+    .actions-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        flex-wrap: wrap;
+    }
+
     .issued-to-column {
         max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    
+
     .issued-to-column a {
         display: block;
         max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        text-decoration: underline;
+        color: #3273dc;
     }
-    
+
     .issued-to-column a:hover {
-        text-decoration: none;
         overflow: visible;
         white-space: normal;
         word-break: break-all;
@@ -50,76 +84,177 @@
         border-radius: 0.25rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
-    
-    .action-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-        align-items: center;
-    }
-    
-    .action-group:last-child {
-        margin-bottom: 0;
-    }
-    
+
     .action-btn {
         display: inline-flex;
         align-items: center;
         gap: 0.25rem;
-        padding: 0.25rem 0.75rem;
+        padding: 0.3rem 0.65rem;
         border-radius: 0.375rem;
-        font-size: 0.875rem;
+        font-size: 0.8rem;
+        font-weight: 500;
         line-height: 1.25;
         transition: all 0.15s ease-in-out;
+        text-decoration: none;
+        cursor: pointer;
+        border: 1.5px solid transparent;
     }
-    
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+
+    .action-btn:active {
+        transform: translateY(0);
+    }
+
     .action-btn .icon {
-        font-size: 0.875rem;
+        font-size: 0.8rem;
     }
-    
-    .btn-group {
-        display: flex;
-        border-radius: 0.375rem;
-        overflow: hidden;
+
+    .action-btn.is-outlined {
+        background: transparent;
     }
-    
-    .btn-group .action-btn {
-        border-radius: 0;
-        border-right: 1px solid rgba(255, 255, 255, 0.2);
+
+    .action-btn.is-danger.is-outlined {
+        color: #f14668;
+        border-color: #f14668;
+        background: transparent;
     }
-    
-    .btn-group .action-btn:first-child {
-        border-top-left-radius: 0.375rem;
-        border-bottom-left-radius: 0.375rem;
+
+    .action-btn.is-danger.is-outlined:hover {
+        background: #f14668;
+        color: white;
     }
-    
-    .btn-group .action-btn:last-child {
-        border-top-right-radius: 0.375rem;
-        border-bottom-right-radius: 0.375rem;
-        border-right: none;
+
+    .action-btn.is-warning.is-outlined {
+        color: #946c00;
+        border-color: #ffe08a;
+        background: transparent;
     }
-    
+
+    .action-btn.is-warning.is-outlined:hover {
+        background: #ffe08a;
+        color: #946c00;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    .status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.accepted {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .status-badge.processed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.external {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .status-badge .icon {
+        font-size: 0.65rem;
+    }
+
+    .auto-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.7rem;
+        background: #e8f4fd;
+        color: #1a73e8;
+        font-weight: 500;
+    }
+
+    .auto-badge .icon {
+        font-size: 0.6rem;
+    }
+
+    .action-separator {
+        width: 1px;
+        height: 1.2rem;
+        background: #dee2e6;
+        margin: 0 0.125rem;
+    }
+
     .status-tabs {
         margin-bottom: 1rem;
         border-bottom: 1px solid #dbdbdb;
     }
-    
+
     .status-tabs .tabs {
         margin-bottom: -1px;
     }
-    
+
     .status-tabs .tabs ul {
         border-bottom: none;
     }
-    
+
     .status-tabs .tabs li.is-active a {
         border-bottom-color: #3273dc;
         color: #3273dc;
+        font-weight: 600;
     }
-    
+
     .status-tab-content {
         min-height: 400px;
+    }
+
+    .records-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .copy-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: #363636;
+        color: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        z-index: 1000;
+        animation: fadeInUp 0.2s ease, fadeOut 0.3s ease 1.7s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @@keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
     }
 </style>
 <h1>Manage Badge Grant Records</h1>
@@ -170,7 +305,7 @@
     <div class="columns">
         <div class="column">
             <div class="buttons">
-                <button class="button is-primary" @onclick="ApplyFilters">Apply Filters</button>
+                <button class="button is-primary" @onclick="OnApplyFilters">Apply Filters</button>
                 <button class="button" @onclick="ClearFilters">Clear Filters</button>
             </div>
         </div>
@@ -181,25 +316,25 @@
     <div class="tabs is-boxed">
         <ul>
             <li class="@(activeTab == "pending" ? "is-active" : "")">
-                <a @onclick="SetActiveTabPending">
+                <a @onclick='() => SetActiveTab("pending")'>
                     <span class="icon is-small"><i class="fas fa-clock"></i></span>
                     <span>Pending (@GetStatusCount("pending"))</span>
                 </a>
             </li>
             <li class="@(activeTab == "accepted" ? "is-active" : "")">
-                <a @onclick="SetActiveTabAccepted">
+                <a @onclick='() => SetActiveTab("accepted")'>
                     <span class="icon is-small"><i class="fas fa-check"></i></span>
                     <span>Accepted (@GetStatusCount("accepted"))</span>
                 </a>
             </li>
             <li class="@(activeTab == "processed" ? "is-active" : "")">
-                <a @onclick="SetActiveTabProcessed">
+                <a @onclick='() => SetActiveTab("processed")'>
                     <span class="icon is-small"><i class="fas fa-cogs"></i></span>
                     <span>Processed (@GetStatusCount("processed"))</span>
                 </a>
             </li>
             <li class="@(activeTab == "external" ? "is-active" : "")">
-                <a @onclick="SetActiveTabExternal">
+                <a @onclick='() => SetActiveTab("external")'>
                     <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
                     <span>External (@GetStatusCount("external"))</span>
                 </a>
@@ -223,31 +358,39 @@
 else
 {
     <div class="status-tab-content">
-        <div class="box">
-            <p>Showing @filteredRecords.Count of @records.Count records</p>
+        <div class="records-summary">
+            @if (filteredRecords.Count > 0)
+            {
+                <span>Showing <strong>@((currentPage - 1) * PageSize + 1)–@(Math.Min(currentPage * PageSize, filteredRecords.Count))</strong> of <strong>@filteredRecords.Count</strong> records</span>
+            }
+            else
+            {
+                <span>No records found</span>
+            }
         </div>
-        <table class="table">
+        <table class="table is-hoverable is-fullwidth">
         <thead>
             <tr>
-                <th>Id</th>
-                <th>Badge Title</th>
-                <th>Issued To</th>
-                <th>Issued By</th>
-                <th>Issued On</th>
-                <th>Accepted On</th>
-                <th class="actions-column">Actions</th>
+                <th>ID</th>
+                <th>Badge</th>
+                <th>Recipient</th>
+                <th>Issuer</th>
+                <th>Issued</th>
+                <th>Status</th>
+                <th class="actions-cell">Actions</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var record in filteredRecords)
+            @foreach (var record in pagedRecords)
             {
                 var actorName = actors.ContainsKey(record.IssuedBy) 
                     ? actors[record.IssuedBy].FullName 
                     : record.IssuedBy.Substring(record.IssuedBy.LastIndexOf('/') + 1);
+                var status = GetRecordStatus(record);
                 
-                <tr class="@GetRowClass(record)">
+                <tr>
                     <td>@record.Id</td>
-                    <td>@record.Title</td>
+                    <td><strong>@record.Title</strong></td>
                     <td class="issued-to-column">
                         @if (!string.IsNullOrEmpty(record.IssuedToSubjectUri))
                         {
@@ -266,112 +409,140 @@ else
                         }
                     </td>
                     <td><a href="@record.IssuedBy">@actorName</a></td>
-                    <td>@record.IssuedOn.ToString("yyyy-MM-dd")</td>
-                    <td>@(record.AcceptedOn?.ToString("yyyy-MM-dd") ?? "-")</td>
-                    <td class="actions-column">
+                    <td>@record.IssuedOn.ToString("MMM d, yyyy")</td>
+                    <td>
+                        @switch (status)
+                        {
+                            case "pending":
+                                <span class="status-badge pending">
+                                    <span class="icon"><i class="fas fa-clock"></i></span> Pending
+                                </span>
+                                @if (!record.NotifiedOfGrant)
+                                {
+                                    <span class="auto-badge mt-1" title="Notification will be sent automatically by the job queue">
+                                        <span class="icon"><i class="fas fa-robot"></i></span> Auto-notify queued
+                                    </span>
+                                }
+                                break;
+                            case "accepted":
+                                <span class="status-badge accepted">
+                                    <span class="icon"><i class="fas fa-check"></i></span> Accepted
+                                </span>
+                                <br/>
+                                <span class="auto-badge mt-1" title="Processing will happen automatically via the job queue">
+                                    <span class="icon"><i class="fas fa-robot"></i></span> Auto-process queued
+                                </span>
+                                break;
+                            case "processed":
+                                <span class="status-badge processed">
+                                    <span class="icon"><i class="fas fa-check-double"></i></span> Processed
+                                </span>
+                                break;
+                            case "external":
+                                <span class="status-badge external">
+                                    <span class="icon"><i class="fas fa-globe"></i></span> External
+                                </span>
+                                break;
+                        }
+                    </td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
                         @if (record.IsExternal) 
                         {
-                            <!-- External Badge Actions -->
-                            <div class="action-group">
-                                <a href="@record.NoteId" class="action-btn button is-info is-small" title="View external badge">
-                                    <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                                    <span>View</span>
-                                </a>
-                            </div>
+                            <a href="@record.NoteId" target="_blank" class="action-btn button is-small is-info is-light" title="View on original server">
+                                <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                                <span>View</span>
+                            </a>
                         } 
                         else if (string.IsNullOrEmpty(record.AcceptKey)) 
                         {
                             if (string.IsNullOrEmpty(record.FingerPrint)) 
                             {
-                                <!-- Unprocessed Badge Actions -->
-                                <div class="action-group">
-                                    <a href="/admin/grant/@record.Id/process" class="action-btn button is-primary is-small" title="Process this grant">
-                                        <span class="icon"><i class="fas fa-cog"></i></span>
-                                        <span>Process</span>
-                                    </a>
-                                </div>
+                                <a href="/admin/grant/@record.Id/process" class="action-btn button is-small is-primary" title="Process this grant now">
+                                    <span class="icon"><i class="fas fa-play"></i></span>
+                                    <span>Process Now</span>
+                                </a>
                             } 
                             else 
                             {
-                                <!-- Processed Badge Actions -->
-                                <div class="action-group">
-                                    <a href="/admin/grant/@record.Id/broadcast" class="action-btn button is-success is-small" title="Propagate to network">
-                                        <span class="icon"><i class="fas fa-share-nodes"></i></span>
-                                        <span>Propagate</span>
-                                    </a>
-                                    <a href="@record.NoteId" class="action-btn button is-info is-small" title="View badge post">
-                                        <span class="icon"><i class="fas fa-eye"></i></span>
-                                        <span>View</span>
-                                    </a>
-                                </div>
-                                
-                                <!-- Notification Actions -->
-                                <div class="action-group">
-                                    <div class="btn-group">
-                                        <a href="/admin/grant/@record.Id/notify-processed/activitypub" class="action-btn button is-light is-small" title="Notify recipient via ActivityPub">
-                                            <span class="icon"><i class="fab fa-mastodon"></i></span>
-                                            <span>ActivityPub</span>
-                                        </a>
-                                        <a href="/admin/grant/@record.Id/notify-processed/email" class="action-btn button is-light is-small" title="Notify recipient via Email">
-                                            <span class="icon"><i class="fas fa-envelope"></i></span>
-                                            <span>Email</span>
-                                        </a>
-                                    </div>
-                                </div>
+                                <a href="@record.NoteId" target="_blank" class="action-btn button is-small is-info is-light" title="View badge post">
+                                    <span class="icon"><i class="fas fa-eye"></i></span>
+                                    <span>View</span>
+                                </a>
                             }
                         } 
                         else 
                         {
-                            <!-- Pending Acceptance Actions -->
-                            <div class="action-group">
-                                <a href="/accept/grant/@record.Id/@record.AcceptKey" class="action-btn button is-link is-small" title="Direct acceptance link">
-                                    <span class="icon"><i class="fas fa-link"></i></span>
-                                    <span>Accept Link</span>
-                                </a>
-                            </div>
-                            
-                            <!-- Notification Actions -->
-                            <div class="action-group">
-                                <div class="btn-group">
-                                    <a href="/admin/grant/@record.Id/notify/activitypub" class="action-btn button is-light is-small" title="Send notification via ActivityPub">
-                                        <span class="icon"><i class="fab fa-mastodon"></i></span>
-                                        <span>Notify AP</span>
-                                    </a>
-                                    <a href="/admin/grant/@record.Id/notify/email" class="action-btn button is-light is-small" title="Send notification via Email">
-                                        <span class="icon"><i class="fas fa-envelope"></i></span>
-                                        <span>Notify Email</span>
-                                    </a>
-                                </div>
-                            </div>
+                            <button class="action-btn button is-small is-link is-light" title="Copy acceptance link to clipboard" @onclick="() => CopyAcceptLink(record)">
+                                <span class="icon"><i class="fas fa-copy"></i></span>
+                                <span>Copy Link</span>
+                            </button>
+                            <a href="/accept/grant/@record.Id/@record.AcceptKey" target="_blank" class="action-btn button is-small is-link is-outlined" title="Open acceptance page">
+                                <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                            </a>
                         }
-               
+
                         @{
                             bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint)) || record.IsExternal;
                         }
 
-                        <!-- Destructive Actions -->
-                        <div class="action-group">
-                            @if (canDelete) 
-                            {
-                                <button class="action-btn button is-danger is-small" @onclick="() => ShowDeleteConfirmation(record)" title="Permanently delete this grant">
-                                    <span class="icon"><i class="fas fa-trash-alt"></i></span>
-                                    <span>Delete @(record.IsExternal ? "local copy" : string.Empty)</span>
-                                </button>
-                            } 
-                            else 
-                            {
-                                <button class="action-btn button is-warning is-small" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
-                                    <span class="icon"><i class="fas fa-ban"></i></span>
-                                    <span>Revoke</span>
-                                </button>
-                            }
+                        <span class="action-separator"></span>
+
+                        @if (canDelete) 
+                        {
+                            <button class="action-btn button is-small is-danger is-outlined" @onclick="() => ShowDeleteConfirmation(record)" title="@(record.IsExternal ? "Delete local copy" : "Permanently delete this grant")">
+                                <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                                <span>@(record.IsExternal ? "Delete Local" : "Delete")</span>
+                            </button>
+                        } 
+                        else 
+                        {
+                            <button class="action-btn button is-small is-warning is-outlined" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
+                                <span class="icon"><i class="fas fa-ban"></i></span>
+                                <span>Revoke</span>
+                            </button>
+                        }
                         </div>
                     </td>
                 </tr>
             }
         </tbody>
         </table>
+
+        @if (TotalPages > 1)
+        {
+            <nav class="pagination is-centered mt-4" role="navigation" aria-label="pagination">
+                <button class="pagination-previous" disabled="@(currentPage <= 1)" @onclick="PreviousPage">Previous</button>
+                <button class="pagination-next" disabled="@(currentPage >= TotalPages)" @onclick="NextPage">Next page</button>
+                <ul class="pagination-list">
+                    @{
+                        var pages = GetPaginationPages();
+                    }
+                    @foreach (var p in pages)
+                    {
+                        if (p == -1)
+                        {
+                            <li><span class="pagination-ellipsis">&hellip;</span></li>
+                        }
+                        else
+                        {
+                            var pageNum = p;
+                            <li>
+                                <button class="pagination-link @(pageNum == currentPage ? "is-current" : "")" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            </li>
+                        }
+                    }
+                </ul>
+            </nav>
+        }
     </div>
+
+    @if (showCopyToast)
+    {
+        <div class="copy-toast">
+            <span class="icon"><i class="fas fa-check"></i></span> Accept link copied to clipboard
+        </div>
+    }
 }
 
 @if (showRevokeConfirmation && recordToDelete != null)
@@ -437,6 +608,7 @@ else
 @code {
     private List<BadgeRecord?> records;
     private List<BadgeRecord?> filteredRecords = new List<BadgeRecord?>();
+    private List<BadgeRecord?> pagedRecords = new List<BadgeRecord?>();
 
     private Dictionary<string, Actor> actors;
 
@@ -451,11 +623,16 @@ else
     // Tab properties
     private string activeTab = "pending";
 
+    // Pagination properties
+    private int currentPage = 1;
+    private const int PageSize = 50;
+    private int TotalPages => filteredRecords.Count == 0 ? 1 : (int)Math.Ceiling((double)filteredRecords.Count / PageSize);
+
     // Delete confirmation modal properties
     private bool showDeleteConfirmation = false;
-
     private bool showRevokeConfirmation = false;
     private BadgeRecord? recordToDelete = null;
+    private bool showCopyToast = false;
 
     private string MaskEmail(string email) {
         if (string.IsNullOrEmpty(email)) return "";
@@ -500,7 +677,24 @@ else
             bool matchesDateTo = !dateToFilter.HasValue || r.IssuedOn <= dateToFilter.Value.AddDays(1);
             
             return matchesStatus && matchesIssuer && matchesDateFrom && matchesDateTo;
-        }).ToList();
+        })
+        .OrderByDescending(r => r.IssuedOn)
+        .ToList();
+
+        // Ensure currentPage is valid
+        if (currentPage > TotalPages) currentPage = TotalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        pagedRecords = filteredRecords
+            .Skip((currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private void OnApplyFilters() {
+        currentPage = 1;
+        ApplyFilters();
+        UpdateUrl();
     }
 
     private void ClearFilters() {
@@ -508,8 +702,10 @@ else
         issuerFilter = "";
         dateFromFilter = null;
         dateToFilter = null;
+        currentPage = 1;
         
         ApplyFilters();
+        UpdateUrl();
     }
 
     private string GetRecordStatus(BadgeRecord record) {
@@ -524,44 +720,30 @@ else
         }
     }
 
-    private string GetRowClass(BadgeRecord record) {
-        string status = GetRecordStatus(record);
-        return status switch {
-            "processed" => "has-background-success-light",
-            "accepted" => "has-background-info-light",
-            "external" => "has-background-warning-light",
-            _ => ""
-        };
+    private async Task CopyAcceptLink(BadgeRecord record)
+    {
+        var link = $"{NavigationManager.BaseUri}accept/grant/{record.Id}/{record.AcceptKey}";
+        await CopyToClipboard(link);
+        showCopyToast = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        showCopyToast = false;
+        StateHasChanged();
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 
     private void SetActiveTab(string tab)
     {
         activeTab = tab;
+        currentPage = 1;
         ApplyFilters();
-    }
-    
-    private void SetActiveTabPending()
-    {
-        activeTab = "pending";
-        ApplyFilters();
-    }
-    
-    private void SetActiveTabAccepted()
-    {
-        activeTab = "accepted";
-        ApplyFilters();
-    }
-    
-    private void SetActiveTabProcessed()
-    {
-        activeTab = "processed";
-        ApplyFilters();
-    }
-    
-    private void SetActiveTabExternal()
-    {
-        activeTab = "external";
-        ApplyFilters();
+        UpdateUrl();
     }
     
     private int GetStatusCount(string status)
@@ -573,11 +755,100 @@ else
     protected override async Task OnInitializedAsync()
     {
         var actorList = LocalDbService.GetActors();
-
         actors = actorList.ToDictionary(a => a.Uri!.ToString());
 
-        PerformSearch();
+        ParseQueryParameters();
         ApplyFilters();
+    }
+
+    private void ParseQueryParameters()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("search", out var search)) searchTerm = search.ToString();
+        if (query.TryGetValue("issuer", out var issuer)) issuerFilter = issuer.ToString();
+        if (query.TryGetValue("tab", out var tab))
+        {
+            var tabVal = tab.ToString();
+            if (tabVal is "pending" or "accepted" or "processed" or "external")
+                activeTab = tabVal;
+        }
+        if (query.TryGetValue("from", out var from) && DateTime.TryParse(from.ToString(), out var fromDate))
+            dateFromFilter = fromDate;
+        if (query.TryGetValue("to", out var to) && DateTime.TryParse(to.ToString(), out var toDate))
+            dateToFilter = toDate;
+        if (query.TryGetValue("page", out var page) && int.TryParse(page.ToString(), out var pageNum) && pageNum > 0)
+            currentPage = pageNum;
+    }
+
+    private void UpdateUrl()
+    {
+        var url = "/admin/grants";
+        if (!string.IsNullOrEmpty(searchTerm))
+            url = QueryHelpers.AddQueryString(url, "search", searchTerm);
+        if (!string.IsNullOrEmpty(issuerFilter))
+            url = QueryHelpers.AddQueryString(url, "issuer", issuerFilter);
+        if (activeTab != "pending")
+            url = QueryHelpers.AddQueryString(url, "tab", activeTab);
+        if (dateFromFilter.HasValue)
+            url = QueryHelpers.AddQueryString(url, "from", dateFromFilter.Value.ToString("yyyy-MM-dd"));
+        if (dateToFilter.HasValue)
+            url = QueryHelpers.AddQueryString(url, "to", dateToFilter.Value.ToString("yyyy-MM-dd"));
+        if (currentPage > 1)
+            url = QueryHelpers.AddQueryString(url, "page", currentPage.ToString());
+
+        NavigationManager.NavigateTo(url, replace: true);
+    }
+
+    private void GoToPage(int page)
+    {
+        currentPage = page;
+        ApplyFilters();
+        UpdateUrl();
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            ApplyFilters();
+            UpdateUrl();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < TotalPages)
+        {
+            currentPage++;
+            ApplyFilters();
+            UpdateUrl();
+        }
+    }
+
+    private List<int> GetPaginationPages()
+    {
+        var pages = new List<int>();
+        var total = TotalPages;
+
+        if (total <= 7)
+        {
+            for (int i = 1; i <= total; i++) pages.Add(i);
+            return pages;
+        }
+
+        pages.Add(1);
+        if (currentPage > 3) pages.Add(-1);
+
+        for (int i = Math.Max(2, currentPage - 1); i <= Math.Min(total - 1, currentPage + 1); i++)
+            pages.Add(i);
+
+        if (currentPage < total - 2) pages.Add(-1);
+        pages.Add(total);
+
+        return pages;
     }
 
     private void ShowDeleteConfirmation(BadgeRecord record)

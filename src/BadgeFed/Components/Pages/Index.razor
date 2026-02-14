@@ -1,8 +1,10 @@
 ﻿@page "/"
 @using BadgeFed.Models
+@using BadgeFed.Services
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
 @inject LandingPageCacheService LandingPageCache
+@inject ServerDiscoveryService ServerDiscoveryService
 @layout BadgeFed.Components.Layouts.LandingLayout
 @inject LocalScopedDb LocalDbService
 
@@ -299,80 +301,97 @@ else
 
        <section class="section">
     <div class="container">
-        <h3 class="title is-4 has-text-centered">Connected Badge Issuers</h3>
+        <h3 class="title is-4 has-text-centered">Federated Servers</h3>
         <p class="subtitle is-6 has-text-centered mb-5">
-            Part of a growing decentralized ecosystem of badge issuers
+            Part of a growing decentralized network of BadgeFed servers
         </p>
 
-        @if (FollowedIssuers == null)
+        @if (FollowedServers == null)
         {
             <div class="has-text-centered">
                 <div class="loader is-loading"></div>
-                <p>Loading badge issuers...</p>
+                <p>Loading federated servers...</p>
             </div>
         }
-        else if (!FollowedIssuers.Any())
+        else if (!FollowedServers.Any())
         {
             <div class="notification is-light has-text-centered">
-                Our network is growing! Stay tuned as more badge issuers join the federation.
+                Our network is growing! Stay tuned as more servers join the federation.
             </div>
         }
         else
         {
             <div class="columns is-multiline is-centered">
-                @foreach (var issuer in FollowedIssuers)
+                @foreach (var server in FollowedServers)
                 {
-                    var initials = string.Join("", issuer.Name
-                        ?.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    var initials = string.Join("", (server.Name ?? "")
+                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                         .Select(w => w[0])
                         .Take(2))
                         .ToUpper();
 
-                    // simple deterministic color palette
                     string[] colors = { "has-background-primary", "has-background-link", "has-background-info", "has-background-success", "has-background-warning", "has-background-danger" };
-                    var colorClass = colors[Math.Abs(issuer.Id.GetHashCode()) % colors.Length];
+                    var colorClass = colors[Math.Abs(server.Id.GetHashCode()) % colors.Length];
+                    var serverCategories = server.GetCategories();
+                    var serverDomain = "";
+                    try { serverDomain = new Uri(server.Url).Host; } catch { }
+                    var logoUrl = $"{server.Url?.TrimEnd('/')}/pages/img/logo.{serverDomain}.png";
 
                     <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
                         <div class="card is-flex is-flex-direction-column" style="height:100%;">
                             <div class="card-content has-text-centered">
 
-                                @if (!string.IsNullOrEmpty(issuer.AvatarUri))
-                                {
-                                    <figure class="image is-96x96 mx-auto mb-3">
-                                        <img src="@issuer.AvatarUri" alt="@issuer.Name" class="is-rounded">
-                                    </figure>
-                                }
-                                else
-                                {
-                                    <div class="@colorClass has-text-white is-rounded mb-3"
-                                         style="width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:0 auto;font-size:1.5rem;font-weight:600;">
+                                <figure class="image is-96x96 mx-auto mb-3">
+                                    <img src="@logoUrl" alt="@server.Name" class="is-rounded"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                    <div class="@colorClass has-text-white"
+                                         style="display:none;width:96px;height:96px;align-items:center;justify-content:center;border-radius:50%;margin:0 auto;font-size:1.5rem;font-weight:600;">
                                         @initials
+                                    </div>
+                                </figure>
+
+                                <h4 class="title is-5 mb-2">@server.Name</h4>
+
+                                @if (!string.IsNullOrEmpty(server.Description))
+                                {
+                                    <p class="is-size-7 has-text-grey mb-2">@server.Description</p>
+                                }
+
+                                @if (serverCategories.Any())
+                                {
+                                    <div class="tags is-centered mb-2">
+                                        @foreach (var category in serverCategories)
+                                        {
+                                            <span class="tag is-light">@category</span>
+                                        }
                                     </div>
                                 }
 
-                                <h4 class="title is-5 mb-2">@issuer.Name</h4>
-
-                                @if (issuer.TotalIssued.HasValue && issuer.TotalIssued > 0)
+                                @if (!string.IsNullOrEmpty(server.Url))
                                 {
-                                    <span class="tag is-primary is-rounded mb-2">
-                                        @issuer.TotalIssued @(" Badge" + (issuer.TotalIssued > 1 ? "s" : ""))
-                                    </span>
-                                }
-
-                                @if (!string.IsNullOrEmpty(issuer.Url))
-                                {
-                                    var domain = new Uri(issuer.Url).Host;
-                                    <p class="mt-2">
-                                        <span class="tag is-light is-info">@domain</span>
-                                    </p>
+                                    try
+                                    {
+                                        var domain = new Uri(server.Url).Host;
+                                        <p class="mt-2">
+                                            <span class="tag is-light is-info">@domain</span>
+                                        </p>
+                                    }
+                                    catch { }
                                 }
                             </div>
 
                             <footer class="card-footer mt-auto">
-                                <a href="@issuer.Url" class="card-footer-item" target="_blank">
+                                <a href="@server.Url" class="card-footer-item" target="_blank">
                                     <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                                    <span>View Profile</span>
+                                    <span>Visit Server</span>
                                 </a>
+                                @if (!string.IsNullOrEmpty(server.Actor))
+                                {
+                                    <a href="@server.Actor" class="card-footer-item" target="_blank">
+                                        <span class="icon"><i class="fas fa-user"></i></span>
+                                        <span>Actor</span>
+                                    </a>
+                                }
                             </footer>
                         </div>
                     </div>
@@ -415,7 +434,7 @@ else
 
 @code {
     private List<Actor> Actors { get; set; }
-    private List<FollowedIssuer> FollowedIssuers { get; set; } = new List<FollowedIssuer>();
+    private List<DiscoveredServer> FollowedServers { get; set; } = new List<DiscoveredServer>();
     private InstanceDescription? InstanceDescriptionData { get; set; } = null;
     private string CustomLandingPageHtmlContent { get; set; }
 
@@ -480,7 +499,11 @@ else
         try
         {
             Actors = db.GetActors("Featured = TRUE AND IsMain = FALSE");
-            FollowedIssuers = db.GetAllFollowedIssuers(true);
+            FollowedServers = ServerDiscoveryService.GetAllDiscoveredServers()
+                .Where(s => s.IsFollowed)
+                .OrderBy(_ => Random.Shared.Next())
+                .Take(8)
+                .ToList();
             
             HttpContextAccessor.HttpContext.Response.Headers.Add("Cache-Control", "public, max-age=86400");
         }

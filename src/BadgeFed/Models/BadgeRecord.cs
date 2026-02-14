@@ -111,6 +111,9 @@ namespace BadgeFed.Models
         public bool IsExternal { get; set; }
 
         [System.Text.Json.Serialization.JsonIgnore]
+        public bool NotifiedOfGrant { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
         public string Visibility { get; set; } = "Public";
     }
 }
