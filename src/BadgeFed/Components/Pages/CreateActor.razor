@@ -187,6 +187,32 @@
         opacity: 1;
     }
 
+    /* Admin Advanced Section */
+    .admin-advanced-section {
+        background: #fef3cd;
+        border: 1px solid #ffc107;
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+    }
+    .admin-advanced-section .admin-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #ffe082;
+    }
+    .admin-advanced-section .admin-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #856404;
+    }
+    .admin-advanced-section .admin-section-icon {
+        color: #b8860b;
+        font-size: 1.1rem;
+    }
+
     /* Key Status */
     .key-status-card {
         display: flex;
@@ -567,6 +593,48 @@
             </div>
         </div>
 
+        @if (CurrentUser.IsAdmin())
+        {
+            <div class="column is-12">
+                <div class="admin-advanced-section">
+                    <div class="admin-section-header">
+                        <i class="fas fa-shield-alt admin-section-icon"></i>
+                        <span class="admin-section-title">Advanced (Admin Only)</span>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column is-6">
+                            <div class="field">
+                                <label class="field-label" for="linkedInOrgId">LinkedIn Organization ID</label>
+                                <div class="control">
+                                    <InputText id="linkedInOrgId" @bind-Value="Model!.LinkedInOrganizationId" class="input" placeholder="e.g. 12345678" />
+                                </div>
+                                <p class="help-text">Numeric LinkedIn Organization ID for certification integration</p>
+                            </div>
+                        </div>
+
+                        <div class="column is-6">
+                            <div class="field">
+                                <label class="field-label" for="ownerGroup">Owner (Group)</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select id="ownerGroup" @bind="Model!.OwnerId">
+                                            <option value="">Select a group...</option>
+                                            @foreach (var group in availableGroups)
+                                            {
+                                                <option value="@group.Id">@group.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <p class="help-text">Assign or reassign the group that owns this issuer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="form-actions">
             <div class="control">
                 <button type="submit" class="button is-primary submit-button" disabled="@isSubmitting">
@@ -686,6 +754,7 @@
     private string issuerValidationMessage;
     private bool showAdvancedSettings = false;
     private bool showRegenerateModal = false;
+    private List<UserGroup> availableGroups = new();
 
     protected override void OnInitialized()
     {
@@ -699,6 +768,12 @@
         if (string.IsNullOrEmpty(Model.Domain))
         {
             Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
+        }
+
+        // Load groups for admin owner assignment
+        if (CurrentUser.IsAdmin())
+        {
+            availableGroups = LocalDbService.GetAllUserGroups();
         }
 
         // Initialize socials list if null
@@ -838,9 +913,12 @@
                     .ToList();
             }
 
-            Model.OwnerId = CurrentUser.GetGroupId();
+            // Admin can set OwnerId via the advanced section; non-admins use their own group
+            if (!CurrentUser.IsAdmin() || string.IsNullOrEmpty(Model.OwnerId))
+            {
+                Model.OwnerId = CurrentUser.GetGroupId();
+            }
             
-            // print socials
             LocalDbService.UpsertActor(Model);
             NavigationManager.NavigateTo("/admin/actors");
             
