@@ -299,20 +299,20 @@
     }
     
     .badge-image {
-        padding: 35px;
+        padding: 3px;
         object-fit: cover;
-        border-radius: 8px;
+        border-radius: 2px;
     }
     
     @@media (max-width: 1024px) {
         .badge-image {
-            padding: 20px;
+            padding: 4px;
         }
     }
     
     @@media (max-width: 768px) {
         .badge-image {
-            padding: 10px;
+            padding: 5px;
         }
     }
     
@@ -393,6 +393,18 @@
             isLoading = true;
             StateHasChanged();
 
+            string alternateUri = string.Empty;
+    
+            // if searchText is in the form of @username@host, transform to host/%/username
+            if (searchText.StartsWith("@") && searchText.IndexOf("@", 1) >= 0)
+            {
+                var parts = searchText.Split('@', 3);
+                if (parts.Length == 3)
+                {
+                    alternateUri = $"{parts[2]}/%{parts[1]}";
+                }
+            }
+
             var filter = $@"
                     FingerPrint IS NOT NULL 
                 AND NoteId IS NOT NULL 
@@ -401,6 +413,11 @@
                 AND
                     (LOWER(IssuedToName) LIKE '%{searchText.ToLower()}%' OR LOWER(IssuedToSubjectUri) LIKE '%{searchText.ToLower()}%')
             ";
+
+            if (!string.IsNullOrEmpty(alternateUri))
+            {
+                filter += $" OR (LOWER(IssuedToSubjectUri) LIKE '%{alternateUri.ToLower()}%')";
+            }
 
             // Add a small delay to ensure the loading state is visible
             await Task.Delay(300);
