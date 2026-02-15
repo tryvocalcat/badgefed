@@ -2070,14 +2070,14 @@ public class ActorStats
             return new InstanceDescription
             {
                 Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Name = reader["Name"] as string ?? "",
-                Description = reader["Description"] as string ?? "",
-                Purpose = reader["Purpose"] as string ?? "",
-                ContactInfo = reader["ContactInfo"] as string ?? "",
-                CustomLandingPageHtml = reader["CustomLandingPageHtml"] as string ?? "",
+                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? "" : reader.GetString(reader.GetOrdinal("Name")),
+                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? "" : reader.GetString(reader.GetOrdinal("Description")),
+                Purpose = reader.IsDBNull(reader.GetOrdinal("Purpose")) ? "" : reader.GetString(reader.GetOrdinal("Purpose")),
+                ContactInfo = reader.IsDBNull(reader.GetOrdinal("ContactInfo")) ? "" : reader.GetString(reader.GetOrdinal("ContactInfo")),
+                CustomLandingPageHtml = reader.IsDBNull(reader.GetOrdinal("CustomLandingPageHtml")) ? "" : reader.GetString(reader.GetOrdinal("CustomLandingPageHtml")),
                 IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled")),
-                LandingPageType = reader["LandingPageType"] as string ?? "default",
-                StaticPageFilename = reader["StaticPageFilename"] as string ?? ""
+                LandingPageType = reader.IsDBNull(reader.GetOrdinal("LandingPageType")) ? "default" : reader.GetString(reader.GetOrdinal("LandingPageType")),
+                StaticPageFilename = reader.IsDBNull(reader.GetOrdinal("StaticPageFilename")) ? "" : reader.GetString(reader.GetOrdinal("StaticPageFilename"))
             };
         }
 

@@ -67,5 +67,26 @@ namespace BadgeFed.Controllers
                 ContentType = "application/activity+json"
             };
         }
+
+        [HttpGet("nodeinfo")]
+        [ResponseCache(Duration = 172800)]
+        public IActionResult GetNodeInfo()
+        {
+            var domain = Request.Host.Value;
+
+            var links = new[]
+            {
+                new
+                {
+                    rel = "http://nodeinfo.diaspora.software/ns/schema/2.1",
+                    href = $"https://{domain}/nodeinfo/2.1"
+                }
+            };
+
+            return new JsonResult(new { links })
+            {
+                ContentType = "application/json"
+            };
+        }
     }
 }

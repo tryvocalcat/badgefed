@@ -41,6 +41,8 @@ builder.Services.AddLogging(logging =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddResponseCaching();
 
 builder.Services.AddRazorPages();
 
@@ -302,6 +304,7 @@ app.Use(async (context, next) =>
 });
 
 app.UseCors("EmbedPolicy");
+app.UseResponseCaching();
 app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
