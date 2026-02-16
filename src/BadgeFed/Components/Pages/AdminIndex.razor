@@ -12,65 +12,24 @@
 
 @attribute [Authorize(Roles = "admin, manager")]
 
-<div class="container my-5">
-    <div class="has-text-centered mb-6">
-        <h1 class="title is-2">Badge Administration Portal</h1>
-        <p class="subtitle is-5">Manage your digital certification ecosystem</p>
-        <div class="tags is-centered mb-5">
-            <span class="tag is-info is-medium">Dashboard</span>
-            <span class="tag is-success is-medium">@DateTime.Now.ToString("MMMM d, yyyy")</span>
+<div class="container is-fluid">
+    <div class="mb-5">
+        <div class="level mb-3">
+            <div class="level-left">
+                <h1 class="title is-2 mb-0">Administration Portal</h1>
+            </div>
+            <div class="level-right">
+                <span class="tag is-dark">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
+            </div>
         </div>
+        <p class="subtitle is-6 has-text-grey">Manage your badge ecosystem</p>
     </div>
     
     <div class="columns is-multiline">
-        <!-- Quick Actions Panel -->
-        <div class="column is-4">
-            <div class="box has-background-white-ter has-shadow">
-                <h2 class="subtitle has-text-weight-bold has-text-centered">
-                    <span class="icon-text">
-                        <span class="icon has-text-primary">
-                            <i class="fas fa-bolt"></i>
-                        </span>
-                        <span>Quick Actions</span>
-                    </span>
-                </h2>
-                
-                <div class="buttons are-medium is-flex is-flex-direction-column">
-                    <button class="button is-primary is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/actors"))">
-                        <span class="icon">
-                            <i class="fas fa-user-shield"></i>
-                        </span>
-                        <span>Manage Actors</span>
-                    </button>
-                    
-                    <button class="button is-info is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/badges"))">
-                        <span class="icon">
-                            <i class="fas fa-certificate"></i>
-                        </span>
-                        <span>Manage Badges</span>
-                    </button>
-                    
-                    <button class="button is-success is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/grants"))">
-                        <span class="icon">
-                            <i class="fas fa-award"></i>
-                        </span>
-                        <span>Manage Grants</span>
-                    </button>
-                    
-                    <button class="button is-link is-fullwidth has-shadow" @onclick="@(() => NavigationManager.NavigateTo("/admin/invitations"))">
-                        <span class="icon">
-                            <i class="fas fa-user-plus"></i>
-                        </span>
-                        <span>User Invitations</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Analytics Panel -->
-        <div class="column is-4">
-            <div class="box has-background-white-ter has-shadow">
-                <h2 class="subtitle has-text-weight-bold has-text-centered">
+        <div class="column is-8">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
                     <span class="icon-text">
                         <span class="icon has-text-info">
                             <i class="fas fa-chart-bar"></i>
@@ -87,73 +46,63 @@
                 }
                 else
                 {
-                <div class="level is-mobile">
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">Issued</p>
-                            <p class="title">@stats.IssuedCount</p>
+                    <div class="columns is-multiline">
+                        <div class="column is-4">
+                            <div class="has-background-info-light p-4 has-radius">
+                                <p class="heading is-size-7">Total Issued</p>
+                                <p class="title is-3 has-text-info">@stats.IssuedCount</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">Accepted</p>
-                            <p class="title">@stats.AcceptedCount</p>
+                        <div class="column is-4">
+                            <div class="has-background-success-light p-4 has-radius">
+                                <p class="heading is-size-7">Total Accepted</p>
+                                <p class="title is-3 has-text-success">@stats.AcceptedCount</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">Pending</p>
-                            <p class="title">@stats.PendingCount</p>
+                        <div class="column is-4">
+                            <div class="has-background-warning-light p-4 has-radius">
+                                <p class="heading is-size-7">Pending</p>
+                                <p class="title is-3 has-text-warning">@stats.PendingCount</p>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="level is-mobile mt-4">
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">Followers</p>
-                            <p class="title">@stats.FollowerCount</p>
+                        <div class="column is-4">
+                            <div class="has-background-danger-light p-4 has-radius">
+                                <p class="heading is-size-7">External Badges</p>
+                                <p class="title is-3 has-text-danger">@stats.ExternalBadgesCount</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">Followed Instances</p>
-                            <p class="title">@stats.FollowedInstancesCount</p>
+                        <div class="column is-4">
+                            <div class="has-background-link-light p-4 has-radius">
+                                <p class="heading is-size-7">Followers</p>
+                                <p class="title is-3 has-text-link">@stats.FollowerCount</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="level-item has-text-centered">
-                        <div>
-                            <p class="heading">External Badges</p>
-                            <p class="title">@stats.ExternalBadgesCount</p>
+                        <div class="column is-4">
+                            <div class="has-background-primary-light  p-4 has-radius">
+                                <p class="heading is-size-7">Followed Instances</p>
+                                <p class="title is-3">@stats.FollowedInstancesCount</p>
+                            </div>
                         </div>
+                       
                     </div>
-                </div>
-                
-                <div>
-                    @{ var percentage = (int) ((double)stats.AcceptedCount / stats.IssuedCount * 100); }
-                    <progress class="progress is-success mt-4" value="@percentage" max="100">@percentage%</progress>
-                    <p class="has-text-centered is-size-7" >Accepted Rate: @percentage%</p>
-                </div>
-                
-                <div class="buttons is-centered mt-4">
-                    <button class="button is-info is-outlined">
-                        <span class="icon">
-                            <i class="fas fa-download"></i>
-                        </span>
-                        <span>Export Report</span>
-                    </button>
-                </div>
+                    
+                    <div class="mt-4 pt-4" style="border-top: 1px solid #e8e8e8;">
+                        @{ var percentage = stats.IssuedCount > 0 ? (int) ((double)stats.AcceptedCount / stats.IssuedCount * 100) : 0; }
+                        <p class="heading is-size-7 mb-2">Acceptance Rate</p>
+                        <progress class="progress is-success" value="@percentage" max="100">@percentage%</progress>
+                        <p class="is-size-7 has-text-grey mt-2"><strong>@percentage%</strong> of issued badges accepted</p>
+                    </div>
                 }
             </div>
         </div>
         
         <!-- Recent Activity Panel -->
         <div class="column is-4">
-            <div class="box has-background-white-ter has-shadow">
-                <h2 class="subtitle has-text-weight-bold has-text-centered">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
                     <span class="icon-text">
                         <span class="icon has-text-danger">
-                            <i class="fas fa-bell"></i>
+                            <i class="fas fa-history"></i>
                         </span>
                         <span>Recent Activity</span>
                     </span>
@@ -167,64 +116,174 @@
                 }
                 else if (recentActivityLogs.Count == 0)
                 {
-                    <div class="notification is-white p-2 mb-2">
-                        <p class="is-size-7">No recent activity logs available.</p>
-                    </div>
+                    <p class="has-text-grey">No recent activity to display.</p>
                 } else {
                     @foreach (var log in recentActivityLogs)
-                    {
-                        var timeSpan = DateTime.UtcNow - log.CreatedAt;
-                        string humanRelativeTime;
-                        string colorTimeClass = string.Empty;
+                        {
+                            var timeSpan = DateTime.UtcNow - log.CreatedAt;
+                            string humanRelativeTime;
 
-                        if (timeSpan.TotalSeconds < 60)
-                        {
-                            humanRelativeTime = "Just now";
-                            colorTimeClass = "is-primary";
+                            if (timeSpan.TotalSeconds < 60)
+                                humanRelativeTime = "Just now";
+                            else if (timeSpan.TotalMinutes < 60)
+                                humanRelativeTime = $"{(int)timeSpan.TotalMinutes}m ago";
+                            else if (timeSpan.TotalHours < 24)
+                                humanRelativeTime = $"{(int)timeSpan.TotalHours}h ago";
+                            else if (timeSpan.TotalDays < 7)
+                                humanRelativeTime = $"{(int)timeSpan.TotalDays}d ago";
+                            else
+                                humanRelativeTime = $"{(int)(timeSpan.TotalDays / 7)}w ago";
+                            
+                            <div class="mb-2 pb-2" style="border-bottom: 1px solid #f5f5f5; padding: 0.75rem 0;">
+                                <div class="is-flex is-align-items-flex-start is-gap-2">
+                                    <div style="flex: 1; min-width: 0;">
+                                        @if (!string.IsNullOrEmpty(log.EntityUrl))
+                                        {
+                                            <a href="@log.EntityUrl" class="is-size-6 has-text-weight-semibold has-text-dark" style="display: flex; align-items: center; gap: 0.35rem; word-break: break-word;">
+                                                @log.Title
+                                                <span style="display: inline-flex; align-items: center;">
+                                                    <i class="fas fa-external-link-alt" style="font-size: 0.65rem; opacity: 0.6;"></i>
+                                                </span>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="is-size-6 has-text-weight-semibold has-text-dark" style="display: block;">@log.Title</span>
+                                        }
+                                        <p class="is-size-7 has-text-grey-dark" style="margin-top: 0.25rem;">@log.Description</p>
+                                    </div>
+                                    <span class="tag is-small is-light" style="white-space: nowrap; margin-top: 0.2rem;">@humanRelativeTime</span>
+                                </div>
+                            </div>
                         }
-                        else if (timeSpan.TotalMinutes < 60)
-                        {
-                            humanRelativeTime = $"{(int)timeSpan.TotalMinutes} min ago";
-                            colorTimeClass = "is-info";
-                        }
-                        else if (timeSpan.TotalHours < 24)
-                        {
-                            humanRelativeTime = $"{(int)timeSpan.TotalHours} hr ago";
-                            colorTimeClass = "is-success";
-                        }
-                        else if (timeSpan.TotalDays < 7)
-                        {
-                            humanRelativeTime = $"{(int)timeSpan.TotalDays} days ago";
-                            colorTimeClass = "is-warning";
-                        }
-                        else if (timeSpan.TotalDays < 30)
-                        {
-                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 7)} wk ago";
-                        }
-                        else if (timeSpan.TotalDays < 365)
-                        {
-                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 30)} mo ago";
-                        }
-                        else
-                        {
-                            humanRelativeTime = $"{(int)(timeSpan.TotalDays / 365)} yr ago";
-                        }
-                        <div class="notification is-white p-2 mb-2">
-                            <p class="is-size-7">
-                                <strong>@log.Title:</strong> @log.Description 
-                                @if (!string.IsNullOrEmpty(log.EntityUrl))
-                                {
-                                    <a href="@log.EntityUrl" class="tag is-small is-light ml-1 is-link">View</a>
-                                }
-                                <span class="tag is-small @colorTimeClass is-light ml-1">@humanRelativeTime</span>
-                            </p>
+                }
+            </div>
+        </div>
+
+        <!-- Last Comments Panel -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
+                    <span class="icon-text">
+                        <span class="icon has-text-link">
+                            <i class="fas fa-comments"></i>
+                        </span>
+                        <span>Last Comments</span>
+                    </span>
+                </h2>
+                @if (lastComments.Count == 0)
+                {
+                    <p class="has-text-grey">No comments yet.</p>
+                }
+                else
+                {
+                    @foreach (var comment in lastComments)
+                    {
+                        var timeSpan = DateTime.UtcNow - comment.CreatedAt;
+                        string timeAgo = timeSpan.TotalSeconds < 60 ? "Just now" 
+                            : timeSpan.TotalMinutes < 60 ? $"{(int)timeSpan.TotalMinutes}m ago"
+                            : timeSpan.TotalHours < 24 ? $"{(int)timeSpan.TotalHours}h ago"
+                            : timeSpan.TotalDays < 7 ? $"{(int)timeSpan.TotalDays}d ago"
+                            : $"{(int)(timeSpan.TotalDays / 7)}w ago";
+                        
+                        var authorHandle = ExtractActivityPubHandle(comment.AuthorId);
+                        
+                        <div class="mb-3 pb-3" style="border-bottom: 1px solid #f5f5f5;">
+                            <p class="is-size-7 has-text-grey-dark mb-1"><strong>@authorHandle</strong></p>
+                            <a href="@comment.NoteId" target="_blank" class="is-size-7 has-text-link" title="@comment.NoteId">
+                                View Comment
+                                <i class="fas fa-external-link-alt" style="font-size: 0.65rem; margin-left: 0.35rem; opacity: 0.6;"></i>
+                            </a>
+                            <span class="tag is-small is-light ml-2">@timeAgo</span>
                         </div>
                     }
                 }
+            </div>
+        </div>
 
-                <div class="has-text-centered mt-3" style="display: none;">
-                    <button class="button is-small is-text">View All Activity</button>
-                </div>
+        <!-- Last Accepted Panel -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
+                    <span class="icon-text">
+                        <span class="icon has-text-success">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                        <span>Last Accepted</span>
+                    </span>
+                </h2>
+                @if (lastAccepted.Count == 0)
+                {
+                    <p class="has-text-grey">No accepted badges yet.</p>
+                }
+                else
+                {
+                    @foreach (var badge in lastAccepted)
+                        {
+                            var timeSpan = DateTime.UtcNow - badge.AcceptedOn.Value;
+                            string timeAgo = timeSpan.TotalSeconds < 60 ? "Just now" 
+                                : timeSpan.TotalMinutes < 60 ? $"{(int)timeSpan.TotalMinutes}m ago"
+                                : timeSpan.TotalHours < 24 ? $"{(int)timeSpan.TotalHours}h ago"
+                                : timeSpan.TotalDays < 7 ? $"{(int)timeSpan.TotalDays}d ago"
+                                : $"{(int)(timeSpan.TotalDays / 7)}w ago";
+                            
+                            <div class="mb-3 pb-3" style="border-bottom: 1px solid #f5f5f5;">
+                                <p class="is-size-7 mb-1"><strong>@badge.Title</strong></p>
+                                <p class="is-size-7 has-text-grey mb-2">@badge.IssuedToName</p>
+                                <div class="is-flex is-justify-content-space-between is-align-items-center">
+                                    <a href="@badge.NoteId" target="_blank" class="is-size-7 has-text-link">
+                                        View Record
+                                        <i class="fas fa-external-link-alt" style="font-size: 0.65rem; margin-left: 0.35rem; opacity: 0.6;"></i>
+                                    </a>
+                                    <span class="tag is-small is-light is-success">@timeAgo</span>
+                                </div>
+                            </div>
+                        }
+                }
+            </div>
+        </div>
+
+        <!-- Last Received External Badges Panel -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
+                    <span class="icon-text">
+                        <span class="icon has-text-primary">
+                            <i class="fas fa-inbox"></i>
+                        </span>
+                        <span>Last Received</span>
+                    </span>
+                </h2>
+                @if (lastReceivedExternal.Count == 0)
+                {
+                    <p class="has-text-grey">No external badges received yet.</p>
+                }
+                else
+                {
+                    @foreach (var badge in lastReceivedExternal)
+                    {
+                        var timeSpan = DateTime.UtcNow - badge.IssuedOn;
+                        string timeAgo = timeSpan.TotalSeconds < 60 ? "Just now" 
+                            : timeSpan.TotalMinutes < 60 ? $"{(int)timeSpan.TotalMinutes}m ago"
+                            : timeSpan.TotalHours < 24 ? $"{(int)timeSpan.TotalHours}h ago"
+                            : timeSpan.TotalDays < 7 ? $"{(int)timeSpan.TotalDays}d ago"
+                            : $"{(int)(timeSpan.TotalDays / 7)}w ago";
+                        
+                        var issuerName = ExtractIssuerName(badge.IssuedBy);
+                        
+                        <div class="mb-3 pb-3" style="border-bottom: 1px solid #f5f5f5;">
+                            <p class="is-size-7 mb-1"><strong>@badge.Title</strong></p>
+                            <p class="is-size-7 has-text-grey mb-2">From: <a href="@badge.IssuedBy" target="_blank" class="has-text-link">@issuerName</a></p>
+                            <div class="is-flex is-justify-content-space-between is-align-items-center">
+                                <a href="@badge.NoteId" target="_blank" class="is-size-7 has-text-link">
+                                    View Record
+                                    <i class="fas fa-external-link-alt" style="font-size: 0.65rem; margin-left: 0.35rem; opacity: 0.6;"></i>
+                                </a>
+                                <span class="tag is-small is-light is-primary">@timeAgo</span>
+                            </div>
+                        </div>
+                    }
+                }
             </div>
         </div>
  
@@ -271,40 +330,45 @@
     </div>
     
     <div class="notification is-info is-light mt-5">
-        <div class="columns is-vcentered">
-            <div class="column is-1">
-                <span class="icon is-large">
-                    <i class="fas fa-info-circle fa-2x"></i>
-                </span>
+        <div class="level">
+            <div class="level-left">
+                <div>
+                    <p class="title is-5 mb-2">Platform Updates</p>
+                    <p>Check out new features and improvements. <strong>Current Version:</strong> @assemblyVersion</p>
+                </div>
             </div>
-            <div class="column">
-                <h3 class="title is-5 mb-2">Platform Updates</h3>
-                <p>New features have been added to the badge verification system. Check out the updated documentation for more information.</p>
-            </div>
-            <div class="column is-narrow">
-                <button class="button is-info">Learn More</button>
+            <div class="level-right">
+                <a href="https://github.com/tryvocalcat/badgefed/releases" target="_blank" class="button is-info">Verify Updates</a>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    .has-shadow {
-        box-shadow: 0 2px 10px rgba(10, 10, 10, 0.1);
-        transition: all 0.3s ease;
+    .has-radius {
+        border-radius: 4px;
     }
     
-    .has-shadow:hover {
-        box-shadow: 0 4px 15px rgba(10, 10, 10, 0.2);
-        transform: translateY(-3px);
+    .icon-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    
-    .button {
-        transition: all 0.2s ease;
+
+    .columns.is-multiline {
+        display: flex;
+        flex-wrap: wrap;
     }
-    
-    .button:hover {
-        transform: scale(1.02);
+
+    .columns.is-multiline > .column {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .columns.is-multiline > .column > .box {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 </style>
 
@@ -316,10 +380,18 @@
     private List<RecentActivityLog> recentActivityLogs = [];
     private string recentActivityError = "";
     
+    private List<CommentItem> lastComments = [];
+    private List<BadgeRecord> lastAccepted = [];
+    private List<BadgeRecord> lastReceivedExternal = [];
+    
     private string adminResourcesHtml = "";
+    private string assemblyVersion = "";
 
     protected override async Task OnInitializedAsync()
     {
+        // Get assembly version dynamically
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        assemblyVersion = version?.ToString() ?? "unknown";
         try {
             stats = LocalDbService.GetInstanceStats();
             statsError = ""; // Clear any previous errors
@@ -329,15 +401,137 @@
         }        
 
         try {
-            recentActivityLogs = LocalDbService.GetRecentActivityLogs(7);
+            recentActivityLogs = LocalDbService.GetRecentActivityLogs(5);
             recentActivityError = ""; // Clear any previous errors
         } catch (Exception ex) {
             recentActivityLogs = new List<RecentActivityLog>();
             recentActivityError = ex.Message;
         }
+
+        try {
+            lastComments = GetLastComments(5);
+        } catch (Exception ex) {
+            lastComments = new List<CommentItem>();
+        }
+
+        try {
+            lastAccepted = GetLastAcceptedBadges(5);
+        } catch (Exception ex) {
+            lastAccepted = new List<BadgeRecord>();
+        }
+
+        try {
+            lastReceivedExternal = GetLastReceivedExternalBadges(5);
+        } catch (Exception ex) {
+            lastReceivedExternal = new List<BadgeRecord>();
+        }
         
         // Load admin resources HTML from static file
         await LoadAdminResourcesHtml();
+    }
+
+    private List<CommentItem> GetLastComments(int limit)
+    {
+        var comments = new List<CommentItem>();
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT Id, NoteId, AuthorId, CreatedAt FROM BadgeRecordComment 
+            ORDER BY CreatedAt DESC 
+            LIMIT @Limit";
+        command.Parameters.AddWithValue("@Limit", limit);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            comments.Add(new CommentItem
+            {
+                Id = reader.GetInt64(0),
+                NoteId = reader.GetString(1),
+                AuthorId = reader.GetString(2),
+                CreatedAt = DateTime.Parse(reader.GetString(3))
+            });
+        }
+
+        return comments;
+    }
+
+    private List<BadgeRecord> GetLastAcceptedBadges(int limit)
+    {
+        var records = new List<BadgeRecord>();
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT Id, Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
+                   Hashtags, IssuedOn, IssuedToEmail, IssuedToName, IssuedToSubjectUri, 
+                   AcceptedOn, LastUpdated, FingerPrint, AcceptKey, BadgeId, NoteId
+            FROM BadgeRecord 
+            WHERE AcceptedOn IS NOT NULL
+            ORDER BY AcceptedOn DESC
+            LIMIT @Limit";
+        command.Parameters.AddWithValue("@Limit", limit);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            records.Add(ReaderToBadgeRecord(reader));
+        }
+
+        return records;
+    }
+
+    private List<BadgeRecord> GetLastReceivedExternalBadges(int limit)
+    {
+        var records = new List<BadgeRecord>();
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT Id, Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
+                   Hashtags, IssuedOn, IssuedToEmail, IssuedToName, IssuedToSubjectUri, 
+                   AcceptedOn, LastUpdated, FingerPrint, AcceptKey, BadgeId, NoteId
+            FROM BadgeRecord 
+            WHERE IsExternal = 1
+            ORDER BY IssuedOn DESC
+            LIMIT @Limit";
+        command.Parameters.AddWithValue("@Limit", limit);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            records.Add(ReaderToBadgeRecord(reader));
+        }
+
+        return records;
+    }
+
+    private BadgeRecord ReaderToBadgeRecord(System.Data.IDataReader reader)
+    {
+        return new BadgeRecord
+        {
+            Id = reader.GetInt64(0),                                          // Id
+            Title = reader.GetString(1),                                      // Title
+            IssuedBy = reader.GetString(2),                                   // IssuedBy
+            Description = reader.IsDBNull(3) ? "" : reader.GetString(3),      // Description
+            Image = reader.IsDBNull(4) ? "" : reader.GetString(4),            // Image
+            ImageAltText = reader.IsDBNull(5) ? "" : reader.GetString(5),     // ImageAltText
+            EarningCriteria = reader.IsDBNull(6) ? "" : reader.GetString(6),  // EarningCriteria
+            Hashtags = reader.IsDBNull(7) ? "" : reader.GetString(7),         // Hashtags
+            IssuedOn = reader.GetDateTime(8),                                 // IssuedOn
+            IssuedToEmail = reader.IsDBNull(9) ? "" : reader.GetString(9),    // IssuedToEmail
+            IssuedToName = reader.IsDBNull(10) ? "" : reader.GetString(10),   // IssuedToName
+            IssuedToSubjectUri = reader.IsDBNull(11) ? "" : reader.GetString(11), // IssuedToSubjectUri
+            AcceptedOn = reader.IsDBNull(12) ? null : reader.GetDateTime(12), // AcceptedOn
+            LastUpdated = reader.IsDBNull(13) ? null : reader.GetDateTime(13), // LastUpdated
+            FingerPrint = reader.IsDBNull(14) ? "" : reader.GetString(14),    // FingerPrint
+            AcceptKey = reader.IsDBNull(15) ? "" : reader.GetString(15),      // AcceptKey
+            NoteId = reader.IsDBNull(17) ? "" : reader.GetString(17)          // NoteId
+        };
     }
     
     private async Task LoadAdminResourcesHtml()
@@ -352,18 +546,64 @@
             else
             {
                 // Fallback HTML if file doesn't exist
-                adminResourcesHtml = @"
-                    <div class=""notification is-warning is-light"">
-                        <p>Admin resources file not found. Please check <code>assets/static/admin-resources.html</code></p>
-                    </div>";
+                adminResourcesHtml = @"";
             }
         }
         catch (Exception ex)
         {
-            adminResourcesHtml = $@"
-                <div class=""notification is-danger is-light"">
-                    <p>Error loading admin resources: {ex.Message}</p>
-                </div>";
+            adminResourcesHtml = @"";
+        }
+    }
+
+    private class CommentItem
+    {
+        public long Id { get; set; }
+        public string NoteId { get; set; } = "";
+        public string AuthorId { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+    }
+
+    private string ExtractActivityPubHandle(string authorUrl)
+    {
+        try
+        {
+            var uri = new Uri(authorUrl);
+            // Extract username from path like /users/mapache
+            var pathParts = uri.PathAndQuery.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var username = pathParts.Length >= 2 && pathParts[0] == "users" ? pathParts[1] : "unknown";
+            
+            // Get domain from host
+            var domain = uri.Host;
+            
+            return $"@{username}@{domain}";
+        }
+        catch
+        {
+            return "@unknown";
+        }
+    }
+
+    private string ExtractIssuerName(string issuerUrl)
+    {
+        try
+        {
+            var uri = new Uri(issuerUrl);
+            // Extract from path like /actors/communitycredentials.org/somostech.community or /actors/domain
+            var pathParts = uri.PathAndQuery.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            
+            if (pathParts.Length >= 2 && pathParts[0] == "actors")
+            {
+                // Get the last part after /actors/
+                var issuerName = string.Join("/", pathParts.Skip(1));
+                return issuerName;
+            }
+            
+            // Fallback to host
+            return uri.Host;
+        }
+        catch
+        {
+            return "Unknown Issuer";
         }
     }
 }

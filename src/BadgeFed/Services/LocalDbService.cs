@@ -835,7 +835,7 @@ public class LocalDbService
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("New follower", $"Follower {follower.FollowerUri}", follower.FollowerUri);
+        InsertRecentActivityLog("New follower", $"Follower {follower.DisplayName ?? follower.FollowerUri} from {follower.Domain} added", follower.FollowerUri);
     }
 
     public List<Follower> GetFollowersToProcess()
@@ -1169,7 +1169,7 @@ public class ActorStats
                     COUNT(CASE WHEN br.AcceptedOn IS NULL THEN 1 END) AS pendingCount
             FROM BadgeRecord AS br;
             SELECT COUNT(*) AS followerCount FROM Follower;
-            SELECT COUNT(*) AS followedInstancesCount FROM FollowedIssuer;
+            SELECT COUNT(*) AS followedInstancesCount FROM DiscoveredServers WHERE IsFollowed = TRUE;
             SELECT COUNT(*) FROM Badgerecord WHERE IsExternal = TRUE;
             ";
 
@@ -1474,13 +1474,7 @@ public class ActorStats
         using var connection = GetConnection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
-
-        // First get the noteId for the EntityUrl
-        var selectCommand = connection.CreateCommand();
-        selectCommand.CommandText = "SELECT NoteId FROM BadgeRecord WHERE Id = @Id";
-        selectCommand.Parameters.AddWithValue("@Id", id);
-        var noteId = selectCommand.ExecuteScalar()?.ToString();
-
+        
         var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE BadgeRecord SET 
@@ -1493,7 +1487,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge notification sent", $"Badge record {id}", !string.IsNullOrEmpty(noteId) ? $"/verify/{noteId}" : null);
+        InsertRecentActivityLog("Badge notification sent", $"Notification sent for badge record {id}", "/admin/badge-record/" + id);
     }
 
     public long PeekProcessGrantId()
@@ -1571,7 +1565,7 @@ public class ActorStats
         command.ExecuteNonQuery();
         transaction.Commit();
 
-        InsertRecentActivityLog("Badge accepted", $"Badge record {badgeRecord.Id}", $"/verify/{badgeRecord.NoteId}");
+        InsertRecentActivityLog("Badge accepted", $"{badgeRecord.Id} - {badgeRecord.IssuedToName} accepted the badge {badgeRecord.Badge?.Title}", "/admin/badge-record/" + badgeRecord.Id);
     }
 
 
@@ -1671,11 +1665,11 @@ public class ActorStats
 
         if (record.IsExternal)
         {
-            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", $"/verify/{record.NoteId}");
+            InsertRecentActivityLog($"External badge received", $"Issued by {record.IssuedBy}", record.NoteId);
         }
         else
         {
-            InsertRecentActivityLog($"Badge granted", $"Issued to {record.IssuedToName}", $"/verify/{record.NoteId}");
+            InsertRecentActivityLog($"Badge granted", $"Badge {record.Title} issued to {record.IssuedToName}", "/admin/badge-record/" + record.Id);
         }
     }
 
