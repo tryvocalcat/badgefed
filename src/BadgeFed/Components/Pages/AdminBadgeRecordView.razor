@@ -39,7 +39,7 @@
             @if (!string.IsNullOrEmpty(errorMessage))
             {
                 <div class="notification is-danger">
-                    <button class="delete" @onclick="() => errorMessage = null"></button>
+                    <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
                     <p>@errorMessage</p>
                 </div>
             }
