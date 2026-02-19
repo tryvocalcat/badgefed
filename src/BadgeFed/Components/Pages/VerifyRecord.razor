@@ -229,52 +229,7 @@
         margin-top: 1rem;
         word-break: break-all;
     }
-    .share-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-top: 2rem;
-        align-items: flex-start;
-    }
-    .share-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        text-align: center;
-        min-height: 48px;
-        flex: 1;
-        min-width: 200px;
-    }
-    .share-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    .linkedin-post-button {
-        background: #0a66c2;
-        color: white;
-    }
-    .linkedin-profile-button {
-        background: #0077b5;
-        color: white;
-    }
-    .mastodon-button {
-        background: #6364ff;
-        color: white;
-    }
-    .openbadge-button {
-        background: #f59e0b;
-        color: white;
-    }
-    .verification-button {
-        background: #10b981;
-        color: white;
-    }
+
     
     .verify-button {
         background: #10b981;
@@ -623,6 +578,14 @@
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
     }
+    .owner-button.mastodon {
+        border-color: #6364ff;
+        color: #6364ff;
+    }
+    .owner-button.mastodon:hover {
+        background: #6364ff;
+        color: white;
+    }
     .owner-button {
         display: flex;
         align-items: center;
@@ -676,77 +639,94 @@
         transform: none;
         box-shadow: none;
     }
-    .toggle-button {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        color: #475569;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        font-size: 0.9rem;
-    }
-    .toggle-button:hover {
-        background: #e2e8f0;
-        border-color: #cbd5e1;
-    }
-    .toggle-button.expanded {
-        background: #1a1a2e;
-        color: white;
-        border-color: #1a1a2e;
-    }
-    .owner-actions-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.4s ease-out;
-    }
-    .owner-actions-content.show {
-        max-height: 300px;
-    }
+
     .comments-section {
         margin-top: 3rem;
-        padding-top: 2rem;
-        border-top: 1px solid #e5e7eb;
+        padding: 2rem;
+    }
+    .comments-section .title {
+        margin-bottom: 0.5rem;
+    }
+    .comments-intro {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+        color: #6b7280;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+    .comments-intro p {
+        margin: 0;
+        flex: 1;
+        min-width: 200px;
+    }
+    .comments-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #9ca3af;
+    }
+    .comments-empty i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        display: block;
+        color: #d1d5db;
+    }
+    .comments-empty p {
+        margin: 0;
+        font-size: 0.95rem;
     }
     .comment-card {
-        background: white;
+        background: #f9fafb;
         border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid #f3f4f6;
+        transition: border-color 0.2s ease;
+    }
+    .comment-card:hover {
+        border-color: #e5e7eb;
     }
     .comment-header {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
     }
     .comment-avatar {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-        background: #f3f4f6;
+        background: #e5e7eb;
         display: flex;
         align-items: center;
         justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .comment-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
     }
     .comment-author {
         font-weight: 600;
+        font-size: 0.9rem;
         color: #1a1a2e;
     }
     .comment-date {
-        font-size: 0.875rem;
-        color: #6b7280;
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+    .comment-content {
+        color: #4b5563;
+        font-size: 0.95rem;
+        line-height: 1.6;
     }
     
     @@media (max-width: 768px) {
-        .share-actions {
-            grid-template-columns: 1fr;
-        }
         .badge-meta {
             flex-direction: column;
         }
@@ -1277,26 +1257,15 @@ else
         <div class="security-info">
             <h3 class="security-title">
                 <span class="icon"><i class="fas fa-shield-check"></i></span>
-                <span>Verification & Trust</span>
+                <span>Verification, Trust & Badge Data</span>
             </h3>
-            <p>This badge has been cryptographically verified and securely recorded.</p>
-            <div style="margin-top: 1rem;">
+            <div class="metadata-actions" style="margin-top: 1rem;">
                 <button class="verify-button" onclick="openVerificationModal()">
                     <span class="icon"><i class="fas fa-check-circle"></i></span>
                     <span>Verify Badge Trust Factors</span>
                 </button>
-            </div>
-        </div>
-
-        @if (!badgeRecord.IsExternal)
-        {
-            <div class="metadata-info-section">
-                <h4 class="metadata-info-title">
-                    <span class="icon"><i class="fas fa-certificate"></i></span>
-                    <span>Verifiable Badge Image</span>
-                </h4>
-                <p>This badge image contains embedded OpenBadge metadata. Right-click and save the image above to download a self-contained, verifiable badge file that includes all verification data. <a href="/badge-verification-help" target="_blank">Learn more about verification</a>.</p>
-                <div class="metadata-actions">
+                @if (!badgeRecord.IsExternal)
+                {
                     <a href="@GetBadgeImageWithMetadataUrl()" download="verified-badge-@(NoteIdParam).png" class="metadata-action-button">
                         <span class="icon"><i class="fas fa-download"></i></span>
                         <span>Download Verifiable Image</span>
@@ -1305,49 +1274,26 @@ else
                         <span class="icon"><i class="fas fa-code"></i></span>
                         <span>View Embedded JSON</span>
                     </a>
-                </div>
+                }
+                else
+                {
+                    <a href="@badgeRecord.NoteId" target="_blank" class="metadata-action-button secondary">
+                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
+                        <span>View Original Badge</span>
+                    </a>
+                }
             </div>
-        }
-
-        <div class="share-actions">
-           
-
-            <!-- Public Sharing Options -->
-            <!-- Mastodon Share -->
-            <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
-               class="share-button mastodon-button"
-               target="_blank">
-                <span class="icon"><i class="fab fa-mastodon"></i></span>
-                <span>Share on Mastodon</span>
-            </a>
-
-            <!-- LinkedIn Share as Post -->
-            @{
-                var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord);
-            }
-            @if(!string.IsNullOrEmpty(linkedinPostShareLink))
+            @if (!badgeRecord.IsExternal)
             {
-                <a href="@linkedinPostShareLink" 
-                   class="share-button linkedin-post-button"
-                   target="_blank">
-                    <span class="icon"><i class="fab fa-linkedin"></i></span>
-                    <span>Share on LinkedIn</span>
-                </a>
+                <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #6b7280;">
+                    The badge image contains embedded OpenBadge metadata. You can also right-click the image above to save a self-contained, verifiable badge file.
+                    <a href="/badge-verification-help" target="_blank">Learn more about verification</a>.
+                </p>
+            } else {
+                <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #6b7280;">
+                    This badge was issued by an external issuer and may not contain embedded metadata. Click "View Original Badge" to see the badge on the issuer's platform.
+                </p>
             }
-
-            <!-- Independent Verification Button -->
-            @{
-                var openBadgeUrl = $"{NavManager.BaseUri.TrimEnd('/')}/openbadge/{badgeRecord.NoteId.Split('/').LastOrDefault()}";
-                var recipientUrl = badgeRecord.IssuedToSubjectUri;
-                var verificationUrl = $"https://badgecheck.us.badgr.com/?url={openBadgeUrl}&identity__url={recipientUrl}";
-            }
-            <a href="@verificationUrl" 
-               class="share-button verification-button" 
-               target="_blank" style="display:none;">
-                <span class="icon"><i class="fas fa-check-circle"></i></span>
-                <span>Verify Independently</span>
-            </a>
-
         </div>
 
         <!-- Owner Actions Section -->
@@ -1357,69 +1303,47 @@ else
                     <i class="fas fa-user-shield"></i>
                     Owner Actions
                 </div>
-                <div class="owner-badge">
-                    <i class="fas fa-crown"></i>
-                    Badge Owner Only
-                </div>
-                <button class="toggle-button" onclick="toggleOwnerActions()" id="toggleBtn">
-                    <i class="fas fa-chevron-down" id="chevronIcon"></i>
-                    <span id="toggleText">Show Actions</span>
-                </button>
             </div>
             
-            <div class="owner-actions-content" id="ownerActionsContent">
-                <div class="owner-actions-grid">
-                    @{
-                        var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
-                        var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
-                    }
-                    
-                    @if(!string.IsNullOrEmpty(linkedinProfileLink))
-                    {
-                        <a href="@linkedinProfileLink" 
-                           class="owner-button linkedin"
-                           target="_blank">
-                            <span class="icon"><i class="fab fa-linkedin"></i></span>
-                            <span>Add to LinkedIn Profile</span>
-                        </a>
-                    }
-                    
-                    <a href="javascript:void(0)" 
-                       class="owner-button copy"
-                       onclick="copyBadgeUrl()">
-                        <span class="icon"><i class="fas fa-copy"></i></span>
-                        <span>Copy Badge URL</span>
+            <div class="owner-actions-grid">
+                @{
+                    var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord);
+                    var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
+                    linkedinProfileLink = "asd";
+                    var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
+                }
+
+                <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
+                   class="owner-button mastodon"
+                   target="_blank">
+                    <span class="icon"><i class="fab fa-mastodon"></i></span>
+                    <span>Share on Mastodon</span>
+                </a>
+
+                @if(!string.IsNullOrEmpty(linkedinPostShareLink))
+                {
+                    <a href="@linkedinPostShareLink" 
+                       class="owner-button linkedin"
+                       target="_blank">
+                        <span class="icon"><i class="fab fa-linkedin"></i></span>
+                        <span>Share on LinkedIn</span>
                     </a>
-                    
-                    <a href="javascript:void(0)" 
-                       class="owner-button settings"
-                       title="Coming soon - manage badge settings">
-                        <span class="icon"><i class="fas fa-cog"></i></span>
-                        <span>Badge Settings</span>
+                }
+
+                @if(!string.IsNullOrEmpty(linkedinProfileLink))
+                {
+                    <a href="@linkedinProfileLink" 
+                       class="owner-button linkedin"
+                       target="_blank">
+                        <span class="icon"><i class="fab fa-linkedin"></i></span>
+                        <span>Add to Profile</span>
                     </a>
-                </div>
+                }
+
             </div>
         </div>
 
         <script>
-            function toggleOwnerActions() {
-                const content = document.getElementById('ownerActionsContent');
-                const toggleBtn = document.getElementById('toggleBtn');
-                const chevron = document.getElementById('chevronIcon');
-                const toggleText = document.getElementById('toggleText');
-                
-                content.classList.toggle('show');
-                toggleBtn.classList.toggle('expanded');
-                
-                if (content.classList.contains('show')) {
-                    chevron.style.transform = 'rotate(180deg)';
-                    toggleText.textContent = 'Hide Actions';
-                } else {
-                    chevron.style.transform = 'rotate(0deg)';
-                    toggleText.textContent = 'Show Actions';
-                }
-            }
-            
             function copyBadgeUrl() {
                 navigator.clipboard.writeText(window.location.href).then(function() {
                     // Create a simple toast notification
@@ -1786,15 +1710,25 @@ else
     </div>
 } else {
     <div class="badge-container comments-section">
-        <h3 class="title is-4" style="margin-left: 1.5em">Comments</h3>
+        <h3 class="title is-4">
+            <span class="icon" style="color: #6b7280;"><i class="fas fa-comments"></i></span>&nbsp;
+            Comments
+        </h3>
         
-        <div class="mb-3" style="margin-left: 1.5em">
-            <p>To leave a comment, reply to this badge from your Fediverse account. Just copy the badge URL and paste it into your post.</p>
+        <div class="comments-intro">
+            <p>Reply to this badge from your Fediverse account to leave a comment.</p>
+            <a href="javascript:void(0)" 
+               class="button is-small is-outlined is-info"
+               onclick="copyBadgeUrl()">
+                <span class="icon"><i class="fas fa-copy"></i></span>
+                <span>Copy Badge URL</span>
+            </a>
         </div>
         @if (comments == null || !comments.Any())
         {
-            <div class="has-text-centered py-4">
-                <p class="has-text-grey">No comments yet. Be the first to comment!</p>
+            <div class="comments-empty">
+                <i class="far fa-comment-dots"></i>
+                <p>No comments yet. Be the first to comment!</p>
             </div>
         }
         else
