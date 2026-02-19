@@ -119,13 +119,15 @@
 
     private string notificationMessage;
 
+    private Badge badge;
+
     protected override async Task OnInitializedAsync()
     {
         if (long.TryParse(BadgeId, out long badgeIdValue))
         {
             Model.BadgeId = badgeIdValue;
 
-            var badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
+            badge = LocalDbService.GetBadgeDefinitionById(Model.BadgeId);
 
             if (badge == null)
             {
@@ -181,6 +183,6 @@
         Email = string.Empty;
         ProfileUri = string.Empty;
         Name = string.Empty;
-        Model.Evidence = string.Empty;
+        Model.Evidence = badge.EarningCriteria;
     }
 }
