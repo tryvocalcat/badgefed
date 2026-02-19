@@ -384,5 +384,22 @@ else if (accepted)
         {
             linkMode = lValue.ToString().ToLowerInvariant();
         }
+
+        // Auto-detect LinkedIn from existing IssuedToSubjectUri
+        if (string.IsNullOrEmpty(linkMode) 
+            && !string.IsNullOrEmpty(record.IssuedToSubjectUri) 
+            && record.IssuedToSubjectUri.Contains("linkedin.com", StringComparison.OrdinalIgnoreCase))
+        {
+            linkMode = "lin";
+
+            // Pre-fill the username from the URL
+            var match = System.Text.RegularExpressions.Regex.Match(
+                record.IssuedToSubjectUri, @"linkedin\.com/in/([^/?#]+)", 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                linkedInUsername = match.Groups[1].Value;
+            }
+        }
     }
 }
