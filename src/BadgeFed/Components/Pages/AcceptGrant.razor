@@ -1,6 +1,7 @@
 @page "/accept/grant/{id}/{key}"
 @using ActivityPubDotNet.Core
 @using System.Text.Json
+@using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavManager
 @inject LocalScopedDb DbService
 @inject BadgeProcessor BadgeProcessor
@@ -93,13 +94,57 @@ else if (accepted)
         {
             <!-- Profile URI Input -->
             <div class="field mb-3">
-                <label class="label" for="profileUri">* Profile URI:</label>
-                <div class="control">
-                    <input type="url" id="profileUri" class="input is-rounded" @bind="Model.ProfileUri" placeholder="e.g., https://mastodon.social/@@username" />
-                </div>
-                <p class="help is-info">
-                    Enter your profile URL (e.g., https://mastodon.social/@@username, https://linkedin/in/username).
-                </p>
+                @if (linkMode == "lin")
+                {
+                    <label class="label" for="profileUri">
+                        <span class="icon-text">
+                            <span class="icon"><i class="oi oi-link-intact"></i></span>
+                            <span>LinkedIn Profile <span class="tag is-info is-light is-rounded">Required</span></span>
+                        </span>
+                    </label>
+                    <div class="field has-addons">
+                        <p class="control">
+                            <a class="button is-static is-rounded-left" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                https://linkedin.com/in/
+                            </a>
+                        </p>
+                        <p class="control is-expanded">
+                            <input type="text" id="profileUri" class="input is-rounded" 
+                                   style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
+                                   @bind="linkedInUsername" 
+                                   placeholder="your-username" />
+                        </p>
+                    </div>
+                    <p class="help is-info">
+                        <span class="icon is-small"><i class="oi oi-question-mark"></i></span>
+                        Enter just your LinkedIn username. You can find it by visiting your LinkedIn profile — 
+                        it's the part after <strong>linkedin.com/in/</strong> in the address bar 
+                        (e.g., for <em>https://www.linkedin.com/in/johndoe</em>, enter <strong>johndoe</strong>).
+                    </p>
+                }
+                else
+                {
+                    <label class="label" for="profileUri">
+                        <span class="icon-text">
+                            <span class="icon"><i class="oi oi-link-intact"></i></span>
+                            <span>Profile URL <span class="tag is-info is-light is-rounded">Required</span></span>
+                        </span>
+                    </label>
+                    <div class="control">
+                        <input type="url" id="profileUri" class="input is-rounded" @bind="Model.ProfileUri" placeholder="https://" />
+                    </div>
+                    <div class="notification is-light is-info mt-2 mb-2" style="padding: 0.75rem 1rem; font-size: 0.875rem;">
+                        <p class="mb-1"><strong>Which URL should I use?</strong></p>
+                        <p>This is the public link where people can learn more about you. You can use any of these:</p>
+                        <ul style="margin-top: 0.25rem; margin-bottom: 0;">
+                            <li><strong>LinkedIn</strong> — <code>https://linkedin.com/in/username</code></li>
+                            <li><strong>Mastodon</strong> — <code>https://mastodon.social/@@username</code></li>
+                            <li><strong>Personal site</strong> — <code>https://yoursite.com</code></li>
+                            <li><strong>GitHub</strong> — <code>https://github.com/username</code></li>
+                            <li>Any other public social or professional profile URL</li>
+                        </ul>
+                    </div>
+                }
                 <div class="control mt-2">
                     <button class="button is-outlined is-primary is-rounded" @onclick="ValidateProfileUrl" type="button">Validate</button>
                 </div>
@@ -115,7 +160,6 @@ else if (accepted)
                     <input type="text" id="fullName" class="input is-rounded" @bind="Model.Name" required placeholder="Enter your full name"/>
                 </div>
             </div>
-
            
             <!-- Visibility Select -->
             <div class="field mb-3">
@@ -176,6 +220,10 @@ else if (accepted)
 
     private string errorMessage = string.Empty;
 
+    private string linkMode = string.Empty;
+
+    private string linkedInUsername = string.Empty;
+
     public async Task ValidateEmail()
     {
         emailValidated = acceptEmail == BadgeRecord.IssuedToEmail;
@@ -184,6 +232,20 @@ else if (accepted)
 
     public async Task ValidateProfileUrl()
     {
+        // If LinkedIn mode, build the full URL from the username
+        if (linkMode == "lin")
+        {
+            if (string.IsNullOrWhiteSpace(linkedInUsername))
+            {
+                ValidationProfileMessage = "Please enter your LinkedIn username.";
+                return;
+            }
+
+            // Strip leading/trailing slashes and whitespace
+            var cleanUsername = linkedInUsername.Trim().Trim('/');
+            Model.ProfileUri = $"https://linkedin.com/in/{cleanUsername}";
+        }
+
         ValidationProfileMessage = "Checking ...";
 
         if (string.IsNullOrWhiteSpace(Model.ProfileUri))
@@ -315,5 +377,12 @@ else if (accepted)
         BadgeRecord = record;
 
         emailValidated = string.IsNullOrEmpty(BadgeRecord.IssuedToEmail);
+
+        // Parse query parameter "l" for link mode
+        var uri = new Uri(NavManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("l", out var lValue))
+        {
+            linkMode = lValue.ToString().ToLowerInvariant();
+        }
     }
 }

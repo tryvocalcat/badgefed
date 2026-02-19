@@ -1319,12 +1319,19 @@ else
                     var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
                 }
 
-                <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
-                   class="owner-button mastodon"
-                   target="_blank">
-                    <span class="icon"><i class="fab fa-mastodon"></i></span>
-                    <span>Share on Mastodon</span>
-                </a>
+                @{
+                    var mastodonShareLink = ShareHelper.GetMastodonShareLink(badgeRecord);
+                }
+
+                @if(!string.IsNullOrEmpty(mastodonShareLink))
+                {
+                    <a href="@mastodonShareLink" 
+                       class="owner-button mastodon"
+                       target="_blank">
+                        <span class="icon"><i class="fab fa-mastodon"></i></span>
+                        <span>Share on Mastodon</span>
+                    </a>
+                }
 
                 @if(!string.IsNullOrEmpty(linkedinPostShareLink))
                 {
