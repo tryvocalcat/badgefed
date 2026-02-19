@@ -1313,7 +1313,7 @@ else
             
             <div class="owner-actions-grid">
                 @{
-                    var currentUrl = NavigationManager.Uri;
+                    var currentUrl = NavManager.Uri;
                     var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord, currentUrl);
                     var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
                     var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
