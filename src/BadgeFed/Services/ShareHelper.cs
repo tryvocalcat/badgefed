@@ -39,13 +39,14 @@ public class ShareHelper
         return GetLinkedInCertificationLink(linkedinId, record.Title, url, certId, issueYear, issueMonth, null, null);
     }
 
-    public static string GetLinkedInPostShareLink(BadgeRecord record)
+    public static string GetLinkedInPostShareLink(BadgeRecord record, string url)
     {
         var issueYear = record.IssuedOn.Year.ToString();
         var issueMonth = record.IssuedOn.Month.ToString();
-        
-        var text = $"I'm very excited to share this badge! {record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}";
-        var url = $"{record.NoteId}";
+
+        var text = $"I'm very excited to share that I have earned a badge! ";
+        text += $"\n {record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}.";
+        text += $"Check it out at: {url}";
 
         return $"http://www.linkedin.com/shareArticle?url={Uri.EscapeDataString(url)}&text={Uri.EscapeDataString(text)}";
     }
