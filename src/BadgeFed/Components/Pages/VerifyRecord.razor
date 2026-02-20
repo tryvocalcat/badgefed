@@ -81,6 +81,12 @@
         background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
         opacity: 0.1;
     }
+
+    .trust-factor-icon {
+        padding: 8px;
+    }
+
+
     .verification-header-content {
         display: flex;
         justify-content: space-between;
@@ -1256,7 +1262,7 @@ else
 
         <div class="security-info">
             <h3 class="security-title">
-                <span class="icon"><i class="fas fa-shield-check"></i></span>
+                <span class="icon"><i class="fas fa-shield"></i></span>
                 <span>Verification, Trust & Badge Data</span>
             </h3>
             <div class="metadata-actions" style="margin-top: 1rem;">
@@ -1307,18 +1313,25 @@ else
             
             <div class="owner-actions-grid">
                 @{
-                    var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord);
+                    var currentUrl = NavManager.Uri;
+                    var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord, currentUrl);
                     var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
-                    linkedinProfileLink = "asd";
                     var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
                 }
 
-                <a href="@ShareHelper.GetMastodonShareLink(badgeRecord)" 
-                   class="owner-button mastodon"
-                   target="_blank">
-                    <span class="icon"><i class="fab fa-mastodon"></i></span>
-                    <span>Share on Mastodon</span>
-                </a>
+                @{
+                    var mastodonShareLink = ShareHelper.GetMastodonShareLink(badgeRecord);
+                }
+
+                @if(!string.IsNullOrEmpty(mastodonShareLink))
+                {
+                    <a href="@mastodonShareLink" 
+                       class="owner-button mastodon"
+                       target="_blank">
+                        <span class="icon"><i class="fab fa-mastodon"></i></span>
+                        <span>Share on Mastodon</span>
+                    </a>
+                }
 
                 @if(!string.IsNullOrEmpty(linkedinPostShareLink))
                 {
@@ -1521,7 +1534,7 @@ else
     <div class="verification-modal-content">
         <div class="verification-modal-header">
             <h2 class="verification-modal-title">
-                <i class="fas fa-shield-check"></i>
+                <i class="fas fa-shield"></i>
                 Badge Trust Factors
             </h2>
             <button class="verification-close" onclick="closeVerificationModal()">
@@ -1547,7 +1560,7 @@ else
                     <div class="trust-factor-value">@badgeRecord.FingerPrint.ToUpper()</div>
                 </div>
                 <div class="trust-factor-help tooltip">
-                    <i class="fas fa-question" style="padding: 8px"></i>
+                    <i class="fas fa-question trust-factor-icon"></i>
                     <span class="tooltiptext">
                         This SHA-256 hash is generated from the badge's content and metadata, creating an unforgeable digital signature. Any alteration to the badge would result in a completely different fingerprint, making it virtually impossible to counterfeit while ensuring complete data integrity and authenticity verification.
                     </span>
@@ -1609,7 +1622,7 @@ else
                             Follows global standard for interoperability and verification.<br>
                             <small style="color: #9ca3af; font-style: italic;">Like having a universally accepted driver's license that works everywhere - so other organizations will recognize and trust your badge.</small>
                         </p>
-                        <div class="trust-factor-value">Open Badge v3.0 Specification</div>
+                        <div class="trust-factor-value">Open Badge v2.0 Specification</div>
                     </div>
                     <div class="trust-factor-help tooltip">
                         <i class="fas fa-question"></i>
@@ -1694,7 +1707,7 @@ else
             <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; text-align: center;">
                 <p style="color: #6b7280; font-size: 0.9rem; margin: 0;">
                     <i class="fas fa-shield-alt" style="color: #10b981; margin-right: 0.5rem;"></i>
-                    All trust factors have been verified and are cryptographically secured.
+                    All trust factors have been verified.
                 </p>
             </div>
         </div>

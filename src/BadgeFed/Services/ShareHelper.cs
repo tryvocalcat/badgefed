@@ -12,7 +12,12 @@ public class ShareHelper
         var uri = new Uri(record.IssuedToSubjectUri);
         var mastodonDomain = uri.Host;
 
-        var text = $"I earned a badge! {record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}";
+        if (mastodonDomain.Contains("linkedin.com"))
+        {
+            return string.Empty;
+        }
+
+        var text = $"I'm very excited to share that I have earned a badge!\n\n{record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}";
 
         var url = $"{record.NoteId}";
 
@@ -39,13 +44,14 @@ public class ShareHelper
         return GetLinkedInCertificationLink(linkedinId, record.Title, url, certId, issueYear, issueMonth, null, null);
     }
 
-    public static string GetLinkedInPostShareLink(BadgeRecord record)
+    public static string GetLinkedInPostShareLink(BadgeRecord record, string url)
     {
         var issueYear = record.IssuedOn.Year.ToString();
         var issueMonth = record.IssuedOn.Month.ToString();
-        
-        var text = $"I'm very excited to share this badge! {record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}";
-        var url = $"{record.NoteId}";
+
+        var text = $"I'm very excited to share that I have earned a badge!";
+        text += $"\n\n{record.Title} issued by {record.Actor.FullName} on {issueMonth}/{issueYear}.";
+        text += $"\n\nCheck it out at: {url}";
 
         return $"http://www.linkedin.com/shareArticle?url={Uri.EscapeDataString(url)}&text={Uri.EscapeDataString(text)}";
     }
