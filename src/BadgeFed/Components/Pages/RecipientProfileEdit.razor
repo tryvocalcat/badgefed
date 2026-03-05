@@ -1,0 +1,260 @@
+@page "/profile/{Slug}/edit"
+@using System.Text.Json
+@inject RecipientProfileService ProfileService
+@inject ICustomAssetPathService CustomAssetPathService
+@inject NavigationManager NavigationManager
+@inject LocalScopedDb LocalDbService
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+@layout BadgeFed.Components.Layouts.MainLayout
+@attribute [Authorize(Roles = "recipient")]
+
+<PageTitle>Edit Profile</PageTitle>
+
+<section class="section">
+    <div class="container" style="max-width:720px;">
+        <h1 class="title is-3">Edit Profile</h1>
+
+        @if (errorMessage != null)
+        {
+            <div class="notification is-danger">@errorMessage</div>
+        }
+
+        @if (recipient != null)
+        {
+            <div class="box">
+                <div class="field">
+                    <label class="label">Avatar</label>
+                    <div class="control">
+                        @if (!string.IsNullOrEmpty(imagePreview))
+                        {
+                            <figure class="image is-128x128 mb-3">
+                                <img class="is-rounded" src="@imagePreview" alt="Avatar Preview" />
+                            </figure>
+                        }
+                        else if (!string.IsNullOrEmpty(recipient.AvatarPath))
+                        {
+                            <figure class="image is-128x128 mb-3">
+                                <img class="is-rounded" src="@recipient.AvatarPath" alt="Current Avatar" />
+                            </figure>
+                        }
+                        <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
+                        <p class="help">Max 2MB. Will be resized to 300×300.</p>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Display Name</label>
+                    <div class="control">
+                        <input class="input" type="text" @bind="recipient.DisplayName" maxlength="100" placeholder="Your display name" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Headline</label>
+                    <div class="control">
+                        <input class="input" type="text" @bind="recipient.CustomHeadline" maxlength="200" placeholder="A short headline about you" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Bio</label>
+                    <div class="control">
+                        <textarea class="textarea" @bind="recipient.Bio" maxlength="500" placeholder="Tell people about yourself"></textarea>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Profile Template</label>
+                    <div class="control">
+                        <div class="select">
+                            <select @bind="recipient.ProfileTemplate">
+                                <option value="professional">Professional (Linktree-style)</option>
+                                <option value="gamification">Gamification (Achievement-style)</option>
+                                <option value="minimal">Minimal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Theme</label>
+                    <div class="control">
+                        <div class="select">
+                            <select @bind="recipient.Theme">
+                                <option value="">Default</option>
+                                <option value="default">Default Theme</option>
+                                <option value="ocean">Ocean</option>
+                                <option value="forest">Forest</option>
+                                <option value="sunset">Sunset</option>
+                                <option value="night">Night</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">
+                        <span>Public Profile</span>
+                    </label>
+                    <div class="control">
+                        <label class="checkbox">
+                            <input type="checkbox" @bind="recipient.IsPublic" />
+                            Allow anyone to view your profile
+                        </label>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="field">
+                    <label class="label">Profile Links</label>
+                    @foreach (var link in profileLinks)
+                    {
+                        <div class="columns is-mobile is-vcentered mb-2">
+                            <div class="column is-3">
+                                <div class="select is-fullwidth is-small">
+                                    <select @bind="link.Type">
+                                        <option value="generic">Generic</option>
+                                        <option value="website">Website</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                        <option value="mastodon">Mastodon</option>
+                                        <option value="github">GitHub</option>
+                                        <option value="twitter">Twitter/X</option>
+                                        <option value="bluesky">Bluesky</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="column is-3">
+                                <input class="input is-small" type="text" @bind="link.Label" placeholder="Label" />
+                            </div>
+                            <div class="column">
+                                <input class="input is-small" type="url" @bind="link.Uri" placeholder="https://..." />
+                            </div>
+                            <div class="column is-narrow">
+                                <button class="button is-small is-danger is-outlined" @onclick="() => RemoveLink(link)">
+                                    <span class="icon"><i class="fas fa-times"></i></span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    <button class="button is-small is-info is-outlined" @onclick="AddLink">
+                        <span class="icon"><i class="fas fa-plus"></i></span>
+                        <span>Add Link</span>
+                    </button>
+                </div>
+
+                <hr />
+
+                <div class="field is-grouped">
+                    <div class="control">
+                        <button class="button is-primary" @onclick="SaveProfile" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                            }
+                            <span>Save Profile</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <a href="/profile/@Slug" class="button is-light">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private Recipient? recipient;
+    private List<ProfileLink> profileLinks = new();
+    private string? errorMessage;
+    private string? imagePreview;
+    private IBrowserFile? selectedFile;
+    private bool isSaving;
+
+    protected override void OnInitialized()
+    {
+        recipient = LocalDbService.GetRecipientBySlug(Slug);
+        if (recipient == null || CurrentUser.RecipientId != recipient.Id)
+        {
+            NavigationManager.NavigateTo($"/profile/{Slug}", replace: true);
+            return;
+        }
+        profileLinks = recipient.ProfileLinksList.ToList();
+    }
+
+    private void AddLink()
+    {
+        profileLinks.Add(new ProfileLink { Order = profileLinks.Count });
+    }
+
+    private void RemoveLink(ProfileLink link)
+    {
+        profileLinks.Remove(link);
+        for (int i = 0; i < profileLinks.Count; i++)
+            profileLinks[i].Order = i;
+    }
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        selectedFile = e.File;
+
+        if (selectedFile.Size > 2 * 1024 * 1024)
+        {
+            errorMessage = "File size exceeds 2MB limit.";
+            selectedFile = null;
+            return;
+        }
+
+        var format = "image/jpeg";
+        var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+        var buffer = new byte[resizedImage.Size];
+        await resizedImage.OpenReadStream().ReadAsync(buffer);
+        imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task SaveProfile()
+    {
+        if (recipient == null) return;
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            if (selectedFile != null)
+            {
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
+                var path = ProfileService.GetAvatarsPath();
+                Directory.CreateDirectory(path);
+                var fullPath = Path.Combine(path, fileName);
+                using var stream = selectedFile.OpenReadStream(2 * 1024 * 1024);
+                using var fileStream = new FileStream(fullPath, FileMode.Create);
+                await stream.CopyToAsync(fileStream);
+                recipient.AvatarPath = ProfileService.GetAvatarUrl(fileName);
+            }
+
+            // Serialize profile links
+            var validLinks = profileLinks
+                .Where(l => !string.IsNullOrWhiteSpace(l.Uri))
+                .ToList();
+            recipient.ProfileLinks = validLinks.Any()
+                ? JsonSerializer.Serialize(validLinks)
+                : null;
+
+            ProfileService.UpdateProfile(recipient);
+            NavigationManager.NavigateTo($"/profile/{Slug}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving profile: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

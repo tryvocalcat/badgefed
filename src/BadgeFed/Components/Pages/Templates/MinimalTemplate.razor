@@ -1,0 +1,91 @@
+<div class="minimal-profile">
+    <div class="mb-5">
+        <div class="is-flex is-align-items-center">
+            @if (!string.IsNullOrEmpty(Recipient.AvatarPath))
+            {
+                <figure class="image is-64x64 mr-4">
+                    <img class="is-rounded" src="@Recipient.AvatarPath" alt="@(Recipient.DisplayName ?? Recipient.Name)" />
+                </figure>
+            }
+            <div>
+                <h1 class="title is-4 mb-1">@(Recipient.DisplayName ?? Recipient.Name)</h1>
+                @if (!string.IsNullOrEmpty(Recipient.CustomHeadline))
+                {
+                    <p class="subtitle is-6 has-text-grey">@Recipient.CustomHeadline</p>
+                }
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(Recipient.Bio))
+        {
+            <p class="content mt-3">@Recipient.Bio</p>
+        }
+    </div>
+
+    @if (Badges.Any())
+    {
+        <h2 class="title is-5 mb-3">Badges</h2>
+        <div class="table-container">
+            <table class="table is-fullwidth is-hoverable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Badge</th>
+                        <th>Issuer</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var badge in Badges)
+                    {
+                        <tr>
+                            <td style="width:48px;">
+                                <figure class="image is-32x32">
+                                    <img src="@badge.FullImageUrl" alt="@(badge.ImageAltText ?? badge.Title)" style="object-fit:contain;" />
+                                </figure>
+                            </td>
+                            <td>@badge.Title</td>
+                            <td>@(badge.Actor?.FullName ?? "—")</td>
+                            <td>@badge.IssuedOn.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(badge.FingerPrint))
+                                {
+                                    <span class="icon has-text-success" title="Verified"><i class="fas fa-check-circle"></i></span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Recipient.ProfileLinksList.Any())
+    {
+        <div class="mt-4">
+            @foreach (var link in Recipient.ProfileLinksList.OrderBy(l => l.Order))
+            {
+                <a href="@link.Uri" target="_blank" rel="noopener noreferrer" class="mr-3">
+                    <span class="icon"><i class="@GetLinkIcon(link.Type)"></i></span>
+                    <span>@link.Label</span>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Recipient Recipient { get; set; } = default!;
+    [Parameter] public List<BadgeRecord> Badges { get; set; } = new();
+
+    private string GetLinkIcon(string type) => type switch
+    {
+        "linkedin" => "fab fa-linkedin",
+        "mastodon" => "fab fa-mastodon",
+        "github" => "fab fa-github",
+        "twitter" => "fab fa-twitter",
+        "bluesky" => "fab fa-bluesky",
+        "website" => "fas fa-globe",
+        _ => "fas fa-link"
+    };
+}

@@ -1,0 +1,124 @@
+<div class="gamification-profile">
+    <div class="has-text-centered mb-5">
+        @if (!string.IsNullOrEmpty(Recipient.AvatarPath))
+        {
+            <figure class="image is-128x128 is-inline-block">
+                <img class="is-rounded" src="@Recipient.AvatarPath" alt="@(Recipient.DisplayName ?? Recipient.Name)" />
+            </figure>
+        }
+        else
+        {
+            <div class="avatar-placeholder is-inline-flex is-align-items-center is-justify-content-center" style="width:128px;height:128px;border-radius:50%;background:#6366f1;color:white;font-size:3rem;margin:0 auto;">
+                @((Recipient.DisplayName ?? Recipient.Name).Substring(0, 1).ToUpper())
+            </div>
+        }
+        <h1 class="title is-3 mt-3">@(Recipient.DisplayName ?? Recipient.Name)</h1>
+        @if (!string.IsNullOrEmpty(Recipient.CustomHeadline))
+        {
+            <p class="subtitle is-5 has-text-grey">@Recipient.CustomHeadline</p>
+        }
+        @if (!string.IsNullOrEmpty(Recipient.Bio))
+        {
+            <p class="content">@Recipient.Bio</p>
+        }
+    </div>
+
+    @* Achievement stats row *@
+    <div class="columns is-mobile is-multiline is-centered mb-5">
+        <div class="column is-narrow has-text-centered">
+            <div class="box py-3 px-5">
+                <p class="heading">Badges</p>
+                <p class="title is-4">@Badges.Count</p>
+            </div>
+        </div>
+        <div class="column is-narrow has-text-centered">
+            <div class="box py-3 px-5">
+                <p class="heading">Categories</p>
+                <p class="title is-4">@badgeGroups.Count()</p>
+            </div>
+        </div>
+        <div class="column is-narrow has-text-centered">
+            <div class="box py-3 px-5">
+                <p class="heading">Issuers</p>
+                <p class="title is-4">@Badges.Select(b => b.IssuedBy).Distinct().Count()</p>
+            </div>
+        </div>
+        <div class="column is-narrow has-text-centered">
+            <div class="box py-3 px-5">
+                <p class="heading">Verified</p>
+                <p class="title is-4">@Badges.Count(b => !string.IsNullOrEmpty(b.FingerPrint))</p>
+            </div>
+        </div>
+    </div>
+
+    @* Badge groups by type *@
+    @foreach (var group in badgeGroups)
+    {
+        <div class="category-section mb-5">
+            <h2 class="title is-5 mb-3">
+                <span class="icon"><i class="fas @GetCategoryIcon(group.Key)"></i></span>
+                <span>@group.Key</span>
+                <span class="tag is-rounded is-info ml-2">@group.Count()</span>
+            </h2>
+            <div class="achievement-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:1rem;">
+                @foreach (var badge in group)
+                {
+                    <div class="has-text-centered" title="@badge.Title — @badge.IssuedOn.ToString("MMM d, yyyy")">
+                        <figure class="image is-96x96 is-inline-block">
+                            <img class="is-rounded" src="@badge.FullImageUrl" alt="@(badge.ImageAltText ?? badge.Title)"
+                                 style="border:3px solid #6366f1;object-fit:cover;" />
+                        </figure>
+                        <p class="is-size-7 has-text-weight-semibold mt-1" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@badge.Title</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* Social / profile links *@
+    @if (Recipient.ProfileLinksList.Any())
+    {
+        <div class="has-text-centered mt-5">
+            <div class="buttons is-centered">
+                @foreach (var link in Recipient.ProfileLinksList.OrderBy(l => l.Order))
+                {
+                    <a href="@link.Uri" target="_blank" rel="noopener noreferrer" class="button is-outlined is-rounded">
+                        <span class="icon"><i class="@GetLinkIcon(link.Type)"></i></span>
+                        <span>@link.Label</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Recipient Recipient { get; set; } = default!;
+    [Parameter] public List<BadgeRecord> Badges { get; set; } = new();
+
+    private IEnumerable<IGrouping<string, BadgeRecord>> badgeGroups =>
+        Badges.GroupBy(b => b.Badge?.BadgeType ?? "Badge");
+
+    private string GetCategoryIcon(string category) => category switch
+    {
+        "Achievement" => "fa-trophy",
+        "Credential" => "fa-certificate",
+        "Recognition" => "fa-award",
+        "Milestone" => "fa-flag-checkered",
+        "Honor" => "fa-medal",
+        "Certification" => "fa-stamp",
+        "Distinction" => "fa-star",
+        _ => "fa-shield-alt"
+    };
+
+    private string GetLinkIcon(string type) => type switch
+    {
+        "linkedin" => "fab fa-linkedin",
+        "mastodon" => "fab fa-mastodon",
+        "github" => "fab fa-github",
+        "twitter" => "fab fa-twitter",
+        "bluesky" => "fab fa-bluesky",
+        "website" => "fas fa-globe",
+        _ => "fas fa-link"
+    };
+}

@@ -1,0 +1,93 @@
+@page "/login/recipient"
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@layout BadgeFed.Components.Layouts.MainLayout
+
+<PageTitle>Recipient Login — BadgeFed</PageTitle>
+
+<section class="section">
+    <div class="container" style="max-width:540px;">
+        <div class="has-text-centered mb-5">
+            <span class="icon is-large has-text-primary">
+                <i class="fas fa-user-shield fa-3x"></i>
+            </span>
+            <h1 class="title is-3 mt-3">Log in to your badge profile</h1>
+            <p class="subtitle is-6 has-text-grey">Choose the service linked to your badge recipient account</p>
+        </div>
+
+        <div class="box">
+            <h2 class="title is-5">
+                <span class="icon"><i class="fab fa-mastodon"></i></span>
+                <span>Mastodon</span>
+            </h2>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input class="input" type="text" @bind="mastodonServer" placeholder="mastodon.social" />
+                </div>
+                <div class="control">
+                    <button class="button is-primary" @onclick="LoginMastodon" disabled="@string.IsNullOrWhiteSpace(mastodonServer)">
+                        Login
+                    </button>
+                </div>
+            </div>
+
+            <hr />
+
+            <h2 class="title is-5">
+                <span class="icon"><i class="fas fa-server"></i></span>
+                <span>GoToSocial</span>
+            </h2>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input class="input" type="text" @bind="gotoSocialServer" placeholder="gotosocial.example.com" />
+                </div>
+                <div class="control">
+                    <button class="button is-primary" @onclick="LoginGoToSocial" disabled="@string.IsNullOrWhiteSpace(gotoSocialServer)">
+                        Login
+                    </button>
+                </div>
+            </div>
+
+            <hr />
+
+            <h2 class="title is-5">
+                <span class="icon"><i class="fab fa-linkedin"></i></span>
+                <span>LinkedIn</span>
+            </h2>
+            <button class="button is-link is-fullwidth" @onclick="LoginLinkedIn">
+                <span class="icon"><i class="fab fa-linkedin"></i></span>
+                <span>Login with LinkedIn</span>
+            </button>
+        </div>
+
+        <div class="content is-small has-text-grey has-text-centered mt-4">
+            <p>Your login is matched to your badge recipient profile by your profile URL or email address. If you have received badges under different accounts, you can link and merge them after logging in.</p>
+        </div>
+    </div>
+</section>
+
+@code {
+    private string mastodonServer = "";
+    private string gotoSocialServer = "";
+
+    private void LoginMastodon()
+    {
+        if (!string.IsNullOrWhiteSpace(mastodonServer))
+        {
+            NavigationManager.NavigateTo($"/login/recipient/mastodon/{mastodonServer.Trim()}", forceLoad: true);
+        }
+    }
+
+    private void LoginGoToSocial()
+    {
+        if (!string.IsNullOrWhiteSpace(gotoSocialServer))
+        {
+            NavigationManager.NavigateTo($"/login/recipient/gotosocial/{gotoSocialServer.Trim()}", forceLoad: true);
+        }
+    }
+
+    private void LoginLinkedIn()
+    {
+        NavigationManager.NavigateTo("/login/recipient/linkedin", forceLoad: true);
+    }
+}

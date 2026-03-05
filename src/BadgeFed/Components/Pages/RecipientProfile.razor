@@ -5,6 +5,7 @@
 @inject LocalScopedDb LocalDbService
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
@@ -467,6 +468,15 @@
             try
             {
                 decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+
+                // Check if this recipient has a profile page with a slug
+                var recipient = LocalDbService.GetRecipientByProfileUri(decodedRecipientUri);
+                if (recipient != null && !string.IsNullOrEmpty(recipient.Slug))
+                {
+                    NavigationManager.NavigateTo($"/profile/{recipient.Slug}", replace: true);
+                    return;
+                }
+
                 await LoadRecipientBadges();
             }
             catch

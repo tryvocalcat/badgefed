@@ -91,6 +91,7 @@ builder.Services.AddScoped<DatabaseMigrationService>();
 builder.Services.AddScoped<BadgeProcessor>();
 
 builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddScoped<RecipientProfileService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<OpenBadgeService>();
@@ -130,6 +131,7 @@ builder.Services.AddScoped<MastodonRegistrationService>(provider =>
     var redirectUris = new List<string>();
     foreach (var domain in domains)
     {
+        Console.WriteLine($"Adding redirect URIs for domain: {domain}");
         redirectUris.Add($"https://{domain}/signin-mastodon-dynamic");
         redirectUris.Add($"http://{domain}/signin-mastodon-dynamic");
     }
@@ -328,6 +330,7 @@ if (gotoSocialConfig != null && !string.IsNullOrEmpty(gotoSocialConfig.Server))
 }
 
 app.MapGroup("/admin").MapLoginAndLogout(loginSchemas);
+app.MapRecipientLogin();
 
 app.Run();
 
@@ -476,6 +479,70 @@ public static class MastodonOAuthExtensions
                     context.RunClaimActions(user.RootElement);
 
                     var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
+                    var gtsId = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                    var gtsProfileUrl = user.RootElement.TryGetProperty("url", out var gtsUrlProp)
+                        ? gtsUrlProp.GetString() : null;
+                    var gtsAvatarUrl = user.RootElement.TryGetProperty("avatar", out var gtsAvatarProp)
+                        ? gtsAvatarProp.GetString() : null;
+                    var gtsDisplayName = user.RootElement.TryGetProperty("display_name", out var gtsDnProp)
+                        ? gtsDnProp.GetString() : null;
+
+                    var isRecipientLogin = context.Properties.Items.ContainsKey("recipient_login");
+
+                    if (isRecipientLogin)
+                    {
+                        var recipient = localDbService.GetRecipientByProfileUri(gtsProfileUrl ?? "");
+                        if (recipient == null && !string.IsNullOrEmpty(gtsProfileUrl))
+                        {
+                            recipient = new Recipient
+                            {
+                                Name = gtsDisplayName ?? username ?? "Unknown",
+                                Email = "",
+                                ProfileUri = gtsProfileUrl,
+                                IsActivityPubActor = true,
+                                DisplayName = gtsDisplayName,
+                                AvatarPath = gtsAvatarUrl
+                            };
+                            localDbService.UpsertRecipient(recipient);
+                            recipient = localDbService.GetRecipientByProfileUri(gtsProfileUrl);
+                        }
+
+                        if (recipient != null)
+                        {
+                            if (string.IsNullOrEmpty(recipient.Slug))
+                            {
+                                recipient.Slug = localDbService.GenerateRecipientSlug(
+                                    recipient.DisplayName ?? recipient.Name);
+                                localDbService.UpdateRecipientProfile(recipient);
+                            }
+
+                            var gtsIdentity = new RecipientIdentity
+                            {
+                                RecipientId = recipient.Id,
+                                Provider = "GoToSocial",
+                                ProviderUserId = $"{hostname}_{gtsId}",
+                                ProviderUsername = username,
+                                ProviderHostname = hostname,
+                                ProviderProfileUrl = gtsProfileUrl,
+                                ProviderAvatarUrl = gtsAvatarUrl,
+                                ProviderDisplayName = gtsDisplayName,
+                                LastLoginAt = DateTime.UtcNow
+                            };
+                            localDbService.UpsertRecipientIdentity(gtsIdentity);
+
+                            context.Principal!.AddIdentity(new ClaimsIdentity(new[] {
+                                new Claim("urn:badgefed:profile_url", gtsProfileUrl ?? ""),
+                                new Claim("urn:badgefed:recipient_id", recipient.Id.ToString()),
+                                new Claim(ClaimTypes.Role, "recipient"),
+                                new Claim("urn:badgefed:group", "recipients"),
+                                new Claim(ClaimTypes.Name, username ?? ""),
+                                new Claim("urn:gotosocial:hostname", hostname)
+                            }));
+                        }
+
+                        return;
+                    }
 
                     var isAdmin = adminConfig?.AdminUsers?.Any(a =>
                         a.Type.Equals("GotoSocial", StringComparison.OrdinalIgnoreCase) &&
@@ -654,6 +721,72 @@ public static class MastodonOAuthExtensions
                     context.RunClaimActions(user.RootElement);
 
                     var username = context.Identity?.FindFirst(ClaimTypes.Name)?.Value;
+                    var mastodonId = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                    // Extract profile URL and metadata from verify_credentials
+                    var profileUrl = user.RootElement.TryGetProperty("url", out var urlProp)
+                        ? urlProp.GetString() : null;
+                    var avatarUrl = user.RootElement.TryGetProperty("avatar", out var avatarProp)
+                        ? avatarProp.GetString() : null;
+                    var displayNameValue = user.RootElement.TryGetProperty("display_name", out var dnProp)
+                        ? dnProp.GetString() : null;
+
+                    var isRecipientLogin = context.Properties.Items.ContainsKey("recipient_login");
+
+                    if (isRecipientLogin)
+                    {
+                        // Recipient login flow — match by profile URL
+                        var recipient = localDbService.GetRecipientByProfileUri(profileUrl ?? "");
+                        if (recipient == null && !string.IsNullOrEmpty(profileUrl))
+                        {
+                            recipient = new Recipient
+                            {
+                                Name = displayNameValue ?? username ?? "Unknown",
+                                Email = "",
+                                ProfileUri = profileUrl,
+                                IsActivityPubActor = true,
+                                DisplayName = displayNameValue,
+                                AvatarPath = avatarUrl
+                            };
+                            localDbService.UpsertRecipient(recipient);
+                            recipient = localDbService.GetRecipientByProfileUri(profileUrl);
+                        }
+
+                        if (recipient != null)
+                        {
+                            if (string.IsNullOrEmpty(recipient.Slug))
+                            {
+                                recipient.Slug = localDbService.GenerateRecipientSlug(
+                                    recipient.DisplayName ?? recipient.Name);
+                                localDbService.UpdateRecipientProfile(recipient);
+                            }
+
+                            var identity = new RecipientIdentity
+                            {
+                                RecipientId = recipient.Id,
+                                Provider = "Mastodon",
+                                ProviderUserId = $"{hostname}_{mastodonId}",
+                                ProviderUsername = username,
+                                ProviderHostname = hostname,
+                                ProviderProfileUrl = profileUrl,
+                                ProviderAvatarUrl = avatarUrl,
+                                ProviderDisplayName = displayNameValue,
+                                LastLoginAt = DateTime.UtcNow
+                            };
+                            localDbService.UpsertRecipientIdentity(identity);
+
+                            context.Principal!.AddIdentity(new ClaimsIdentity(new[] {
+                                new Claim("urn:badgefed:profile_url", profileUrl ?? ""),
+                                new Claim("urn:badgefed:recipient_id", recipient.Id.ToString()),
+                                new Claim(ClaimTypes.Role, "recipient"),
+                                new Claim("urn:badgefed:group", "recipients"),
+                                new Claim(ClaimTypes.Name, username ?? ""),
+                                new Claim("urn:mastodon:hostname", hostname)
+                            }));
+                        }
+
+                        return;
+                    }
 
                     // Check if this user is an admin for any Mastodon server
                     var isAdmin = adminConfig?.AdminUsers?.Any(a =>
@@ -982,6 +1115,59 @@ public static class LinkedInOAuthExtensions
                     var name = userJson.RootElement.GetProperty("name").GetString();
 
                     Console.WriteLine($"LinkedIn user: {name} {userEmail}");
+
+                    var isRecipientLogin = context.Properties.Items.ContainsKey("recipient_login");
+
+                    if (isRecipientLogin)
+                    {
+                        var recipient = localDbService.GetRecipientByEmail(userEmail ?? "");
+                        if (recipient == null && !string.IsNullOrEmpty(userEmail))
+                        {
+                            recipient = new Recipient
+                            {
+                                Name = name ?? userEmail ?? "Unknown",
+                                Email = userEmail ?? "",
+                                ProfileUri = $"https://linkedin.com/in/{userEmail}",
+                                DisplayName = name
+                            };
+                            localDbService.UpsertRecipient(recipient);
+                            recipient = localDbService.GetRecipientByEmail(userEmail ?? "");
+                        }
+
+                        if (recipient != null)
+                        {
+                            if (string.IsNullOrEmpty(recipient.Slug))
+                            {
+                                recipient.Slug = localDbService.GenerateRecipientSlug(
+                                    recipient.DisplayName ?? recipient.Name);
+                                localDbService.UpdateRecipientProfile(recipient);
+                            }
+
+                            var linkedInSub = userJson.RootElement.TryGetProperty("sub", out var subProp)
+                                ? subProp.GetString() : userEmail;
+
+                            var linkedInIdentity = new RecipientIdentity
+                            {
+                                RecipientId = recipient.Id,
+                                Provider = "LinkedIn",
+                                ProviderUserId = $"LinkedIn_{linkedInSub}",
+                                ProviderEmail = userEmail,
+                                ProviderDisplayName = name,
+                                LastLoginAt = DateTime.UtcNow
+                            };
+                            localDbService.UpsertRecipientIdentity(linkedInIdentity);
+
+                            context.Principal!.AddIdentity(new ClaimsIdentity(new[] {
+                                new Claim("urn:badgefed:recipient_id", recipient.Id.ToString()),
+                                new Claim(ClaimTypes.Role, "recipient"),
+                                new Claim("urn:badgefed:group", "recipients"),
+                                new Claim(ClaimTypes.Name, name ?? userEmail ?? ""),
+                                new Claim(ClaimTypes.Email, userEmail ?? "")
+                            }, "LinkedIn"));
+                        }
+
+                        return;
+                    }
 
                     // Check if this user is in the admin list
                     var isAdmin = adminConfig?.AdminUsers?.Any(a => 

@@ -159,6 +159,16 @@ CREATE TABLE Recipient (
     Email TEXT CHECK(length(Email) <= 100),
     ProfileUri TEXT NOT NULL UNIQUE,
     IsActivityPubActor BOOLEAN DEFAULT FALSE,
+    DisplayName TEXT,
+    Bio TEXT,
+    AvatarPath TEXT,
+    Slug TEXT UNIQUE,
+    ProfileTemplate TEXT DEFAULT 'professional',
+    Theme TEXT,
+    ProfileLinks TEXT,
+    CustomHeadline TEXT,
+    IsPublic BOOLEAN DEFAULT 1,
+    PrimaryRecipientId INTEGER REFERENCES Recipient(Id),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -169,6 +179,27 @@ FOR EACH ROW
 BEGIN
     UPDATE Recipient SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = OLD.Id;
 END;
+
+CREATE TABLE IF NOT EXISTS RecipientIdentity (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RecipientId INTEGER NOT NULL,
+    Provider TEXT NOT NULL,
+    ProviderUserId TEXT NOT NULL,
+    ProviderUsername TEXT,
+    ProviderHostname TEXT,
+    ProviderProfileUrl TEXT,
+    ProviderEmail TEXT,
+    ProviderAvatarUrl TEXT,
+    ProviderDisplayName TEXT,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    LastLoginAt DATETIME,
+    FOREIGN KEY (RecipientId) REFERENCES Recipient(Id),
+    UNIQUE(Provider, ProviderUserId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipient_identity_recipient ON RecipientIdentity(RecipientId);
+CREATE INDEX IF NOT EXISTS idx_recipient_identity_profile_url ON RecipientIdentity(ProviderProfileUrl);
+CREATE INDEX IF NOT EXISTS idx_recipient_identity_email ON RecipientIdentity(ProviderEmail);
 
 CREATE TABLE Follower (
     FollowerUri TEXT NOT NULL CHECK(length(FollowerUri) <= 300),

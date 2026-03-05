@@ -56,4 +56,26 @@ public class CurrentUser
         var role = GetRole();
         return !string.IsNullOrEmpty(role) && role.Equals("collaborator", StringComparison.OrdinalIgnoreCase) || CanManage();
     }
+
+    public long? RecipientId
+    {
+        get
+        {
+            var claim = _httpContextAccessor.HttpContext?.User?.FindFirst("urn:badgefed:recipient_id");
+            return claim != null && long.TryParse(claim.Value, out var id) ? id : null;
+        }
+    }
+
+    public string? ProfileUrl
+    {
+        get
+        {
+            return _httpContextAccessor.HttpContext?.User?.FindFirst("urn:badgefed:profile_url")?.Value;
+        }
+    }
+
+    public bool IsRecipient()
+    {
+        return GetRole() == "recipient";
+    }
 } 

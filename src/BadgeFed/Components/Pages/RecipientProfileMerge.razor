@@ -1,0 +1,122 @@
+@page "/profile/{Slug}/merge"
+@inject RecipientProfileService ProfileService
+@inject LocalScopedDb LocalDbService
+@inject CurrentUser CurrentUser
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@layout BadgeFed.Components.Layouts.MainLayout
+@attribute [Authorize(Roles = "recipient")]
+
+<PageTitle>Merge Profiles — BadgeFed</PageTitle>
+
+<section class="section">
+    <div class="container" style="max-width:720px;">
+        <h1 class="title is-3">Merge Profiles</h1>
+
+        @if (primary == null || candidate == null)
+        {
+            <div class="notification is-warning">
+                <p>No merge candidate found. You can link additional accounts from your
+                    <a href="/profile/@Slug/linked">linked accounts page</a>.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="notification is-info is-light">
+                <p>Merging will combine all badges from both profiles into one unified view. This can be undone later.</p>
+            </div>
+
+            <div class="columns">
+                <div class="column has-text-centered">
+                    <div class="box">
+                        <p class="heading">Primary Profile</p>
+                        @if (!string.IsNullOrEmpty(primary.AvatarPath))
+                        {
+                            <figure class="image is-96x96 is-inline-block mb-2">
+                                <img class="is-rounded" src="@primary.AvatarPath" alt="@primary.Name" />
+                            </figure>
+                        }
+                        <h2 class="title is-5">@(primary.DisplayName ?? primary.Name)</h2>
+                        <p class="is-size-7 has-text-grey">@primary.ProfileUri</p>
+                        <p class="mt-2">
+                            <span class="tag is-info">@primaryBadgeCount badge@(primaryBadgeCount != 1 ? "s" : "")</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="column is-narrow is-flex is-align-items-center is-justify-content-center">
+                    <span class="icon is-large has-text-grey-light">
+                        <i class="fas fa-arrows-alt-h fa-2x"></i>
+                    </span>
+                </div>
+                <div class="column has-text-centered">
+                    <div class="box">
+                        <p class="heading">Merge Candidate</p>
+                        @if (!string.IsNullOrEmpty(candidate.AvatarPath))
+                        {
+                            <figure class="image is-96x96 is-inline-block mb-2">
+                                <img class="is-rounded" src="@candidate.AvatarPath" alt="@candidate.Name" />
+                            </figure>
+                        }
+                        <h2 class="title is-5">@(candidate.DisplayName ?? candidate.Name)</h2>
+                        <p class="is-size-7 has-text-grey">@candidate.ProfileUri</p>
+                        <p class="mt-2">
+                            <span class="tag is-info">@candidateBadgeCount badge@(candidateBadgeCount != 1 ? "s" : "")</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field is-grouped is-grouped-centered mt-5">
+                <div class="control">
+                    <button class="button is-success is-medium" @onclick="ConfirmMerge">
+                        <span class="icon"><i class="fas fa-link"></i></span>
+                        <span>Merge Profiles</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <a href="/profile/@Slug" class="button is-light is-medium">Keep Separate</a>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+    [SupplyParameterFromQuery] public long? candidateId { get; set; }
+
+    private Recipient? primary;
+    private Recipient? candidate;
+    private int primaryBadgeCount;
+    private int candidateBadgeCount;
+
+    protected override void OnInitialized()
+    {
+        primary = LocalDbService.GetRecipientBySlug(Slug);
+        if (primary == null || CurrentUser.RecipientId != primary.Id)
+        {
+            NavigationManager.NavigateTo($"/profile/{Slug}", replace: true);
+            return;
+        }
+
+        if (candidateId.HasValue)
+        {
+            candidate = LocalDbService.GetRecipientById(candidateId.Value);
+        }
+
+        if (primary != null)
+            primaryBadgeCount = ProfileService.GetAggregatedBadges(primary.Id).Count;
+        if (candidate != null)
+            candidateBadgeCount = ProfileService.GetAggregatedBadges(candidate.Id).Count;
+    }
+
+    private void ConfirmMerge()
+    {
+        if (primary != null && candidate != null)
+        {
+            ProfileService.Merge(primary.Id, candidate.Id);
+            NavigationManager.NavigateTo($"/profile/{Slug}", forceLoad: true);
+        }
+    }
+}

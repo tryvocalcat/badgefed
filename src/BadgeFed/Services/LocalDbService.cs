@@ -1341,10 +1341,7 @@ public class ActorStats
         using var reader = command.ExecuteReader();
         if (reader.Read())
         {
-            recipient.Id = reader.GetInt64(0);
-            recipient.Name = reader["Name"] == DBNull.Value ? null : reader["Name"].ToString();
-            recipient.Email = reader["Email"] == DBNull.Value ? null : reader["Email"].ToString();
-            recipient.ProfileUri = reader["ProfileUri"] == DBNull.Value ? null : reader["ProfileUri"].ToString();
+            recipient = MapRecipientFromReader(reader);
         }
 
         if (string.IsNullOrEmpty(recipient.Name) && !string.IsNullOrEmpty(record.IssuedToName))
@@ -3287,5 +3284,292 @@ public class ActorStats
 
         var count = Convert.ToInt32(command.ExecuteScalar());
         return count == 0;
+    }
+
+    // ==================== Recipient Profile Methods ====================
+
+    private Recipient MapRecipientFromReader(SQLiteDataReader reader)
+    {
+        var recipient = new Recipient
+        {
+            Id = reader.GetInt64(reader.GetOrdinal("Id")),
+            Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? "" : reader.GetString(reader.GetOrdinal("Name")),
+            Email = reader.IsDBNull(reader.GetOrdinal("Email")) ? "" : reader.GetString(reader.GetOrdinal("Email")),
+            ProfileUri = reader.IsDBNull(reader.GetOrdinal("ProfileUri")) ? null : reader.GetString(reader.GetOrdinal("ProfileUri")),
+            IsActivityPubActor = !reader.IsDBNull(reader.GetOrdinal("IsActivityPubActor")) && reader.GetBoolean(reader.GetOrdinal("IsActivityPubActor"))
+        };
+
+        try { var ord = reader.GetOrdinal("DisplayName"); if (!reader.IsDBNull(ord)) recipient.DisplayName = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("Bio"); if (!reader.IsDBNull(ord)) recipient.Bio = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("AvatarPath"); if (!reader.IsDBNull(ord)) recipient.AvatarPath = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("Slug"); if (!reader.IsDBNull(ord)) recipient.Slug = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("ProfileTemplate"); if (!reader.IsDBNull(ord)) recipient.ProfileTemplate = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("Theme"); if (!reader.IsDBNull(ord)) recipient.Theme = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("ProfileLinks"); if (!reader.IsDBNull(ord)) recipient.ProfileLinks = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("CustomHeadline"); if (!reader.IsDBNull(ord)) recipient.CustomHeadline = reader.GetString(ord); } catch { }
+        try { var ord = reader.GetOrdinal("IsPublic"); if (!reader.IsDBNull(ord)) recipient.IsPublic = reader.GetBoolean(ord); } catch { }
+        try { var ord = reader.GetOrdinal("PrimaryRecipientId"); if (!reader.IsDBNull(ord)) recipient.PrimaryRecipientId = reader.GetInt64(ord); } catch { }
+
+        return recipient;
+    }
+
+    public Recipient? GetRecipientBySlug(string slug)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM Recipient WHERE Slug = @Slug", connection);
+        command.Parameters.AddWithValue("@Slug", slug);
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapRecipientFromReader(reader);
+        }
+        return null;
+    }
+
+    public Recipient? GetRecipientByProfileUri(string profileUri)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM Recipient WHERE LOWER(ProfileUri) = LOWER(@ProfileUri)", connection);
+        command.Parameters.AddWithValue("@ProfileUri", profileUri);
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapRecipientFromReader(reader);
+        }
+        return null;
+    }
+
+    public Recipient? GetRecipientByEmail(string email)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM Recipient WHERE LOWER(Email) = LOWER(@Email)", connection);
+        command.Parameters.AddWithValue("@Email", email);
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapRecipientFromReader(reader);
+        }
+        return null;
+    }
+
+    public Recipient? GetRecipientById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM Recipient WHERE Id = @Id", connection);
+        command.Parameters.AddWithValue("@Id", id);
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapRecipientFromReader(reader);
+        }
+        return null;
+    }
+
+    public List<Recipient> GetLinkedRecipients(long recipientId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var findPrimaryCmd = new SQLiteCommand(
+            "SELECT COALESCE(PrimaryRecipientId, Id) FROM Recipient WHERE Id = @Id", connection);
+        findPrimaryCmd.Parameters.AddWithValue("@Id", recipientId);
+        var primaryId = (long?)findPrimaryCmd.ExecuteScalar() ?? recipientId;
+
+        var command = new SQLiteCommand(
+            "SELECT * FROM Recipient WHERE Id = @PrimaryId OR PrimaryRecipientId = @PrimaryId",
+            connection);
+        command.Parameters.AddWithValue("@PrimaryId", primaryId);
+        var results = new List<Recipient>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            results.Add(MapRecipientFromReader(reader));
+        }
+        return results;
+    }
+
+    public void UpdateRecipientProfile(Recipient recipient)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var sql = @"
+            UPDATE Recipient SET
+                DisplayName = @DisplayName,
+                Bio = @Bio,
+                AvatarPath = @AvatarPath,
+                Slug = @Slug,
+                ProfileTemplate = @ProfileTemplate,
+                Theme = @Theme,
+                ProfileLinks = @ProfileLinks,
+                CustomHeadline = @CustomHeadline,
+                IsPublic = @IsPublic,
+                UpdatedAt = CURRENT_TIMESTAMP
+            WHERE Id = @Id";
+        var command = new SQLiteCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("@Id", recipient.Id);
+        command.Parameters.AddWithValue("@DisplayName", (object?)recipient.DisplayName ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Bio", (object?)recipient.Bio ?? DBNull.Value);
+        command.Parameters.AddWithValue("@AvatarPath", (object?)recipient.AvatarPath ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Slug", (object?)recipient.Slug ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProfileTemplate", recipient.ProfileTemplate);
+        command.Parameters.AddWithValue("@Theme", (object?)recipient.Theme ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProfileLinks", (object?)recipient.ProfileLinks ?? DBNull.Value);
+        command.Parameters.AddWithValue("@CustomHeadline", (object?)recipient.CustomHeadline ?? DBNull.Value);
+        command.Parameters.AddWithValue("@IsPublic", recipient.IsPublic);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public string GenerateRecipientSlug(string name)
+    {
+        var slug = System.Text.RegularExpressions.Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrEmpty(slug)) slug = "profile";
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var baseSlug = slug;
+        var counter = 1;
+        while (true)
+        {
+            var checkCmd = new SQLiteCommand(
+                "SELECT COUNT(*) FROM Recipient WHERE Slug = @Slug", connection);
+            checkCmd.Parameters.AddWithValue("@Slug", slug);
+            var count = (long)checkCmd.ExecuteScalar();
+            if (count == 0) break;
+            slug = $"{baseSlug}-{counter}";
+            counter++;
+        }
+        return slug;
+    }
+
+    // ==================== RecipientIdentity Methods ====================
+
+    public void UpsertRecipientIdentity(RecipientIdentity identity)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var sql = @"
+            INSERT INTO RecipientIdentity
+                (RecipientId, Provider, ProviderUserId, ProviderUsername, ProviderHostname,
+                 ProviderProfileUrl, ProviderEmail, ProviderAvatarUrl, ProviderDisplayName,
+                 CreatedAt, LastLoginAt)
+            VALUES
+                (@RecipientId, @Provider, @ProviderUserId, @ProviderUsername, @ProviderHostname,
+                 @ProviderProfileUrl, @ProviderEmail, @ProviderAvatarUrl, @ProviderDisplayName,
+                 CURRENT_TIMESTAMP, @LastLoginAt)
+            ON CONFLICT(Provider, ProviderUserId) DO UPDATE SET
+                ProviderUsername = excluded.ProviderUsername,
+                ProviderHostname = excluded.ProviderHostname,
+                ProviderProfileUrl = excluded.ProviderProfileUrl,
+                ProviderEmail = excluded.ProviderEmail,
+                ProviderAvatarUrl = excluded.ProviderAvatarUrl,
+                ProviderDisplayName = excluded.ProviderDisplayName,
+                LastLoginAt = excluded.LastLoginAt";
+        var command = new SQLiteCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("@RecipientId", identity.RecipientId);
+        command.Parameters.AddWithValue("@Provider", identity.Provider);
+        command.Parameters.AddWithValue("@ProviderUserId", identity.ProviderUserId);
+        command.Parameters.AddWithValue("@ProviderUsername", (object?)identity.ProviderUsername ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProviderHostname", (object?)identity.ProviderHostname ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProviderProfileUrl", (object?)identity.ProviderProfileUrl ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProviderEmail", (object?)identity.ProviderEmail ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProviderAvatarUrl", (object?)identity.ProviderAvatarUrl ?? DBNull.Value);
+        command.Parameters.AddWithValue("@ProviderDisplayName", (object?)identity.ProviderDisplayName ?? DBNull.Value);
+        command.Parameters.AddWithValue("@LastLoginAt", (object?)identity.LastLoginAt ?? DBNull.Value);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public RecipientIdentity? GetRecipientIdentityByProvider(string provider, string providerUserId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM RecipientIdentity WHERE Provider = @Provider AND ProviderUserId = @ProviderUserId",
+            connection);
+        command.Parameters.AddWithValue("@Provider", provider);
+        command.Parameters.AddWithValue("@ProviderUserId", providerUserId);
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapRecipientIdentityFromReader(reader);
+        }
+        return null;
+    }
+
+    public List<RecipientIdentity> GetRecipientIdentitiesByRecipientId(long recipientId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        var command = new SQLiteCommand(
+            "SELECT * FROM RecipientIdentity WHERE RecipientId = @RecipientId ORDER BY CreatedAt",
+            connection);
+        command.Parameters.AddWithValue("@RecipientId", recipientId);
+        var results = new List<RecipientIdentity>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            results.Add(MapRecipientIdentityFromReader(reader));
+        }
+        return results;
+    }
+
+    private RecipientIdentity MapRecipientIdentityFromReader(SQLiteDataReader reader)
+    {
+        return new RecipientIdentity
+        {
+            Id = reader.GetInt64(reader.GetOrdinal("Id")),
+            RecipientId = reader.GetInt64(reader.GetOrdinal("RecipientId")),
+            Provider = reader.GetString(reader.GetOrdinal("Provider")),
+            ProviderUserId = reader.GetString(reader.GetOrdinal("ProviderUserId")),
+            ProviderUsername = reader.IsDBNull(reader.GetOrdinal("ProviderUsername")) ? null : reader.GetString(reader.GetOrdinal("ProviderUsername")),
+            ProviderHostname = reader.IsDBNull(reader.GetOrdinal("ProviderHostname")) ? null : reader.GetString(reader.GetOrdinal("ProviderHostname")),
+            ProviderProfileUrl = reader.IsDBNull(reader.GetOrdinal("ProviderProfileUrl")) ? null : reader.GetString(reader.GetOrdinal("ProviderProfileUrl")),
+            ProviderEmail = reader.IsDBNull(reader.GetOrdinal("ProviderEmail")) ? null : reader.GetString(reader.GetOrdinal("ProviderEmail")),
+            ProviderAvatarUrl = reader.IsDBNull(reader.GetOrdinal("ProviderAvatarUrl")) ? null : reader.GetString(reader.GetOrdinal("ProviderAvatarUrl")),
+            ProviderDisplayName = reader.IsDBNull(reader.GetOrdinal("ProviderDisplayName")) ? null : reader.GetString(reader.GetOrdinal("ProviderDisplayName")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+            LastLoginAt = reader.IsDBNull(reader.GetOrdinal("LastLoginAt")) ? null : reader.GetDateTime(reader.GetOrdinal("LastLoginAt"))
+        };
+    }
+
+    // ==================== Profile Merge Methods ====================
+
+    public void MergeRecipients(long primaryId, long secondaryId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var command = new SQLiteCommand(
+            "UPDATE Recipient SET PrimaryRecipientId = @PrimaryId, UpdatedAt = CURRENT_TIMESTAMP WHERE Id = @SecondaryId",
+            connection, transaction);
+        command.Parameters.AddWithValue("@PrimaryId", primaryId);
+        command.Parameters.AddWithValue("@SecondaryId", secondaryId);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public void UnmergeRecipient(long secondaryId)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var command = new SQLiteCommand(
+            "UPDATE Recipient SET PrimaryRecipientId = NULL, UpdatedAt = CURRENT_TIMESTAMP WHERE Id = @SecondaryId",
+            connection, transaction);
+        command.Parameters.AddWithValue("@SecondaryId", secondaryId);
+        command.ExecuteNonQuery();
+        transaction.Commit();
     }
 }

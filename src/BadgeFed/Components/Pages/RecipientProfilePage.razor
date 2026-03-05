@@ -1,0 +1,89 @@
+@page "/profile/{Slug}"
+@using BadgeFed.Components.Pages.Templates
+@inject RecipientProfileService ProfileService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ICustomAssetPathService CustomAssetPathService
+@inject CurrentUser CurrentUser
+@layout BadgeFed.Components.Layouts.MainLayout
+
+@if (!string.IsNullOrEmpty(themeCssPath))
+{
+    <link rel="stylesheet" href="@themeCssPath" />
+}
+@if (!string.IsNullOrEmpty(templateCssPath))
+{
+    <link rel="stylesheet" href="@templateCssPath" />
+}
+
+@if (recipient == null)
+{
+    <section class="section">
+        <div class="container has-text-centered">
+            <h1 class="title is-3">Profile Not Found</h1>
+            <p class="subtitle">The profile you're looking for doesn't exist or is not public.</p>
+        </div>
+    </section>
+}
+else
+{
+    <PageTitle>@(recipient.DisplayName ?? recipient.Name) — BadgeFed Profile</PageTitle>
+
+    <section class="section">
+        <div class="container">
+            @if (CurrentUser.RecipientId == recipient.Id)
+            {
+                <div class="has-text-right mb-4">
+                    <a href="/profile/@Slug/edit" class="button is-small is-outlined is-info">
+                        <span class="icon"><i class="fas fa-edit"></i></span>
+                        <span>Edit Profile</span>
+                    </a>
+                </div>
+            }
+
+            @switch (recipient.ProfileTemplate)
+            {
+                case "gamification":
+                    <GamificationTemplate Recipient="recipient" Badges="badges" />
+                    break;
+                case "professional":
+                    <ProfessionalTemplate Recipient="recipient" Badges="badges" />
+                    break;
+                default:
+                    <MinimalTemplate Recipient="recipient" Badges="badges" />
+                    break;
+            }
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private Recipient? recipient;
+    private List<BadgeRecord> badges = new();
+    private string? themeCssPath;
+    private string? templateCssPath;
+
+    protected override void OnInitialized()
+    {
+        var (r, b) = ProfileService.GetProfileBySlug(Slug);
+        recipient = r;
+        badges = b;
+
+        if (recipient != null)
+        {
+            if (!recipient.IsPublic && CurrentUser.RecipientId != recipient.Id)
+            {
+                recipient = null;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(recipient.Theme))
+            {
+                themeCssPath = CustomAssetPathService.GetThemeUrl(recipient.Theme);
+            }
+
+            templateCssPath = $"/css/templates/{recipient.ProfileTemplate}.css";
+        }
+    }
+}

@@ -125,4 +125,33 @@ internal static class LoginLogoutEndpointRouteBuilderExtensions
 
         return new AuthenticationProperties { RedirectUri = returnUrl };
     }
+
+    internal static IEndpointRouteBuilder MapRecipientLogin(this IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup("/login/recipient");
+
+        group.MapGet("/mastodon/{server}", (string server, string? returnUrl) =>
+        {
+            var authProps = GetAuthProperties(returnUrl ?? "/");
+            authProps.Items["mastodon_server"] = server;
+            authProps.Items["recipient_login"] = "true";
+            return TypedResults.Challenge(authProps, new[] { "DynamicMastodon" });
+        }).AllowAnonymous();
+
+        group.MapGet("/linkedin", (string? returnUrl) =>
+        {
+            var authProps = GetAuthProperties(returnUrl ?? "/");
+            authProps.Items["recipient_login"] = "true";
+            return TypedResults.Challenge(authProps, new[] { "LinkedIn" });
+        }).AllowAnonymous();
+
+        group.MapGet("/gotosocial/{server}", (string server, string? returnUrl) =>
+        {
+            var authProps = GetAuthProperties(returnUrl ?? "/");
+            authProps.Items["recipient_login"] = "true";
+            return TypedResults.Challenge(authProps, new[] { server });
+        }).AllowAnonymous();
+
+        return endpoints;
+    }
 }

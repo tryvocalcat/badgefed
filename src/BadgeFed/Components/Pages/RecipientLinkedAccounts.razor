@@ -1,0 +1,146 @@
+@page "/profile/{Slug}/linked"
+@inject RecipientProfileService ProfileService
+@inject LocalScopedDb LocalDbService
+@inject CurrentUser CurrentUser
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@layout BadgeFed.Components.Layouts.MainLayout
+@attribute [Authorize(Roles = "recipient")]
+
+<PageTitle>Linked Accounts — BadgeFed</PageTitle>
+
+<section class="section">
+    <div class="container" style="max-width:720px;">
+        <h1 class="title is-3">Linked Accounts</h1>
+        <p class="subtitle is-6 has-text-grey">Manage your connected OAuth accounts and merged profiles</p>
+
+        @if (recipient == null)
+        {
+            <div class="notification is-warning">Profile not found.</div>
+        }
+        else
+        {
+            <div class="box">
+                <h2 class="title is-5 mb-3">Connected Accounts</h2>
+                @if (identities.Any())
+                {
+                    <table class="table is-fullwidth is-hoverable">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Username / Email</th>
+                                <th>Server</th>
+                                <th>Last Login</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var id in identities)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="icon"><i class="@GetProviderIcon(id.Provider)"></i></span>
+                                        @id.Provider
+                                    </td>
+                                    <td>@(id.ProviderUsername ?? id.ProviderEmail ?? "—")</td>
+                                    <td>@(id.ProviderHostname ?? "—")</td>
+                                    <td>@(id.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="has-text-grey">No linked accounts yet.</p>
+                }
+            </div>
+
+            <div class="box">
+                <h2 class="title is-5 mb-3">Link Another Account</h2>
+                <p class="mb-3 is-size-7 has-text-grey">Linking a new account lets you merge badges awarded to different identities.</p>
+                <div class="buttons">
+                    <a href="/login/recipient" class="button is-info is-outlined">
+                        <span class="icon"><i class="fas fa-plus"></i></span>
+                        <span>Link Account</span>
+                    </a>
+                </div>
+            </div>
+
+            @if (mergedProfiles.Count > 1)
+            {
+                <div class="box">
+                    <h2 class="title is-5 mb-3">Merged Profiles</h2>
+                    @foreach (var profile in mergedProfiles.Where(p => p.Id != recipient.Id))
+                    {
+                        <div class="level">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <div>
+                                        <p class="has-text-weight-semibold">@(profile.DisplayName ?? profile.Name)</p>
+                                        <p class="is-size-7 has-text-grey">@profile.ProfileUri</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="level-right">
+                                <div class="level-item">
+                                    <button class="button is-small is-warning is-outlined" @onclick="() => UnmergeProfile(profile.Id)">
+                                        <span class="icon"><i class="fas fa-unlink"></i></span>
+                                        <span>Unmerge</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="mt-4">
+                <a href="/profile/@Slug" class="button is-light">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Back to Profile</span>
+                </a>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private Recipient? recipient;
+    private List<RecipientIdentity> identities = new();
+    private List<Recipient> mergedProfiles = new();
+
+    protected override void OnInitialized()
+    {
+        recipient = LocalDbService.GetRecipientBySlug(Slug);
+        if (recipient == null || CurrentUser.RecipientId != recipient.Id)
+        {
+            NavigationManager.NavigateTo($"/profile/{Slug}", replace: true);
+            return;
+        }
+
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        if (recipient == null) return;
+        identities = ProfileService.GetLinkedAccounts(recipient.Id);
+        mergedProfiles = LocalDbService.GetLinkedRecipients(recipient.Id);
+    }
+
+    private void UnmergeProfile(long secondaryId)
+    {
+        ProfileService.Unmerge(secondaryId);
+        LoadData();
+    }
+
+    private string GetProviderIcon(string provider) => provider switch
+    {
+        "Mastodon" => "fab fa-mastodon",
+        "GoToSocial" => "fas fa-server",
+        "LinkedIn" => "fab fa-linkedin",
+        _ => "fas fa-user"
+    };
+}

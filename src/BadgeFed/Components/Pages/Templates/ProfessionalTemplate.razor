@@ -1,0 +1,95 @@
+<div class="professional-profile" style="max-width:640px;margin:0 auto;">
+    <div class="has-text-centered mb-5">
+        @if (!string.IsNullOrEmpty(Recipient.AvatarPath))
+        {
+            <figure class="image is-128x128 is-inline-block">
+                <img class="is-rounded" src="@Recipient.AvatarPath" alt="@(Recipient.DisplayName ?? Recipient.Name)"
+                     style="box-shadow:0 4px 14px rgba(0,0,0,0.1);" />
+            </figure>
+        }
+        else
+        {
+            <div class="avatar-placeholder is-inline-flex is-align-items-center is-justify-content-center" style="width:128px;height:128px;border-radius:50%;background:#4f46e5;color:white;font-size:3rem;margin:0 auto;">
+                @((Recipient.DisplayName ?? Recipient.Name).Substring(0, 1).ToUpper())
+            </div>
+        }
+        <h1 class="title is-3 mt-3">@(Recipient.DisplayName ?? Recipient.Name)</h1>
+        @if (!string.IsNullOrEmpty(Recipient.CustomHeadline))
+        {
+            <p class="subtitle is-5 has-text-grey">@Recipient.CustomHeadline</p>
+        }
+        @if (!string.IsNullOrEmpty(Recipient.Bio))
+        {
+            <p class="content">@Recipient.Bio</p>
+        }
+    </div>
+
+    @* Profile links as full-width buttons *@
+    @if (Recipient.ProfileLinksList.Any())
+    {
+        <div class="mb-5">
+            @foreach (var link in Recipient.ProfileLinksList.OrderBy(l => l.Order))
+            {
+                <a href="@link.Uri" target="_blank" rel="noopener noreferrer"
+                   class="button is-fullwidth is-rounded is-medium mb-3" style="border:2px solid #e2e8f0;">
+                    <span class="icon"><i class="@GetLinkIcon(link.Type)"></i></span>
+                    <span>@link.Label</span>
+                </a>
+            }
+        </div>
+    }
+
+    @* Credentials section *@
+    @if (Badges.Any())
+    {
+        <h2 class="title is-4 mt-5 mb-4">Credentials & Badges</h2>
+        @foreach (var badge in Badges)
+        {
+            <div class="box mb-3">
+                <article class="media">
+                    <div class="media-left">
+                        <figure class="image is-64x64">
+                            <img src="@badge.FullImageUrl" alt="@(badge.ImageAltText ?? badge.Title)" style="object-fit:contain;" />
+                        </figure>
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-5 mb-1">
+                            @badge.Title
+                            @if (!string.IsNullOrEmpty(badge.FingerPrint))
+                            {
+                                <span class="icon has-text-success ml-1" title="Verified credential">
+                                    <i class="fas fa-shield-alt"></i>
+                                </span>
+                            }
+                        </p>
+                        @if (badge.Actor != null)
+                        {
+                            <p class="subtitle is-6 has-text-grey mb-1">Issued by @badge.Actor.FullName</p>
+                        }
+                        <p class="is-size-7 has-text-grey">@badge.IssuedOn.ToString("MMMM d, yyyy")</p>
+                        @if (!string.IsNullOrEmpty(badge.Description))
+                        {
+                            <p class="content is-small mt-2">@badge.Description</p>
+                        }
+                    </div>
+                </article>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Recipient Recipient { get; set; } = default!;
+    [Parameter] public List<BadgeRecord> Badges { get; set; } = new();
+
+    private string GetLinkIcon(string type) => type switch
+    {
+        "linkedin" => "fab fa-linkedin",
+        "mastodon" => "fab fa-mastodon",
+        "github" => "fab fa-github",
+        "twitter" => "fab fa-twitter",
+        "bluesky" => "fab fa-bluesky",
+        "website" => "fas fa-globe",
+        _ => "fas fa-link"
+    };
+}
