@@ -1,0 +1,236 @@
+@page "/admin/complete-registration"
+
+@using BadgeFed.Models
+@using Microsoft.AspNetCore.Authorization
+
+@inject NavigationManager NavigationManager
+@inject LocalScopedDb LocalDbService
+@inject CurrentUser CurrentUser
+@inject IHttpContextAccessor HttpContextAccessor
+
+@layout BadgeFed.Components.Layouts.MinimalLayout
+
+@attribute [Authorize(Roles = "admin, manager, collaborator, user")]
+@rendermode InteractiveServer
+
+<section class="section registration-section">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-5">
+                <div class="box registration-box">
+                    <div class="has-text-centered mb-5">
+                        <span class="icon is-large has-text-primary">
+                            <i class="fas fa-building fa-2x"></i>
+                        </span>
+                        <h2 class="title is-4 mt-3">Set Up Your Workspace</h2>
+                        <p class="has-text-grey">
+                            Welcome to BadgeFed! To get started, please provide a name for your workspace. 
+                            This is typically your company or organization name.
+                        </p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="notification is-danger is-light">
+                            <span class="icon"><i class="fas fa-exclamation-circle"></i></span>
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="field">
+                        <label class="label">Workspace Name</label>
+                        <div class="control has-icons-left">
+                            <input class="input is-medium" 
+                                   type="text" 
+                                   placeholder="e.g. Acme Corp, My Organization" 
+                                   @bind="workspaceName"
+                                   @bind:event="oninput"
+                                   maxlength="100" />
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-briefcase"></i>
+                            </span>
+                        </div>
+                        <p class="help">
+                            This will be the name of your workspace where you manage issuers, badges and grants. You can change it later.
+                        </p>
+                    </div>
+
+                    <div class="field mt-5">
+                        <div class="control">
+                            <button class="button is-primary is-fullwidth is-medium" 
+                                    @onclick="HandleSubmit"
+                                    disabled="@(string.IsNullOrWhiteSpace(workspaceName) || isSubmitting)">
+                                @if (isSubmitting)
+                                {
+                                    <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                                    <span>Creating workspace...</span>
+                                }
+                                else
+                                {
+                                    <span class="icon"><i class="fas fa-arrow-right"></i></span>
+                                    <span>Continue</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .registration-section {
+        min-height: calc(100vh - 8rem);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    .registration-box {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 3rem 2.5rem;
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+        animation: slideUp 0.5s ease-out;
+    }
+
+    .registration-box .title {
+        color: #1a1a2e;
+        font-weight: 700;
+    }
+
+    .registration-box .button {
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    .registration-box .button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .registration-box .input {
+        border-radius: 12px;
+        border: 2px solid #e1e4e8;
+        transition: border-color 0.2s ease;
+    }
+
+    .registration-box .input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private string workspaceName = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting = false;
+    private string? cachedUserId;
+
+    protected override void OnInitialized()
+    {
+        // HttpContext is only available during prerendering (SSR), not during
+        // the interactive SignalR circuit. Skip redirect checks in interactive
+        // mode — the [Authorize] attribute already handles authentication.
+        if (HttpContextAccessor.HttpContext is null)
+            return;
+
+        if (!CurrentUser.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/admin/login", forceLoad: true);
+            return;
+        }
+
+        // Cache user identity while HttpContext is still available (prerender).
+        // During the interactive SignalR circuit HttpContext is null, so
+        // CurrentUser properties won't work.
+        cachedUserId = CurrentUser.UserId;
+
+        // If user already has a real group, redirect to admin
+        var groupId = CurrentUser.GetGroupId();
+        if (groupId != OpenRegistrationHelper.PendingRegistrationGroupId)
+        {
+            NavigationManager.NavigateTo("/admin/", forceLoad: true);
+            return;
+        }
+    }
+
+    private void HandleSubmit()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(workspaceName))
+        {
+            errorMessage = "Please enter a workspace name.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var userId = cachedUserId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                errorMessage = "Unable to identify your account. Please log in again.";
+                isSubmitting = false;
+                return;
+            }
+
+            var user = LocalDbService.GetUserById(userId);
+            if (user == null)
+            {
+                errorMessage = "User account not found. Please log in again.";
+                isSubmitting = false;
+                return;
+            }
+
+            // Create the workspace group
+            var groupId = Guid.NewGuid().ToString();
+            var userGroup = new UserGroup
+            {
+                Id = groupId,
+                Name = workspaceName.Trim(),
+                Description = $"Workspace for {user.GivenName} {user.Surname}".Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+            LocalDbService.UpsertUserGroup(userGroup);
+
+            // Update user to point to the new group
+            user.GroupId = groupId;
+            LocalDbService.UpsertUser(user);
+
+            Console.WriteLine($"[OpenRegistration] User {userId} completed registration with workspace '{workspaceName.Trim()}' (group {groupId})");
+
+            // Force a full reload so the auth cookie gets refreshed on next login
+            // The user will need to re-login to pick up the new group claim
+            NavigationManager.NavigateTo("/admin/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenRegistration] Error completing registration: {ex.Message}");
+            errorMessage = "An error occurred while creating your workspace. Please try again.";
+            isSubmitting = false;
+        }
+    }
+}
