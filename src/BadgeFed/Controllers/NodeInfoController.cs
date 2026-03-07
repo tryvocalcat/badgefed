@@ -25,7 +25,7 @@ namespace BadgeFed.Controllers
         [ResponseCache(Duration = 172800)]
         public IActionResult GetNodeInfo()
         {
-            var cacheKey = $"nodeinfo_2.1_{Request.Host.Value}";
+            var cacheKey = $"nodeinfo_2.1_{Request.Host.Host}";
 
             if (_cache.TryGetValue(cacheKey, out object? cached))
             {
@@ -45,7 +45,7 @@ namespace BadgeFed.Controllers
             var instanceStats = _localDbService.GetInstanceStats();
 
             var mainActor = _localDbService.GetMainActor();
-            var domain = Request.Host.Value;
+            var domain = Request.Host.Host;
             var staffAccounts = mainActor != null
                 ? new[] { $"https://{mainActor.Domain}/actors/{mainActor.Domain}/{mainActor.Username}" }
                 : Array.Empty<string>();

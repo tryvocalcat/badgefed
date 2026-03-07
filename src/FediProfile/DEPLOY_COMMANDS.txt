@@ -1,0 +1,34 @@
+# Quick Azure Deployment Commands - FediProfile
+# Note: Resource group and app service plan already exist
+
+# SET YOUR VARIABLES
+$ResourceGroup = "rg-badgefed"
+$AppServicePlan = "ASP-rgvocalfox-b5a4"
+$WebAppName = "fediprofile-app"  # MUST BE GLOBALLY UNIQUE!
+
+# SKIP: Resource group and app service plan are already created
+
+# 1. CREATE WEB APP
+az webapp create --name $WebAppName --resource-group $ResourceGroup --plan $AppServicePlan --runtime "DOTNET:9.0"
+
+# 2. CONFIGURE SETTINGS
+az webapp config appsettings set --name $WebAppName --resource-group $ResourceGroup --settings Actor__Username="profile" Actor__Domain="$WebAppName.azurewebsites.net" Actor__Bio="A FediProfile instance on Azure" UI__Theme="theme-classic.css" Data__SqlitePath="/home/site/data/fediprofile.db" WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
+
+# 3. BUILD AND PUBLISH
+cd c:\Users\mahop\repos\badgefed\src\FediProfile
+dotnet publish --configuration Release --output ./publish
+
+# 4. CREATE ZIP
+Compress-Archive -Path "./publish/*" -DestinationPath "./deploy.zip" -Force
+
+# 5. DEPLOY
+az webapp deploy --name $WebAppName --resource-group $ResourceGroup --src-path ./deploy.zip --type zip
+
+# 6. RESTART
+az webapp restart --name $WebAppName --resource-group $ResourceGroup
+
+# 7. VIEW LOGS
+az webapp log tail --name $WebAppName --resource-group $ResourceGroup
+
+# 8. OPEN IN BROWSER
+Start-Process "https://$WebAppName.azurewebsites.net"

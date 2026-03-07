@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FediProfile</title>
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <style>
+      .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 0 auto 1rem;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img id="profile-avatar" class="profile-avatar" alt="" style="display:none" />
+      <h1 id="profile-name">Loading...</h1>
+      <p class="subtitle" id="profile-bio"></p>
+      
+      <div id="profile-container">
+        <p>Loading your profile...</p>
+      </div>
+
+      <div class="info-section">
+        <p class="fedi-handle">Follow me in the fediverse: <strong id="fedi-address"></strong> <button id="copy-fedi" class="copy-btn" title="Copy to clipboard">📋</button></p>
+        <p class="fedi-note">This is a read-only profile &mdash; it doesn&rsquo;t post or reply. It boosts and relays content from linked accounts.</p>
+      </div>
+
+      <div class="info-section">
+        <p>Powered by <a href="/">FediProfile</a> &mdash; <a href="/login">Create your own</a></p>
+      </div>
+    </main>
+
+    <script src="/assets/profile.js"></script>
+  </body>
+</html>

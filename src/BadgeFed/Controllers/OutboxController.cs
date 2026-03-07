@@ -25,7 +25,7 @@ namespace BadgeFed.Controllers
 
         [HttpGet]
         [Route("outbox")]
-        public IActionResult GetDomainOutbox([FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null)
+        public IActionResult GetDomainOutbox([FromQuery] bool page = false, [FromQuery(Name = "max_id")] string? maxId = null, [FromQuery(Name = "min_id")] string? minId = null)
         {
             _logger.LogInformation("[{RequestHost}] Domain outbox request - page: {Page}, maxId: {MaxId}, minId: {MinId}", Request.Host, page, maxId, minId);
             
@@ -38,11 +38,19 @@ namespace BadgeFed.Controllers
             }
 
             var domain = Request.Host.Host;
+            var mainActor = _localDbService.GetMainActor();
+
+            if (mainActor == null)
+            {
+                _logger.LogWarning("[{RequestHost}] Main actor (relaybot) not found for domain outbox", Request.Host);
+                return NotFound("Main actor not configured for this domain");
+            }
+
             var baseOutboxUrl = $"https://{domain}/outbox";
 
             if (!page)
             {
-                // Return the main OrderedCollection for the entire domain
+                // Return the main OrderedCollection for the entire domain (relaybot's outbox)
                 var totalItems = GetTotalGrantsForDomain();
                 
                 _logger.LogInformation("[{RequestHost}] Returning domain outbox main collection with {TotalItems} items", Request.Host, totalItems);
@@ -52,16 +60,10 @@ namespace BadgeFed.Controllers
                     Context = "https://www.w3.org/ns/activitystreams",
                     Id = baseOutboxUrl,
                     Type = "OrderedCollection", 
-                    TotalItems = totalItems
+                    TotalItems = totalItems,
+                    First = $"{baseOutboxUrl}?page=true",
+                    Last = $"{baseOutboxUrl}?min_id=0&page=true"
                 };
-
-                if (totalItems > 0)
-                {
-                    outboxCollection.OrderedItems = new List<dynamic> 
-                    { 
-                        $"{baseOutboxUrl}?page=true" 
-                    };
-                }
 
                 return new JsonResult(outboxCollection)
                 {
@@ -70,7 +72,7 @@ namespace BadgeFed.Controllers
             }
             else
             {
-                // Return a page of ordered items for the entire domain
+                // Return a page of Announce activities for all grants (relaybot announces everything)
                 const int pageSize = 20;
                 var grants = GetGrantsForDomain(maxId, minId, pageSize);
                 
@@ -78,12 +80,8 @@ namespace BadgeFed.Controllers
                 
                 foreach (var grant in grants)
                 {
-                    var actor = grant.Actor ?? _localDbService.GetActorByUri(grant.IssuedBy);
-                    if (actor != null)
-                    {
-                        var createActivity = CreateBadgeGrantActivity(grant, actor);
-                        orderedItems.Add(createActivity);
-                    }
+                    var announceActivity = CreateBadgeAnnounceActivity(grant, mainActor);
+                    orderedItems.Add(announceActivity);
                 }
 
                 var collectionPage = new ActivityPubOrderedCollectionPage
@@ -125,7 +123,7 @@ namespace BadgeFed.Controllers
 
         [HttpGet]
         [Route("actors/{domain}/{actorName}/outbox")]
-        public IActionResult GetActorOutbox(string domain, string actorName, [FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null)
+        public IActionResult GetActorOutbox(string domain, string actorName, [FromQuery] bool page = false, [FromQuery(Name = "max_id")] string? maxId = null, [FromQuery(Name = "min_id")] string? minId = null)
         {
             _logger.LogInformation("[{RequestHost}] Actor outbox request for {ActorName}@{Domain} - page: {Page}, maxId: {MaxId}, minId: {MinId}", Request.Host, actorName, domain, page, maxId, minId);
             
@@ -146,29 +144,26 @@ namespace BadgeFed.Controllers
             }
 
             var baseOutboxUrl = $"https://{domain}/actors/{domain}/{actorName}/outbox";
+            var isRelayBot = actor.IsMain;
 
             if (!page)
             {
-                // Return the main OrderedCollection
-                var totalItems = GetTotalGrantsForActor(actor.Uri.ToString());
+                // For relaybot: count ALL grants; for regular issuers: count only their grants
+                var totalItems = isRelayBot 
+                    ? GetTotalGrantsForDomain() 
+                    : GetTotalGrantsForActor(actor.Uri.ToString());
                 
-                _logger.LogInformation("[{RequestHost}] Returning actor outbox main collection for {ActorName}@{Domain} with {TotalItems} items", Request.Host, actorName, domain, totalItems);
+                _logger.LogInformation("[{RequestHost}] Returning actor outbox main collection for {ActorName}@{Domain} with {TotalItems} items (isRelayBot: {IsRelayBot})", Request.Host, actorName, domain, totalItems, isRelayBot);
                 
                 var outboxCollection = new ActivityPubCollection
                 {
                     Context = "https://www.w3.org/ns/activitystreams",
                     Id = baseOutboxUrl,
                     Type = "OrderedCollection", 
-                    TotalItems = totalItems
+                    TotalItems = totalItems,
+                    First = $"{baseOutboxUrl}?page=true",
+                    Last = $"{baseOutboxUrl}?min_id=0&page=true"
                 };
-
-                if (totalItems > 0)
-                {
-                    outboxCollection.OrderedItems = new List<dynamic> 
-                    { 
-                        $"{baseOutboxUrl}?page=true" 
-                    };
-                }
 
                 return new JsonResult(outboxCollection)
                 {
@@ -177,16 +172,29 @@ namespace BadgeFed.Controllers
             }
             else
             {
-                // Return a page of ordered items
                 const int pageSize = 20;
-                var grants = GetGrantsForActor(actor.Uri.ToString(), maxId, minId, pageSize);
+
+                // For relaybot: get ALL grants; for regular issuers: get only their grants
+                var grants = isRelayBot
+                    ? GetGrantsForDomain(maxId, minId, pageSize)
+                    : GetGrantsForActor(actor.Uri.ToString(), maxId, minId, pageSize);
                 
                 var orderedItems = new List<object>();
                 
                 foreach (var grant in grants)
                 {
-                    var createActivity = CreateBadgeGrantActivity(grant, actor);
-                    orderedItems.Add(createActivity);
+                    if (isRelayBot)
+                    {
+                        // Relaybot announces all grants
+                        var announceActivity = CreateBadgeAnnounceActivity(grant, actor);
+                        orderedItems.Add(announceActivity);
+                    }
+                    else
+                    {
+                        // Regular issuers create their own grants
+                        var createActivity = CreateBadgeGrantActivity(grant, actor);
+                        orderedItems.Add(createActivity);
+                    }
                 }
 
                 var collectionPage = new ActivityPubOrderedCollectionPage
@@ -204,22 +212,37 @@ namespace BadgeFed.Controllers
                     var firstGrant = grants.First();
                     var lastGrant = grants.Last();
                     
-                    // Check if there are newer items
-                    var hasNewer = HasNewerGrants(actor.Uri.ToString(), firstGrant.Id);
-                    if (hasNewer)
+                    if (isRelayBot)
                     {
-                        collectionPage.Prev = $"{baseOutboxUrl}?page=true&min_id={firstGrant.Id}";
+                        var hasNewer = HasNewerGrantsForDomain(firstGrant.Id);
+                        if (hasNewer)
+                        {
+                            collectionPage.Prev = $"{baseOutboxUrl}?page=true&min_id={firstGrant.Id}";
+                        }
+                        
+                        var hasOlder = HasOlderGrantsForDomain(lastGrant.Id);
+                        if (hasOlder)
+                        {
+                            collectionPage.Next = $"{baseOutboxUrl}?page=true&max_id={lastGrant.Id}";
+                        }
                     }
-                    
-                    // Check if there are older items
-                    var hasOlder = HasOlderGrants(actor.Uri.ToString(), lastGrant.Id);
-                    if (hasOlder)
+                    else
                     {
-                        collectionPage.Next = $"{baseOutboxUrl}?page=true&max_id={lastGrant.Id}";
+                        var hasNewer = HasNewerGrants(actor.Uri.ToString(), firstGrant.Id);
+                        if (hasNewer)
+                        {
+                            collectionPage.Prev = $"{baseOutboxUrl}?page=true&min_id={firstGrant.Id}";
+                        }
+                        
+                        var hasOlder = HasOlderGrants(actor.Uri.ToString(), lastGrant.Id);
+                        if (hasOlder)
+                        {
+                            collectionPage.Next = $"{baseOutboxUrl}?page=true&max_id={lastGrant.Id}";
+                        }
                     }
                 }
                 
-                _logger.LogInformation("[{RequestHost}] Returning actor outbox page for {ActorName}@{Domain} with {ItemCount} items", Request.Host, actorName, domain, collectionPage.OrderedItems.Count);
+                _logger.LogInformation("[{RequestHost}] Returning actor outbox page for {ActorName}@{Domain} with {ItemCount} items (isRelayBot: {IsRelayBot})", Request.Host, actorName, domain, collectionPage.OrderedItems.Count, isRelayBot);
 
                 return new JsonResult(collectionPage)
                 {
@@ -326,7 +349,7 @@ namespace BadgeFed.Controllers
 
         private object CreateBadgeGrantActivity(BadgeRecord grant, Actor actor)
         {
-            // Create a Create activity for the badge grant
+            // Create a Create activity wrapping the badge grant note
             var activityId = $"{grant.NoteId}/activity";
             
             // Get the badge note
@@ -344,6 +367,23 @@ namespace BadgeFed.Controllers
             };
 
             return createActivity;
+        }
+
+        private object CreateBadgeAnnounceActivity(BadgeRecord grant, Actor relayActor)
+        {
+            // Create an Announce activity referencing the original note by URL
+            var announceId = $"{relayActor.Uri}/announces/{grant.Id}";
+            
+            return new
+            {
+                id = announceId,
+                type = "Announce",
+                actor = relayActor.Uri.ToString(),
+                published = grant.IssuedOn.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                to = new[] { "https://www.w3.org/ns/activitystreams#Public" },
+                cc = new[] { $"{relayActor.Uri}/followers" },
+                @object = grant.NoteId
+            };
         }
 
         private int GetTotalGrantsForDomain()

@@ -2,8 +2,11 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Web
 @using BadgeFed.Components
+@using BadgeFed.Models
+@using Microsoft.Extensions.Options
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject CurrentUser CurrentUser
+@inject IOptions<CustomNavLinksConfig> CustomNavLinksOptions
 
 @rendermode InteractiveServer
 
@@ -264,7 +267,30 @@
                     </div>
                 }
             </div>
-            
+
+            @{
+                var navLinksConfig = CustomNavLinksOptions.Value;
+                var customLinks = navLinksConfig.NavLinks?
+                    .Where(l => l.Enabled)
+                    .Where(l => string.IsNullOrEmpty(l.RequiredRole) 
+                        || (l.RequiredRole == "admin" && CurrentUser.IsAdmin())
+                        || (l.RequiredRole == "manager" && CurrentUser.CanManage())
+                        || (l.RequiredRole == "collaborator" && CurrentUser.CanCollaborate()))
+                    .ToList() ?? new();
+            }
+
+            @if (customLinks.Any())
+            {
+                @foreach (var link in customLinks)
+                {
+                    <a class="navbar-item" href="@link.Url" target="@link.Target">
+                        <span class="icon">
+                            <i class="@link.Icon"></i>
+                        </span>
+                        <span>@link.Label</span>
+                    </a>
+                }
+            }
 
             <div class="navbar-end">
                 <div class="navbar-item">

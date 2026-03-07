@@ -16,6 +16,15 @@ public class ActivityPubCollection
     [JsonPropertyName("totalItems")]
     public int TotalItems { get; set; }
 
+    [JsonPropertyName("first")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? First { get; set; }
+
+    [JsonPropertyName("last")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Last { get; set; }
+
     [JsonPropertyName("orderedItems")]
-    public List<dynamic> OrderedItems { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<dynamic>? OrderedItems { get; set; }
 }

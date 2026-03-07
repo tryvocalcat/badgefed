@@ -76,7 +76,7 @@ namespace BadgeFed.Controllers
         [ResponseCache(Duration = 172800)]
         public IActionResult GetNodeInfo()
         {
-            var domain = Request.Host.Value;
+            var domain = Request.Host.Host;
 
             var links = new[]
             {

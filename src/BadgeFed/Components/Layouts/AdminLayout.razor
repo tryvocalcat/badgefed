@@ -1,16 +1,63 @@
 @inherits LayoutComponentBase
-<NavMenu />
+@inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalDbService
+@inject NavigationManager NavigationManager
 
-<!-- Main Content -->
-<section class="section">
-    <div class="container">
-        @Body
-    </div>
-</section>
+@if (isPendingRegistration)
+{
+    @Body
+}
+else
+{
+    <NavMenu />
 
-<footer class="footer has-text-centered has-background-white-ter py-3">
-    <div class="container">
-        <small>Built by <a href="https://www.vocalcat.com">VocalCat</a> • 
-        <a href="https://github.com/tryvocalcat/activitypub-badges">Source code</a></small>
-    </div>
-</footer>
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            @Body
+        </div>
+    </section>
+
+    <footer class="footer has-text-centered has-background-white-ter py-3">
+        <div class="container">
+            <small>Built by <a href="https://www.vocalcat.com">VocalCat</a> • 
+            <a href="https://github.com/tryvocalcat/activitypub-badges">Source code</a></small>
+        </div>
+    </footer>
+}
+
+@code {
+    private bool isPendingRegistration = false;
+
+    protected override void OnInitialized()
+    {
+        if (!CurrentUser.IsAuthenticated)
+            return;
+
+        var groupClaim = CurrentUser.GetGroupId();
+        if (groupClaim == OpenRegistrationHelper.PendingRegistrationGroupId)
+        {
+            // Double-check the DB in case the user already completed registration
+            // but the cookie claim hasn't been refreshed yet
+            var userId = CurrentUser.UserId;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var dbUser = LocalDbService.GetUserById(userId);
+                if (dbUser != null && dbUser.GroupId != OpenRegistrationHelper.PendingRegistrationGroupId)
+                {
+                    // DB is updated, user just needs a fresh cookie — let them through
+                    return;
+                }
+            }
+
+            isPendingRegistration = true;
+
+            // Redirect to complete-registration if not already there
+            var uri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            if (!uri.StartsWith("admin/complete-registration", StringComparison.OrdinalIgnoreCase))
+            {
+                NavigationManager.NavigateTo("/admin/complete-registration", forceLoad: true);
+            }
+        }
+    }
+}

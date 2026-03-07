@@ -40,6 +40,12 @@ builder.Services.AddLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Information);
 });
 
+// Configure Webhooks from appsettings
+builder.Services.Configure<WebhooksConfig>(builder.Configuration.GetSection("Webhooks"));
+
+// Configure custom nav links from appsettings
+builder.Services.Configure<CustomNavLinksConfig>(builder.Configuration.GetSection("CustomNavLinks"));
+
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddResponseCaching();
@@ -86,6 +92,8 @@ builder.Services.AddScoped<JobQueueService>();
 var adminConfig = builder.Configuration.GetSection("AdminAuthentication").Get<AdminConfig>();
 builder.Services.AddSingleton<AdminConfig>(adminConfig);
 
+var openRegistration = builder.Configuration.GetValue<bool>("OpenRegistration", false);
+
 builder.Services.AddScoped<DatabaseMigrationService>();
 
 builder.Services.AddScoped<BadgeProcessor>();
@@ -110,6 +118,8 @@ builder.Services.AddScoped<RegistrationService>();
 builder.Services.AddScoped<UserService>();
 
 builder.Services.AddScoped<RelayActorService>();
+
+builder.Services.AddScoped<WebhookService>();
 
 // Add custom asset path service
 builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
@@ -157,7 +167,7 @@ auth.AddDynamicMastodon(adminConfig, o => {
     o.Scope.Add("read:accounts");
     o.Scope.Add("profile");
     o.SaveTokens = true;
-}, localDbFactory);
+}, localDbFactory, openRegistration);
 
 if (gotoSocialConfig != null)
 {
@@ -191,11 +201,11 @@ if (gotoSocialConfig != null)
             o.ClientId = gotoSocialConfig.ClientId;
             o.ClientSecret = gotoSocialConfig.ClientSecret;
             o.SaveTokens = true;
-        }, localDbFactory);
+        }, localDbFactory, openRegistration);
     }
 }
 
-if (linkedInConfig != null)
+if (linkedInConfig != null && !string.IsNullOrEmpty(linkedInConfig.ClientId) && !string.IsNullOrEmpty(linkedInConfig.ClientSecret))
 {
     auth.AddLinkedIn(adminConfig, linkedInConfig, o =>
         {
@@ -203,18 +213,23 @@ if (linkedInConfig != null)
             o.ClientSecret = linkedInConfig.ClientSecret;
             o.CallbackPath = "/signin-linkedin";
             o.SaveTokens = true;
-        }, localDbFactory);
+        }, localDbFactory, openRegistration);
 }
 
-if (googleConfig != null)
+if (googleConfig != null && !string.IsNullOrEmpty(googleConfig.ClientId) && !string.IsNullOrEmpty(googleConfig.ClientSecret))
 {
+    Console.WriteLine("Google OAuth configured.");
     auth.AddGoogle(adminConfig, googleConfig, o =>
         {
             o.ClientId = googleConfig.ClientId;
             o.ClientSecret = googleConfig.ClientSecret;
             o.CallbackPath = "/signin-google";
             o.SaveTokens = true;
-         }, localDbFactory);
+         }, localDbFactory, openRegistration);
+}
+else
+{
+    Console.WriteLine("Google OAuth not configured. To enable, add GoogleConfig section to appsettings.json with ClientId and ClientSecret.");
 }
 
 builder.Services.AddHostedService<JobExecutor>();
@@ -430,7 +445,8 @@ public static class MastodonOAuthExtensions
         AdminConfig adminConfig,
         GotoSocialConfig gotoSocialConfig,
         Action<OAuthOptions> configureOptions,
-        LocalDbFactory localDbFactory)
+        LocalDbFactory localDbFactory,
+        bool openRegistration = false)
     {
         var hostname = gotoSocialConfig.Server;
         _hosts.Add(hostname);
@@ -529,6 +545,11 @@ public static class MastodonOAuthExtensions
                                 Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
+                        else if (registeredUser == null)
+                        {
+                            registeredUser = OpenRegistrationHelper.TryAutoProvision(
+                                localDbService, userId, "", username ?? "User", "", "GotoSocial", openRegistration);
+                        }
 
                         var role = registeredUser != null ? registeredUser.Role : "user";
 
@@ -560,7 +581,8 @@ public static class MastodonOAuthExtensions
         this AuthenticationBuilder builder,
         AdminConfig adminConfig,
         Action<OAuthOptions> configureOptions,
-        LocalDbFactory localDbFactory)
+        LocalDbFactory localDbFactory,
+        bool openRegistration = false)
     {
         return builder.AddOAuth("DynamicMastodon", "Mastodon (Dynamic)", o =>
         {
@@ -706,6 +728,11 @@ public static class MastodonOAuthExtensions
                                     Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                                 }
                             }
+                            else if (registeredUser == null)
+                            {
+                                registeredUser = OpenRegistrationHelper.TryAutoProvision(
+                                    localDbService, userId, "", username ?? "User", "", "Mastodon", openRegistration);
+                            }
 
                             var role = registeredUser != null ? registeredUser.Role : "user";
 
@@ -793,7 +820,8 @@ public static class MastodonOAuthExtensions
         AdminConfig adminConfig,
         MastodonConfig mastodonConfig,
         Action<OAuthOptions> configureOptions,
-        LocalDbFactory localDbFactory)
+        LocalDbFactory localDbFactory,
+        bool openRegistration = false)
     {
         var hostname = mastodonConfig.Server;
         _hosts.Add(hostname);
@@ -910,6 +938,11 @@ public static class MastodonOAuthExtensions
                                     Console.WriteLine($"Invitation code {invitationCode} is invalid or expired.");
                                 }
                             }
+                            else if (registeredUser == null)
+                            {
+                                registeredUser = OpenRegistrationHelper.TryAutoProvision(
+                                    localDbService, userId, "", username ?? "User", "", "Mastodon", openRegistration);
+                            }
 
                             var role = registeredUser != null ? registeredUser.Role : "user";
 
@@ -946,7 +979,8 @@ public static class LinkedInOAuthExtensions
         AdminConfig adminConfig,
         LinkedInConfig config,
         Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
-        LocalDbFactory localDbFactory)
+        LocalDbFactory localDbFactory,
+        bool openRegistration = false)
     {
         return builder.AddOAuth("LinkedIn", "LinkedIn", o =>
         {
@@ -1008,6 +1042,17 @@ public static class LinkedInOAuthExtensions
                         var registeredUserId = "LinkedIn_" + userEmail;
                         var registeredUser = localDbService.GetUserById(registeredUserId);
 
+                        // If user exists but is inactive and open registration is enabled, upgrade them
+                        if (registeredUser != null && !registeredUser.IsActive && openRegistration)
+                        {
+                            registeredUser.Role = "manager";
+                            registeredUser.GroupId = OpenRegistrationHelper.PendingRegistrationGroupId;
+                            registeredUser.IsActive = true;
+                            registeredUser.GivenName = name ?? registeredUser.GivenName;
+                            localDbService.UpsertUser(registeredUser);
+                            Console.WriteLine($"[OpenRegistration] Upgraded inactive user {registeredUserId} to pending registration");
+                        }
+
                         // Handle invitation if provided
                         if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
                         {
@@ -1036,19 +1081,26 @@ public static class LinkedInOAuthExtensions
                         }
                         else if (registeredUser == null)
                         {
-                            registeredUser = new User
-                            {
-                                Id = registeredUserId,
-                                Email = userEmail ?? string.Empty,
-                                GivenName = name ?? "User",
-                                Surname = string.Empty,
-                                CreatedAt = DateTime.UtcNow,
-                                Provider = "LinkedIn",
-                                Role = "user",
-                                IsActive = false
-                            };
+                            registeredUser = OpenRegistrationHelper.TryAutoProvision(
+                                localDbService, registeredUserId, userEmail ?? string.Empty, name ?? "User", "", "LinkedIn", openRegistration);
 
-                            localDbService.UpsertUser(registeredUser);
+                            if (registeredUser == null)
+                            {
+                                // Fallback: create inactive user stub when open registration is off
+                                registeredUser = new User
+                                {
+                                    Id = registeredUserId,
+                                    Email = userEmail ?? string.Empty,
+                                    GivenName = name ?? "User",
+                                    Surname = string.Empty,
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "LinkedIn",
+                                    Role = "user",
+                                    IsActive = false
+                                };
+
+                                localDbService.UpsertUser(registeredUser);
+                            }
                         }
 
                         role = registeredUser != null ? registeredUser.Role : "user";
@@ -1088,7 +1140,8 @@ public static class GoogleOAuthExtensions
         AdminConfig adminConfig,
         GoogleConfig config,
         Action<Microsoft.AspNetCore.Authentication.OAuth.OAuthOptions> configureOptions,
-        LocalDbFactory localDbFactory)
+        LocalDbFactory localDbFactory,
+        bool openRegistration = false)
     {
         return builder.AddOAuth("Google", "Google", o =>
         {
@@ -1140,6 +1193,7 @@ public static class GoogleOAuthExtensions
                     Console.WriteLine($"Is admin: {isAdmin}");
 
                     var role = "user";
+                    var groupId = "system";
 
                     // Check for invitation code
                     var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
@@ -1154,6 +1208,18 @@ public static class GoogleOAuthExtensions
                     {
                         var registeredUserId = "Google_" + userEmail;
                         var registeredUser = localDbService.GetUserById(registeredUserId);
+
+                        // If user exists but is inactive and open registration is enabled, upgrade them
+                        if (registeredUser != null && !registeredUser.IsActive && openRegistration)
+                        {
+                            registeredUser.Role = "manager";
+                            registeredUser.GroupId = OpenRegistrationHelper.PendingRegistrationGroupId;
+                            registeredUser.IsActive = true;
+                            registeredUser.GivenName = givenName ?? name ?? registeredUser.GivenName;
+                            registeredUser.Surname = familyName ?? registeredUser.Surname;
+                            localDbService.UpsertUser(registeredUser);
+                            Console.WriteLine($"[OpenRegistration] Upgraded inactive user {registeredUserId} to pending registration");
+                        }
 
                         // Handle invitation if provided
                         if (!string.IsNullOrEmpty(invitationCode) && registeredUser == null)
@@ -1183,22 +1249,31 @@ public static class GoogleOAuthExtensions
                         }
                         else if (registeredUser == null)
                         {
-                            registeredUser = new User
-                            {
-                                Id = registeredUserId,
-                                Email = userEmail ?? string.Empty,
-                                GivenName = givenName ?? name ?? "User",
-                                Surname = familyName ?? string.Empty,
-                                CreatedAt = DateTime.UtcNow,
-                                Provider = "Google",
-                                Role = "user",
-                                IsActive = false
-                            };
+                            registeredUser = OpenRegistrationHelper.TryAutoProvision(
+                                localDbService, registeredUserId, userEmail ?? string.Empty, 
+                                givenName ?? name ?? "User", familyName ?? "", "Google", openRegistration);
 
-                            localDbService.UpsertUser(registeredUser);
+                            if (registeredUser == null)
+                            {
+                                // Fallback: create inactive user stub when open registration is off
+                                registeredUser = new User
+                                {
+                                    Id = registeredUserId,
+                                    Email = userEmail ?? string.Empty,
+                                    GivenName = givenName ?? name ?? "User",
+                                    Surname = familyName ?? string.Empty,
+                                    CreatedAt = DateTime.UtcNow,
+                                    Provider = "Google",
+                                    Role = "user",
+                                    IsActive = false
+                                };
+
+                                localDbService.UpsertUser(registeredUser);
+                            }
                         }
 
                         role = registeredUser != null ? registeredUser.Role : "user";
+                        groupId = registeredUser != null ? registeredUser.GroupId : "system";
                     }
 
                     var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
@@ -1215,6 +1290,7 @@ public static class GoogleOAuthExtensions
                             new Claim(ClaimTypes.Surname, familyName ?? ""),
                             new Claim("urn:google:profile", userJson.RootElement.TryGetProperty("link", out var linkElement) ? linkElement.GetString() ?? "" : ""),
                             new Claim("urn:google:image", userJson.RootElement.TryGetProperty("picture", out var pictureElement) ? pictureElement.GetString() ?? "" : ""),
+                            new Claim("urn:badgefed:group", groupId)
                         ], "Google"));
                 },
                 OnRemoteFailure = ctx =>
@@ -1231,6 +1307,47 @@ public static class GoogleOAuthExtensions
 }
 
 // Helper classes for config
+
+public static class OpenRegistrationHelper
+{
+    public const string PendingRegistrationGroupId = "pending_registration";
+
+    /// <summary>
+    /// When OpenRegistration is enabled, creates a new user with role "manager" and GroupId = "pending_registration".
+    /// The user will be redirected to /admin/complete-registration to choose a workspace name before they can access admin pages.
+    /// Returns the created user, or null if open registration is disabled.
+    /// </summary>
+    public static User? TryAutoProvision(
+        LocalDbService localDbService,
+        string userId,
+        string email,
+        string givenName,
+        string surname,
+        string provider,
+        bool openRegistration)
+    {
+        if (!openRegistration)
+            return null;
+
+        var user = new User
+        {
+            Id = userId,
+            Email = email ?? string.Empty,
+            GivenName = givenName ?? "User",
+            Surname = surname ?? string.Empty,
+            CreatedAt = DateTime.UtcNow,
+            Provider = provider,
+            Role = "manager",
+            GroupId = PendingRegistrationGroupId,
+            IsActive = true
+        };
+        localDbService.UpsertUser(user);
+
+        Console.WriteLine($"[OpenRegistration] Auto-provisioned user {userId} with pending registration");
+        return user;
+    }
+}
+
 public class AdminConfig
 {
     public List<AdminUser> AdminUsers { get; set; }
