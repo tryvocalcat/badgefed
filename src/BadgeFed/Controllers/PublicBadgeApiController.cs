@@ -167,17 +167,172 @@ namespace BadgeFed.Controllers
         }
 
         /// <summary>
+        /// Get the status of a badge grant by its NoteId
+        /// </summary>
+        /// <param name="noteId">The NoteId (grant ID) of the badge record</param>
+        /// <returns>Grant status with limited information</returns>
+        [HttpGet("grant/{noteId}/status")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
+        [ProducesResponseType(typeof(object), 404)]
+        public IActionResult GetGrantStatus(string noteId)
+        {
+            var apiKey = GetApiKeyFromRequest();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return Unauthorized(new { error = "API key is required. Provide it via X-ApiKey header or apiKey query parameter." });
+            }
+
+            var user = _localDbService.ValidateApiKey(apiKey);
+            if (user == null)
+            {
+                _logger.LogWarning("Invalid API key attempt: {ApiKey}", apiKey);
+                return Unauthorized(new { error = "Invalid API key." });
+            }
+
+            _logger.LogInformation("API request to get grant status for NoteId: {NoteId} by user: {UserId}", noteId, user.Id);
+
+            var record = _localDbService.GetGrantByNoteId(noteId);
+
+            if (record == null)
+            {
+                return NotFound(new { error = "Grant not found." });
+            }
+
+            // Verify the authenticated user owns the badge associated with this grant
+            if (record.Badge?.Id > 0)
+            {
+                var ownershipFilter = $"a.OwnerId = '{user.GroupId}' AND b.Id = {record.Badge.Id}";
+                var ownedBadges = _localDbService.GetAllBadgeDefinitions(true, ownershipFilter);
+                if (!ownedBadges.Any())
+                {
+                    return NotFound(new { error = "Grant not found." });
+                }
+            }
+
+            return Ok(new
+            {
+                success = true,
+                noteId = record.NoteId,
+                profileUri = record.IssuedToSubjectUri,
+                badgeId = record.Badge?.Id,
+                status = record.Status
+            });
+        }
+
+        /// <summary>
+        /// List all active badges owned by the authenticated user
+        /// </summary>
+        /// <returns>List of badge definitions</returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
+        public IActionResult ListBadges()
+        {
+            var apiKey = GetApiKeyFromRequest();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return Unauthorized(new { error = "API key is required. Provide it via X-ApiKey header or apiKey query parameter." });
+            }
+
+            var user = _localDbService.ValidateApiKey(apiKey);
+            if (user == null)
+            {
+                _logger.LogWarning("Invalid API key attempt: {ApiKey}", apiKey);
+                return Unauthorized(new { error = "Invalid API key." });
+            }
+
+            _logger.LogInformation("API request to list badges for user: {UserId} ({UserEmail})", user.Id, user.Email);
+
+            var filter = $"a.OwnerId = '{user.GroupId}'";
+            var badges = _localDbService.GetAllBadgeDefinitions(true, filter);
+
+            return Ok(new
+            {
+                success = true,
+                count = badges.Count,
+                badges = badges.Select(b => new
+                {
+                    id = b.Id,
+                    title = b.Title,
+                    description = b.Description,
+                    badgeType = b.BadgeType,
+                    earningCriteria = b.EarningCriteria,
+                    image = b.Image,
+                    imageAltText = b.ImageAltText,
+                    hashtags = b.Hashtags,
+                    infoUri = b.InfoUri,
+                    isCertificate = b.IsCertificate,
+                    issuer = b.Issuer != null ? new
+                    {
+                        id = b.Issuer.Id,
+                        fullName = b.Issuer.FullName,
+                        username = b.Issuer.Username,
+                        domain = b.Issuer.Domain
+                    } : null
+                })
+            });
+        }
+
+        /// <summary>
         /// Get badge information
         /// </summary>
         /// <param name="badgeId">Badge ID</param>
         /// <returns>Badge information</returns>
         [HttpGet("{badgeId}")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
+        [ProducesResponseType(typeof(object), 404)]
         public IActionResult GetBadge(long badgeId)
         {
+            var apiKey = GetApiKeyFromRequest();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return Unauthorized(new { error = "API key is required. Provide it via X-ApiKey header or apiKey query parameter." });
+            }
+
+            var user = _localDbService.ValidateApiKey(apiKey);
+            if (user == null)
+            {
+                _logger.LogWarning("Invalid API key attempt: {ApiKey}", apiKey);
+                return Unauthorized(new { error = "Invalid API key." });
+            }
+
             _logger.LogInformation("[{RequestHost}] API request to get badge: {BadgeId}", Request.Host, badgeId);
-            // This would be handled by your existing LocalScopedDb service
-            // You might want to inject it here if needed for badge lookup
-            return Ok(new { message = "Badge lookup endpoint - implement as needed" });
+
+            var filter = $"a.OwnerId = '{user.GroupId}' AND b.Id = {badgeId}";
+            var badges = _localDbService.GetAllBadgeDefinitions(true, filter);
+            var badge = badges.FirstOrDefault();
+
+            if (badge == null)
+            {
+                return NotFound(new { error = "Badge not found or not authorized." });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                badge = new
+                {
+                    id = badge.Id,
+                    title = badge.Title,
+                    description = badge.Description,
+                    badgeType = badge.BadgeType,
+                    earningCriteria = badge.EarningCriteria,
+                    image = badge.Image,
+                    imageAltText = badge.ImageAltText,
+                    hashtags = badge.Hashtags,
+                    infoUri = badge.InfoUri,
+                    isCertificate = badge.IsCertificate,
+                    issuer = badge.Issuer != null ? new
+                    {
+                        id = badge.Issuer.Id,
+                        fullName = badge.Issuer.FullName,
+                        username = badge.Issuer.Username,
+                        domain = badge.Issuer.Domain
+                    } : null
+                }
+            });
         }
     }
 

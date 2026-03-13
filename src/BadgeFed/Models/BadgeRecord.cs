@@ -115,5 +115,34 @@ namespace BadgeFed.Models
 
         [System.Text.Json.Serialization.JsonIgnore]
         public string Visibility { get; set; } = "Public";
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string Status
+        {
+            get
+            {
+                return GetRecordStatus(this);
+            }
+        }
+
+        private string GetRecordStatus(BadgeRecord record)
+        {
+            if (record.IsExternal)
+            {
+                return "external";
+            }
+            else if (!string.IsNullOrEmpty(record.FingerPrint))
+            {
+                return "processed";
+            }
+            else if (record.AcceptedOn.HasValue)
+            {
+                return "accepted";
+            }
+            else
+            {
+                return "pending";
+            }
+        }
     }
 }
