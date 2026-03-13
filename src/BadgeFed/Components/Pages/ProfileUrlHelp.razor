@@ -1,6 +1,8 @@
 @page "/help/profile-url"
 @layout BadgeFed.Components.Layouts.MinimalLayout
 @inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
 @rendermode InteractiveServer
 
 <PageTitle>Why Profile URLs? — BadgeFed</PageTitle>
@@ -225,7 +227,7 @@
                         <p class="mt-2">A lightweight profile that can <strong>verify and link multiple profiles</strong> — your LinkedIn, GitHub, personal website — all in one place. Think of it as a badge wallet.</p>
                         <code class="is-size-7">@(ctaUrl)/@@janedoe</code>
                         <p class="help mt-2">
-                            <a href="@ctaUrl" target="_blank" rel="noopener" class="has-text-weight-bold">
+                            <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="has-text-weight-bold">
                                 <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
                                 Create your free profile
                             </a>
@@ -357,7 +359,7 @@
                     A <strong><a href="#fediverse-option">Fediverse profile</a></strong> unlocks automatic badge sharing and decentralized verification — and it only takes 2 minutes to set up.
                     @if (hasCta)
                     {
-                        <text>You can also <a href="@ctaUrl" target="_blank">create a free profile here</a>.</text>
+                        <text>You can also <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank">create a free profile here</a>.</text>
                     }
                 </p>
                 <p class="mt-2 has-text-weight-bold">You own your identity, not your inbox.</p>

@@ -6,6 +6,8 @@
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
@@ -47,7 +49,7 @@
                     <strong>Upgrade your badge experience</strong>
                     <span>Manage, verify, and share these badges with a free Badge Wallet — powered by ActivityPub.</span>
                 </div>
-                <a href="@walletCtaUrl" target="_blank" rel="noopener" class="wallet-cta-btn">
+                <a href="@CtaHelper.BuildCtaUrl(walletCtaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="wallet-cta-btn">
                     Get Your Wallet <i class="fas fa-arrow-right"></i>
                 </a>
             </div>

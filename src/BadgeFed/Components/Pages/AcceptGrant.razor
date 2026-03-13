@@ -3,6 +3,7 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavManager
+@using BadgeFed.Core
 @inject LocalScopedDb DbService
 @inject BadgeProcessor BadgeProcessor
 @using BadgeFed.Models
@@ -305,7 +306,7 @@ else if (accepted)
                                             break;
                                     }
                                 </span>
-                                <a href="@ctaUrl" target="_blank" rel="noopener" class="profile-cta-btn">
+                                <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="profile-cta-btn">
                                     Get Started <i class="fas fa-external-link-alt"></i>
                                 </a>
                             </div>
@@ -585,7 +586,7 @@ else if (accepted)
             "fedihub" => $"e.g. <code>{ctaUrl}/@janedoe</code> — your badge wallet",
             "website" => "e.g. <code>https://janedoe.com</code>",
             _ => hasCta
-                ? $"Any public URL works, but we recommend a <a href=\"{ctaUrl}\" target=\"_blank\"><strong>free Badge Wallet</strong></a> for the best experience."
+                ? $"Any public URL works, but we recommend a <a href=\"{CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)}\" target=\"_blank\"><strong>free Badge Wallet</strong></a> for the best experience."
                 : "Any public URL: about.me, Linktree, Codeberg, Instagram, etc."
         };
        
