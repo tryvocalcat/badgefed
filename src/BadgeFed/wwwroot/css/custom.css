@@ -1,0 +1,805 @@
+/* ────────────────────────────────────────
+   ProfileUrlHelpModal — Carousel & Cards
+   ──────────────────────────────────────── */
+
+/* Step dots */
+.url-help-step-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #dbdbdb;
+    margin: 0 6px;
+    cursor: pointer;
+    transition: background-color 0.25s ease, transform 0.2s ease;
+}
+
+.url-help-step-dot.active {
+    background-color: #667eea;
+    transform: scale(1.3);
+}
+
+.url-help-step-dot:hover {
+    background-color: #929292;
+}
+
+.url-help-step-dot.active:hover {
+    background-color: #667eea;
+}
+
+/* Slide animation */
+.url-help-slide {
+    animation: urlHelpFadeIn 0.3s ease-in-out;
+}
+
+@keyframes urlHelpFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Comparison list (step 1) */
+.url-help-comparison {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+.url-help-comparison li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    font-size: 0.95rem;
+}
+
+/* Callout (step 1 bottom) */
+.url-help-callout {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 8px;
+    padding: 0.75rem 1rem !important;
+}
+
+/* Benefit cards (step 2) */
+.url-help-benefit-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 0.5rem;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.url-help-benefit-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.url-help-benefit-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: #f5f5f5;
+}
+
+/* Option grid (step 3) */
+.url-help-option-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+@media screen and (max-width: 600px) {
+    .url-help-option-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.url-help-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+    cursor: default;
+}
+
+.url-help-option-card:hover {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.url-help-option-card code {
+    font-size: 0.72rem;
+    color: #888;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.url-help-option-fediverse {
+    border-color: #667eea;
+    background: linear-gradient(180deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+}
+
+/* ────────────────────────────────────────
+   AcceptGrant — Live URL Validation
+   ──────────────────────────────────────── */
+
+.input.is-rounded.is-danger {
+    border-color: #f14668;
+    box-shadow: 0 0 0 0.125em rgba(241, 70, 104, 0.25);
+}
+
+.input.is-rounded.is-success {
+    border-color: #48c78e;
+    box-shadow: 0 0 0 0.125em rgba(72, 199, 142, 0.25);
+}
+
+.control.has-icons-right .icon.is-right {
+    pointer-events: none;
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+}
+
+/* ────────────────────────────────────────
+   AcceptGrant — URL Type Pills
+   ──────────────────────────────────────── */
+
+.url-type-pills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.url-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border: 1.5px solid #dbdbdb;
+    border-radius: 20px;
+    background: white;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.url-pill:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f8f7ff;
+}
+
+.url-pill.active {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+.url-pill i {
+    font-size: 0.82rem;
+}
+
+.url-pill-wallet {
+    border-color: #d4bde8;
+}
+
+.url-pill-wallet:hover {
+    border-color: #764ba2;
+    color: #764ba2;
+    background: #faf5ff;
+}
+
+.url-pill-wallet.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #764ba2;
+    color: white;
+}
+
+/* "Need help choosing?" toggle */
+.profile-help-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: #8b8f9a;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.18s ease;
+}
+
+.profile-help-toggle:hover {
+    color: #5b6abf;
+}
+
+.profile-help-toggle .icon i {
+    transition: transform 0.25s ease;
+}
+
+/* Slide-in panel */
+.profile-help-panel {
+    animation: profileHelpSlide 0.22s ease-out;
+}
+
+@keyframes profileHelpSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Profile CTA banner */
+.profile-cta {
+    border: 1.5px solid #d4bde8;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    background: linear-gradient(135deg, rgba(118, 75, 162, 0.03) 0%, rgba(102, 126, 234, 0.05) 100%);
+    margin-top: 0.5rem;
+    transition: box-shadow 0.2s ease;
+}
+
+.profile-cta:hover {
+    box-shadow: 0 2px 10px rgba(118, 75, 162, 0.1);
+}
+
+.profile-cta-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.profile-cta-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.profile-cta-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white !important;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: opacity 0.2s ease;
+}
+
+.profile-cta-btn:hover {
+    opacity: 0.9;
+    color: white !important;
+}
+
+.profile-cta-btn i {
+    font-size: 0.65rem;
+}
+
+/* ────────────────────────────────────────
+   ProfileUrlHelp Full Page — Option Cards
+   ──────────────────────────────────────── */
+
+.url-option-card {
+    height: 100%;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.url-option-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.url-option-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Why-not-email link */
+.why-url-link {
+    font-size: 0.75rem;
+    color: #8b8f9a;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    font-weight: 400;
+}
+
+.why-url-link:hover {
+    color: #5b6abf;
+}
+
+/* FAQ section on help page */
+.url-help-faq details[open] summary {
+    color: #667eea;
+}
+
+.url-help-faq details summary:hover {
+    color: #667eea;
+}
+
+/* ────────────────────────────────────────
+   Accept Grant — Responsive Card
+   ──────────────────────────────────────── */
+.accept-grant-card {
+    max-width: 680px;
+    width: 92%;
+    margin: 0 auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Hero / header area */
+.accept-grant-hero {
+    background: #fafbfc;
+    padding: 2.5rem 2rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid #f0f1f4;
+}
+
+.accept-grant-badge-img {
+    display: inline-block;
+    padding: 6px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.25rem;
+}
+
+.accept-grant-badge-img img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    border-radius: 14px;
+    display: block;
+}
+
+.accept-grant-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.01em;
+}
+
+.accept-grant-issuer {
+    font-size: 0.85rem;
+    color: #7a7f8a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.accept-grant-issuer a {
+    color: #5b6abf;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.accept-grant-issuer a:hover {
+    text-decoration: underline;
+    color: #4a58a5;
+}
+
+/* Detail rows */
+.accept-grant-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.accept-grant-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: #f8f9fb;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: background 0.15s ease;
+}
+
+.accept-grant-detail-item:hover {
+    background: #f2f4f8;
+}
+
+.accept-grant-detail-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #eef0f7;
+    color: #5b6abf;
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.accept-grant-detail-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #999;
+    margin-bottom: 0.2rem;
+}
+
+.accept-grant-detail-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.accept-grant-detail-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #3a3f47;
+    margin: 0;
+}
+
+/* Locked / blurred content before email verification */
+.accept-grant-locked {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.accept-grant-locked-preview {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #3a3f47;
+    margin: 0;
+    filter: blur(3px);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.accept-grant-locked-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 249, 251, 0.55);
+    backdrop-filter: blur(1px);
+}
+
+.accept-grant-locked-overlay i {
+    font-size: 1rem;
+    color: #aaa;
+    background: #fff;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* Form section */
+.accept-grant-card .card-content {
+    padding: 2rem 2rem;
+}
+
+.accept-grant-card .card-content + .card-content {
+    padding-top: 0;
+}
+
+.accept-grant-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Softer info note */
+.accept-grant-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: #f5f6ff;
+    border: 1px solid #e4e6f5;
+    font-size: 0.84rem;
+    line-height: 1.55;
+    color: #555;
+}
+
+.accept-grant-note i {
+    color: #5b6abf;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Clean field groups */
+.accept-grant-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.accept-grant-field .field-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #3a3f47;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.accept-grant-field .field-label .tag-required {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5b6abf;
+    background: #eef0f7;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+}
+
+.accept-grant-field .field-hint {
+    font-size: 0.78rem;
+    color: #8b8f9a;
+    line-height: 1.5;
+    margin-top: 0.15rem;
+}
+
+/* Refined inputs */
+.accept-grant-card .input,
+.accept-grant-card .select select {
+    border: 1.5px solid #dde0e6;
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    color: #2d3139;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    height: auto;
+    line-height: 1.5;
+}
+
+.accept-grant-card .input:focus,
+.accept-grant-card .select select:focus {
+    border-color: #5b6abf;
+    box-shadow: 0 0 0 3px rgba(91, 106, 191, 0.1);
+    outline: none;
+}
+
+.accept-grant-card .input::placeholder {
+    color: #b5b9c4;
+}
+
+.accept-grant-card .select {
+    width: 100%;
+}
+
+.accept-grant-card .select select {
+    width: 100%;
+}
+
+/* Certification text */
+.accept-grant-certify {
+    font-size: 0.82rem;
+    color: #7a7f8a;
+    line-height: 1.5;
+    padding: 0.2rem 0;
+}
+
+/* Submit button */
+.accept-grant-submit {
+    display: block;
+    width: 100%;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #5b6abf 0%, #7c5cbf 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 8px rgba(91, 106, 191, 0.25);
+}
+
+.accept-grant-submit:hover {
+    opacity: 0.92;
+    box-shadow: 0 4px 14px rgba(91, 106, 191, 0.3);
+    transform: translateY(-1px);
+}
+
+.accept-grant-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(91, 106, 191, 0.2);
+}
+
+/* Validate email button */
+.accept-grant-validate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1.2rem;
+    border: 1.5px solid #5b6abf;
+    border-radius: 10px;
+    background: transparent;
+    color: #5b6abf;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.accept-grant-validate-btn:hover {
+    background: #5b6abf;
+    color: #fff;
+}
+
+/* Email error notification */
+.accept-grant-email-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: #fef5f5;
+    border: 1px solid #f0d4d4;
+    font-size: 0.84rem;
+    line-height: 1.55;
+    color: #8a3a3a;
+}
+
+.accept-grant-email-error i {
+    color: #d45d5d;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Congrats banner override */
+.accept-grant-congrats {
+    max-width: 640px;
+    width: 92%;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #5b6abf 0%, #7c5cbf 100%);
+    border: none;
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(91, 106, 191, 0.2);
+}
+
+.accept-grant-congrats h4 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.accept-grant-congrats p {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.88);
+    margin: 0;
+}
+
+/* Success banner */
+.accept-grant-success {
+    max-width: 640px;
+    width: 92%;
+    margin: 0 auto;
+    background: #f0faf4;
+    border: 1px solid #c6e9d4;
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.accept-grant-success h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2a7d4f;
+    margin-bottom: 0.5rem;
+}
+
+.accept-grant-success p {
+    font-size: 0.88rem;
+    color: #3d6b52;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Markdown rendered inside detail rows */
+.accept-grant-markdown p {
+    margin: 0 0 0.4rem;
+}
+
+.accept-grant-markdown p:last-child {
+    margin-bottom: 0;
+}
+
+.accept-grant-markdown ul,
+.accept-grant-markdown ol {
+    margin: 0.25rem 0 0.4rem 1.2rem;
+    padding: 0;
+}
+
+.accept-grant-markdown li {
+    margin-bottom: 0.15rem;
+}
+
+.accept-grant-markdown code {
+    background: #f0f1f5;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.88em;
+}
+
+.accept-grant-markdown strong {
+    font-weight: 600;
+}
+
+.accept-grant-markdown a {
+    color: #5b6abf;
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media screen and (max-width: 480px) {
+    .accept-grant-card .card-content {
+        padding: 1.25rem 1.25rem;
+    }
+
+    .accept-grant-hero {
+        padding: 1.75rem 1.25rem 1.5rem;
+    }
+}

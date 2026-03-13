@@ -5,6 +5,9 @@
 @inject LocalScopedDb LocalDbService
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpContextAccessor
+@inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
@@ -12,44 +15,46 @@
 
 <div class="container">
     <!-- Header Section -->
-    <div class="hero is-light">
-        <div class="hero-body">
-            <div class="has-text-centered">
-                <div class="mb-4">
-                    <span class="icon is-large has-text-primary">
-                        <i class="fas fa-user-circle fa-3x"></i>
-                    </span>
-                </div>
-                <h1 class="title is-2">@recipientName</h1>
-                <p class="subtitle is-5">
-                    <span class="icon">
-                        <i class="fas fa-link"></i>
-                    </span>
-                    <a href="@decodedRecipientUri" target="_blank" rel="me">@decodedRecipientUri</a>
-                </p>
-                <div class="tags is-centered mt-4">
-                    <span class="tag is-info is-medium">
-                        <span class="icon">
-                            <i class="fas fa-medal"></i>
-                        </span>
-                        <span>@badgeRecords.Count Badge@(badgeRecords.Count != 1 ? "s" : "")</span>
-                    </span>
-                </div>
-                
-                @if (badgeRecords.Any())
-                {
-                    <div class="has-text-centered mt-4">
-                        <button class="button is-success" @onclick="ShowEmbedModal">
-                            <span class="icon">
-                                <i class="fas fa-code"></i>
-                            </span>
-                            <span>Embed These Badges</span>
-                        </button>
-                    </div>
-                }
-            </div>
+    <div class="recipient-header">
+        <div class="recipient-identity">
+            <span class="recipient-avatar">
+                <i class="fas fa-user-circle"></i>
+            </span>
+            <h1 class="recipient-name">@recipientName</h1>
+            <a class="recipient-link" href="@decodedRecipientUri" target="_blank" rel="me">
+                <i class="fas fa-external-link-alt"></i> @decodedRecipientUri
+            </a>
+        </div>
+        <div class="recipient-actions">
+            <span class="tag is-info is-medium">
+                <span class="icon"><i class="fas fa-medal"></i></span>
+                <span>@badgeRecords.Count Badge@(badgeRecords.Count != 1 ? "s" : "")</span>
+            </span>
+            @if (badgeRecords.Any())
+            {
+                <button class="button is-success is-small" @onclick="ShowEmbedModal">
+                    <span class="icon"><i class="fas fa-code"></i></span>
+                    <span>Embed</span>
+                </button>
+            }
         </div>
     </div>
+
+    @if (isLinkedInProfile && !string.IsNullOrEmpty(walletCtaUrl))
+    {
+        <div class="wallet-cta-banner">
+            <div class="wallet-cta-inner">
+                <span class="wallet-cta-icon"><i class="fas fa-wallet"></i></span>
+                <div class="wallet-cta-text">
+                    <strong>Upgrade your badge experience</strong>
+                    <span>Manage, verify, and share these badges with a free Badge Wallet — powered by ActivityPub.</span>
+                </div>
+                <a href="@CtaHelper.BuildCtaUrl(walletCtaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="wallet-cta-btn">
+                    Get Your Wallet <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    }
 
     @if (isLoading)
     {
@@ -88,8 +93,8 @@
                     <div class="column is-12-mobile is-6-tablet is-4-desktop">
                         <div class="card badge-card">
                             <!-- Badge Image -->
-                            <div class="card-image">
-                                <figure class="image is-square">
+                            <div class="card-image badge-image-wrapper">
+                                <figure class="image">
                                     @if (!string.IsNullOrEmpty(record.FullImageUrl))
                                     {
                                         <img src="@record.FullImageUrl" alt="@(record.ImageAltText ?? record.Title)" class="badge-image" />
@@ -392,6 +397,8 @@
     .badge-card {
         height: 100%;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
     .badge-card:hover {
@@ -399,16 +406,29 @@
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     }
 
+    .badge-image-wrapper {
+        padding: 1.25rem 1.25rem 0;
+        display: flex;
+        justify-content: center;
+    }
+
+    .badge-image-wrapper .image {
+        max-width: 200px;
+        width: 100%;
+    }
+
     .badge-image {
-        object-fit: cover;
+        object-fit: contain;
         border-radius: 8px;
+        width: 100%;
+        height: auto;
     }
 
     .badge-placeholder {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 100%;
+        height: 200px;
         background-color: #f5f5f5;
         border-radius: 8px;
     }
@@ -422,21 +442,142 @@
         margin-bottom: 0.25rem;
     }
 
-    .hero {
-        margin-bottom: 0;
+    /* --- Recipient header --- */
+    .recipient-header {
+        background: #f5f7fa;
+        border-bottom: 1px solid #e8ecf1;
+        padding: 2rem 1.5rem 1.25rem;
+        text-align: center;
+    }
+
+    .recipient-identity {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .recipient-avatar {
+        font-size: 3.5rem;
+        color: #3298dc;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .recipient-name {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+        color: #363636;
+    }
+
+    .recipient-link {
+        font-size: 0.85rem;
+        color: #7a7a7a;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 0.15rem;
+    }
+
+    .recipient-link:hover {
+        color: #3298dc;
+    }
+
+    .recipient-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    /* --- Wallet CTA banner --- */
+    .wallet-cta-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem 1.5rem;
+        margin-top: 0;
+    }
+
+    .wallet-cta-inner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .wallet-cta-icon {
+        font-size: 1.6rem;
+        color: rgba(255,255,255,0.9);
+        flex-shrink: 0;
+    }
+
+    .wallet-cta-text {
+        flex: 1;
+        min-width: 180px;
+        color: #fff;
+        line-height: 1.4;
+    }
+
+    .wallet-cta-text strong {
+        display: block;
+        font-size: 0.95rem;
+        color: #fff;
+    }
+
+    .wallet-cta-text span {
+        font-size: 0.82rem;
+        opacity: 0.9;
+    }
+
+    .wallet-cta-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: #fff;
+        color: #764ba2;
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 0.5rem 1.1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .wallet-cta-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: #667eea;
+    }
+
+    /* --- Badge cards --- */
+    .section .columns {
+        gap: 1.5rem 0;
     }
 
     @@media screen and (max-width: 768px) {
-        .hero-body {
-            padding: 1.5rem;
+        .recipient-name {
+            font-size: 1.4rem;
         }
-        
-        .title.is-2 {
-            font-size: 1.75rem;
+
+        .recipient-avatar {
+            font-size: 2.75rem;
         }
-        
-        .subtitle.is-5 {
-            font-size: 1rem;
+
+        .wallet-cta-inner {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .wallet-cta-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .recipient-name {
+            font-size: 1.15rem;
         }
         
         .section {
@@ -452,6 +593,8 @@
     private string recipientName = string.Empty;
     private List<BadgeRecord> badgeRecords = new();
     private bool isLoading = true;
+    private bool isLinkedInProfile = false;
+    private string walletCtaUrl = string.Empty;
     
     // Embed modal properties
     private bool showEmbedModal = false;
@@ -462,11 +605,16 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Load wallet CTA config
+        var ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
+        walletCtaUrl = Configuration["ProfileCTA:Url"] ?? "";
+
         if (!string.IsNullOrEmpty(RecipientUri))
         {
             try
             {
                 decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                isLinkedInProfile = decodedRecipientUri.Contains("linkedin.com", StringComparison.OrdinalIgnoreCase);
                 await LoadRecipientBadges();
             }
             catch
@@ -494,6 +642,7 @@
                 }
                 
                 decodedRecipientUri = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(RecipientUri));
+                isLinkedInProfile = decodedRecipientUri.Contains("linkedin.com", StringComparison.OrdinalIgnoreCase);
                 await LoadRecipientBadges();
             }
             catch

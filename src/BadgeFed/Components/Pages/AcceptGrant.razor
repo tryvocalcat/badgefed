@@ -3,10 +3,13 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavManager
+@using BadgeFed.Core
 @inject LocalScopedDb DbService
 @inject BadgeProcessor BadgeProcessor
 @using BadgeFed.Models
+@using Markdig
 @inject HttpClient HttpClient
+@inject IConfiguration Configuration
 @rendermode InteractiveServer
 
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -17,181 +20,342 @@
 }
 else if (accepted)
 {
-    <div class="notification is-success has-text-centered mb-5">
-        <h4 class="title is-3 has-text-weight-bold">
-            <span class="icon has-text-white">
+    <div class="accept-grant-success">
+        <h4>
             <i class="oi oi-check"></i>
-            </span> 
-            Badge Accepted! Processing...
+            Badge Accepted!
         </h4>
-        <p class="subtitle is-5 has-text-white">
-            Your badge has been successfully accepted and added to your collection.
-            It will be published to the decentralized network shortly, and you'll receive a confirmation when completed.
-            <strong>Feel free to refresh this page in a few moments to see the badge in your collection.</strong>
+        <p>
+            Your badge has been accepted and added to your collection.
+            It will be published to the network shortly.
+            <strong>Refresh this page in a few moments to see it.</strong>
         </p>
     </div>
 } else {
-<div class="notification is-link has-text-centered mb-5">
-    <h4 class="title is-3 has-text-weight-bold">
-        <span class="icon has-text-white">
-            <i class="oi oi-star"></i>
-        </span> 
+<div class="accept-grant-congrats">
+    <h4>
+        <i class="oi oi-star"></i>
         Congratulations!
     </h4>
-    <p class="subtitle is-5 has-text-white">You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
+    <p>You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
 </div>
-<div class="card" style="max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 8px;">
-    <div class="card-header has-text-centered" style="background-color: #f7f7f7; border-bottom: 1px solid #ddd;">
-        <div class="card-header-title is-centered">
-            <img src="@BadgeRecord.Image" alt="@BadgeRecord.ImageAltText" class="image is-128x128" style="border-radius: 8px;"/>
+<div class="card accept-grant-card">
+    <div class="accept-grant-hero">
+        <div class="accept-grant-badge-img">
+            <img src="@BadgeRecord.Image" alt="@BadgeRecord.ImageAltText" />
         </div>
+        <h3 class="accept-grant-title">@BadgeRecord.Title</h3>
+        <p class="accept-grant-issuer">
+            <span class="icon is-small"><i class="fas fa-user-shield"></i></span>
+            Issued by <a href="@Actor.Uri">@Actor.FullName</a>
+        </p>
     </div>
     <div class="card-content">
-        <h4 class="title is-4 has-text-centered has-text-weight-semibold">@BadgeRecord.Title</h4>
-        <div class="content">
-            <p class="mb-2"><strong>Issued By:</strong> <a href="@Actor.Uri" class="has-text-link">@Actor.FullName</a></p>
-            <p class="mb-2"><strong>Description:</strong> @BadgeRecord.Description</p>
-            <p class="mb-2"><strong>Earning Criteria:</strong> @BadgeRecord.EarningCriteria</p>
-            <p class="mb-2"><strong>Issued On:</strong> @BadgeRecord.IssuedOn.ToShortDateString()</p>
+        <div class="accept-grant-details">
+            <div class="accept-grant-detail-item">
+                <span class="accept-grant-detail-icon"><i class="fas fa-info-circle"></i></span>
+                <div class="accept-grant-detail-body">
+                    <span class="accept-grant-detail-label">Description</span>
+                    @if (!emailValidated)
+                    {
+                        <div class="accept-grant-locked">
+                            <p class="accept-grant-locked-preview">@(BadgeRecord.Description?.Length > 80 ? BadgeRecord.Description.Substring(0, 80) : BadgeRecord.Description)</p>
+                            <div class="accept-grant-locked-overlay">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="accept-grant-detail-text">@BadgeRecord.Description</p>
+                    }
+                </div>
+            </div>
+            <div class="accept-grant-detail-item">
+                <span class="accept-grant-detail-icon"><i class="fas fa-trophy"></i></span>
+                <div class="accept-grant-detail-body">
+                    <span class="accept-grant-detail-label">Earning Criteria</span>
+                    @if (!emailValidated)
+                    {
+                        <div class="accept-grant-locked">
+                            <p class="accept-grant-locked-preview">@(BadgeRecord.EarningCriteria?.Length > 80 ? BadgeRecord.EarningCriteria.Substring(0, 80) : BadgeRecord.EarningCriteria)</p>
+                            <div class="accept-grant-locked-overlay">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="accept-grant-detail-text accept-grant-markdown">@((MarkupString)Markdown.ToHtml(BadgeRecord.EarningCriteria ?? ""))</div>
+                    }
+                </div>
+            </div>
+            <div class="accept-grant-detail-item">
+                <span class="accept-grant-detail-icon"><i class="fas fa-calendar-alt"></i></span>
+                <div>
+                    <span class="accept-grant-detail-label">Issued On</span>
+                    <p class="accept-grant-detail-text">@BadgeRecord.IssuedOn.ToShortDateString()</p>
+                </div>
+            </div>
         </div>
     </div>
  <div class="card-content">
     <!-- Form Section -->
     <form @onsubmit="HandleValidSubmit" method="post">
-        <div class="notification is-warning mb-4">
-            <p><strong>Note:</strong> The following information will be permanently associated with this badge once accepted. Please ensure all details are correct.</p>
-        </div>
+    <div class="accept-grant-form-section">
+        @if (emailValidated)
+        {
+            <div class="accept-grant-note">
+                <i class="fas fa-info-circle"></i>
+                <span>This information will be permanently associated with this badge once accepted. Please ensure all details are correct.</span>
+            </div>
+        }
 
         @if (!emailValidated)
         {
             <!-- Email Input -->
-            <div class="field mb-3">
-                <label class="label" for="email">Confirm Email Address:</label>
+            <div class="accept-grant-field">
+                <label class="field-label" for="email">Confirm Email Address</label>
                 <div class="control">
-                    <input type="email" id="email" class="input is-rounded" @bind="acceptEmail" 
+                    <input type="email" id="email" class="input" @bind="acceptEmail" 
                     required />
                 </div>
-                <p class="help is-info">
-                    Please enter the email address this badge was originally sent to for verification.
+                <p class="field-hint">
+                    Enter the email address this badge was originally sent to.
                 </p>
             </div>
-            <div class="control mt-2">
-                <button class="button is-outlined is-primary is-rounded" @onclick="ValidateEmail" type="button">Validate</button>
+            <div class="control">
+                <button class="accept-grant-validate-btn" @onclick="ValidateEmail" type="button">Validate</button>
             </div>
 
             @if (invalidEmail)
             {
-                <div class="notification is-danger mt-3 mb-3">
-                    <p><span class="icon"><i class="oi oi-warning"></i></span> 
-                        The email address you entered does not match our records. 
-                        Please try again with the email address this badge was sent to.
-                        If you believe this is an error or you don't know the email address, please contact the issuer.
-                    </p>
+                <div class="accept-grant-email-error">
+                    <i class="oi oi-warning"></i>
+                    <span>
+                        The email address doesn't match our records. 
+                        Please try the email this badge was sent to, or contact the issuer.
+                    </span>
                 </div>
             }
         }
         else 
         {
             <!-- Profile URI Input -->
-            <div class="field mb-3">
+            <div class="accept-grant-field">
+                <label class="field-label" for="profileUri">
+                    @if (linkMode == "lin")
+                    {
+                        <span>LinkedIn Profile</span>
+                    }
+                    else
+                    {
+                        <span>Profile URL</span>
+                    }
+                    <span class="tag-required">Required</span>
+                    <span class="why-url-link" @onclick="OpenHelpModal" title="Why a URL instead of email?">
+                        <i class="fas fa-question-circle"></i>
+                        Why not email?
+                    </span>
+                     <a class="profile-help-toggle" @onclick="ToggleProfileHelp" @onclick:preventDefault>
+                            <span class="icon is-small">
+                                <i class="fas @(showProfileHelp ? "fa-chevron-up" : "fa-lightbulb")"></i>
+                            </span>
+                            <span>@(showProfileHelp ? "Got it, thanks" : "Need help choosing?")</span>
+                        </a>
+                </label>
+
+                  @if (showProfileHelp)
+                    {
+                        @* Compact type selector pills *@
+                        <div class="url-type-pills mt-2 profile-help-panel">
+                            <span class="is-size-7 has-text-grey mr-2">I'll use:</span>
+                            <button type="button" class='url-pill @(urlPickerSelection == "linkedin" ? "active" : "")' @onclick='() => SelectUrlType("linkedin")'>
+                                <i class="fab fa-linkedin"></i> LinkedIn
+                            </button>
+                            <button type="button" class='url-pill url-pill-wallet @(urlPickerSelection == "fedihub" ? "active" : "")' @onclick='() => SelectUrlType("fedihub")'>
+                                <i class="fas fa-wallet"></i> Wallet
+                            </button>
+                    
+                            <button type="button" class='url-pill @(urlPickerSelection == "mastodon" ? "active" : "")' @onclick='() => SelectUrlType("mastodon")'>
+                                <i class="fab fa-mastodon"></i> Mastodon
+                            </button>
+                            
+                            <button type="button" class='url-pill @(urlPickerSelection == "website" ? "active" : "")' @onclick='() => SelectUrlType("website")'>
+                                <i class="fas fa-globe"></i> Website
+                            </button>
+                            <button type="button" class='url-pill @(urlPickerSelection == "github" ? "active" : "")' @onclick='() => SelectUrlType("github")'>
+                                <i class="fab fa-github"></i> GitHub
+                            </button>
+                            <button type="button" class='url-pill @(urlPickerSelection == "other" ? "active" : "")' @onclick='() => SelectUrlType("other")'>
+                                <i class="fas fa-link"></i> Other
+                            </button>
+                        </div>
+
+                        @* One-line hint *@
+                        @if (!string.IsNullOrEmpty(urlPickerHint))
+                        {
+                            <p class="help mt-1" style="color: #555;">@((MarkupString)urlPickerHint)</p>
+                        }
+                    }
+
                 @if (linkMode == "lin")
                 {
-                    <label class="label" for="profileUri">
-                        <span class="icon-text">
-                            <span class="icon"><i class="oi oi-link-intact"></i></span>
-                            <span>LinkedIn Profile <span class="tag is-info is-light is-rounded">Required</span></span>
-                        </span>
-                    </label>
                     <div class="field has-addons">
                         <p class="control">
-                            <a class="button is-static is-rounded-left" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                            <a class="button is-static" style="border-radius: 10px 0 0 10px; border: 1.5px solid #dde0e6; border-right: none; font-size: 0.85rem; color: #8b8f9a;">
                                 https://linkedin.com/in/
                             </a>
                         </p>
                         <p class="control is-expanded">
-                            <input type="text" id="profileUri" class="input is-rounded" 
-                                   style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
-                                   @bind="linkedInUsername" 
+                            <input type="text" id="profileUri" 
+                                   class="input @ProfileInputCssClass" 
+                                   style="border-radius: 0 10px 10px 0;"
+                                   value="@linkedInUsername" 
+                                   @oninput="OnLinkedInUsernameInput"
                                    placeholder="your-username" />
                         </p>
                     </div>
-                    <p class="help is-info">
-                        <span class="icon is-small"><i class="oi oi-question-mark"></i></span>
-                        Enter just your LinkedIn username. You can find it by visiting your LinkedIn profile — 
-                        it's the part after <strong>linkedin.com/in/</strong> in the address bar 
-                        (e.g., for <em>https://www.linkedin.com/in/johndoe</em>, enter <strong>johndoe</strong>).
-                    </p>
+                    @if (profileUrlState == UrlValidationState.Valid || profileUrlState == UrlValidationState.ValidAP)
+                    {
+                        <p class="field-hint" style="color: #3d8c5c;">
+                            <i class="fas fa-check-circle"></i>
+                            @ValidationProfileMessage
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="field-hint">
+                            Enter just your LinkedIn username — the part after <strong>linkedin.com/in/</strong>.
+                        </p>
+                    }
                 }
                 else
                 {
-                    <label class="label" for="profileUri">
-                        <span class="icon-text">
-                            <span class="icon"><i class="oi oi-link-intact"></i></span>
-                            <span>Profile URL <span class="tag is-info is-light is-rounded">Required</span></span>
-                        </span>
-                    </label>
-                    <div class="control">
-                        <input type="url" id="profileUri" class="input is-rounded" @bind="Model.ProfileUri" placeholder="https://" />
+                    <div class="control has-icons-right">
+                        <input type="url" id="profileUri" 
+                               class="input @ProfileInputCssClass" 
+                               value="@Model.ProfileUri" 
+                               @oninput="OnProfileUrlInput"
+                               placeholder="@urlPlaceholder" />
+                        @if (profileUrlState == UrlValidationState.Checking)
+                        {
+                            <span class="icon is-small is-right" style="pointer-events:none">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        }
+                        else if (profileUrlState == UrlValidationState.Valid || profileUrlState == UrlValidationState.ValidAP)
+                        {
+                            <span class="icon is-small is-right has-text-success" style="pointer-events:none">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                        }
+                        else if (profileUrlState == UrlValidationState.Error)
+                        {
+                            <span class="icon is-small is-right has-text-danger" style="pointer-events:none">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                        }
                     </div>
-                    <div class="notification is-light is-info mt-2 mb-2" style="padding: 0.75rem 1rem; font-size: 0.875rem;">
-                        <p class="mb-1"><strong>Which URL should I use?</strong></p>
-                        <p>This is the public link where people can learn more about you. You can use any of these:</p>
-                        <ul style="margin-top: 0.25rem; margin-bottom: 0;">
-                            <li><strong>LinkedIn</strong> — <code>https://linkedin.com/in/username</code></li>
-                            <li><strong>Mastodon</strong> — <code>https://mastodon.social/@@username</code></li>
-                            <li><strong>Personal site</strong> — <code>https://yoursite.com</code></li>
-                            <li><strong>GitHub</strong> — <code>https://github.com/username</code></li>
-                            <li>Any other public social or professional profile URL</li>
-                        </ul>
-                    </div>
+
+                    @* Inline validation message *@
+                    @if (profileUrlState == UrlValidationState.Error)
+                    {
+                        <p class="help is-danger">@ValidationProfileMessage</p>
+                    }
+                    else if (profileUrlState == UrlValidationState.Valid || profileUrlState == UrlValidationState.ValidAP)
+                    {
+                        <p class="help is-success">@ValidationProfileMessage</p>
+                    }
+                    else if (profileUrlState == UrlValidationState.Checking)
+                    {
+                        <p class="help has-text-grey">Checking…</p>
+                    }
+
+                  
+
+                    @if (hasCta)
+                    {
+                        <div class="profile-cta mt-3">
+                            <div class="profile-cta-content">
+                                <span class="profile-cta-icon">
+                                    @switch (ctaType)
+                                    {
+                                        case "fedihub":
+                                            <i class="fas fa-wallet"></i>
+                                            break;
+                                        case "mastodon":
+                                            <i class="fab fa-mastodon"></i>
+                                            break;
+                                        default:
+                                            <i class="fas fa-globe"></i>
+                                            break;
+                                    }
+                                </span>
+                                <span class="is-size-7">
+                                    @switch (ctaType)
+                                    {
+                                        case "fedihub":
+                                            <text>No profile yet? <strong>Get a free Badge Wallet</strong></text>
+                                            break;
+                                        case "mastodon":
+                                            <text>No profile yet? <strong>Create a free Mastodon account</strong></text>
+                                            break;
+                                        default:
+                                            <text>No profile yet? <strong>Create a free Fediverse profile</strong></text>
+                                            break;
+                                    }
+                                </span>
+                                <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="profile-cta-btn">
+                                    Get Started <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
                 }
-                <div class="control mt-2">
-                    <button class="button is-outlined is-primary is-rounded" @onclick="ValidateProfileUrl" type="button">Validate</button>
-                </div>
-                <p class="help is-info">
-                    @ValidationProfileMessage
-                </p>
+
             </div>
 
             <!-- Full Name Input -->
-            <div class="field mb-3">
-                <label class="label" for="fullName">Full Name:</label>
+            <div class="accept-grant-field">
+                <label class="field-label" for="fullName">Full Name</label>
                 <div class="control">
-                    <input type="text" id="fullName" class="input is-rounded" @bind="Model.Name" required placeholder="Enter your full name"/>
+                    <input type="text" id="fullName" class="input" @bind="Model.Name" required placeholder="Enter your full name"/>
                 </div>
             </div>
            
             <!-- Visibility Select -->
-            <div class="field mb-3">
-                <label class="label" for="visibility">Visibility:</label>
+            <div class="accept-grant-field">
+                <label class="field-label" for="visibility">Visibility</label>
                 <div class="control">
-                    <div class="select is-rounded is-fullwidth">
+                    <div class="select">
                         <select id="visibility" @bind="visibility">
                             <option value="Public">Public</option>
                             <option value="Unlisted">Unlisted</option>
                         </select>
                     </div>
                 </div>
-                <p class="help is-info">
-                    Choose the visibility of this badge on the network.
+                <p class="field-hint">
                     Unlisted badges are not searchable, but anyone with the direct link can view them.
                 </p>
             </div>
 
             <!-- Submit Button -->
-            <div class="field">
-                <label class="checkbox">
-                        By accepting this badge I certify I completed the earning criteria.
-                    </label>
-                <div class="control">
-                    <button type="submit" class="button is-primary is-fullwidth is-medium is-rounded">Accept Badge</button>
-                </div>
+            <div class="accept-grant-field">
+                <p class="accept-grant-certify">
+                    By accepting this badge I certify I completed the earning criteria.
+                </p>
+                <button type="submit" class="accept-grant-submit">Accept Badge</button>
             </div>
         }
+    </div>
     </form></div>
 </div>
 
 }
+
+@* Profile URL Help Modal *@
+<ProfileUrlHelpModal IsOpen="@showHelpModal" OnClose="CloseHelpModal" CtaType="@ctaType" CtaUrl="@ctaUrl" />
 
 @code 
 {
@@ -212,7 +376,21 @@ else if (accepted)
 
     private string acceptEmail;
 
-    public string ValidationProfileMessage { get; set; }
+    public string ValidationProfileMessage { get; set; } = string.Empty;
+
+    private enum UrlValidationState { Empty, Typing, Error, Checking, Valid, ValidAP }
+    private UrlValidationState profileUrlState = UrlValidationState.Empty;
+
+    private System.Threading.Timer? _debounceTimer;
+    private string _lastValidatedUrl = string.Empty;
+
+    private string ProfileInputCssClass => profileUrlState switch
+    {
+        UrlValidationState.Error => "is-danger",
+        UrlValidationState.Valid or UrlValidationState.ValidAP => "is-success",
+        UrlValidationState.Checking => "",
+        _ => ""
+    };
 
     private bool emailValidated = false;
 
@@ -224,83 +402,208 @@ else if (accepted)
 
     private string linkedInUsername = string.Empty;
 
-    public async Task ValidateEmail()
+    private bool showHelpModal = false;
+
+    private bool showProfileHelp = false;
+
+    private string urlPickerSelection = string.Empty;
+    private string urlPlaceholder = "https://your-profile-url";
+    private string urlPickerHint = string.Empty;
+
+    private string ctaType = string.Empty;
+    private string ctaUrl = string.Empty;
+    private bool hasCta => !string.IsNullOrEmpty(ctaType) && !string.IsNullOrEmpty(ctaUrl);
+
+    private void OpenHelpModal() => showHelpModal = true;
+    private void CloseHelpModal() => showHelpModal = false;
+    private void ToggleProfileHelp() => showProfileHelp = !showProfileHelp;
+
+    private void OnProfileUrlInput(ChangeEventArgs e)
     {
-        emailValidated = acceptEmail == BadgeRecord.IssuedToEmail;
-        invalidEmail = !emailValidated;
+        var value = e.Value?.ToString() ?? "";
+        Model.ProfileUri = value;
+        RunInstantValidation(value);
+        ScheduleDeepValidation(value);
     }
 
-    public async Task ValidateProfileUrl()
+    private void OnLinkedInUsernameInput(ChangeEventArgs e)
     {
-        // If LinkedIn mode, build the full URL from the username
-        if (linkMode == "lin")
+        linkedInUsername = e.Value?.ToString() ?? "";
+        var fullUrl = string.IsNullOrWhiteSpace(linkedInUsername)
+            ? ""
+            : $"https://linkedin.com/in/{linkedInUsername.Trim().Trim('/')}";
+        Model.ProfileUri = fullUrl;
+
+        if (string.IsNullOrWhiteSpace(linkedInUsername))
         {
-            if (string.IsNullOrWhiteSpace(linkedInUsername))
+            profileUrlState = UrlValidationState.Empty;
+            ValidationProfileMessage = "";
+        }
+        else
+        {
+            profileUrlState = UrlValidationState.Typing;
+            ValidationProfileMessage = "";
+            ScheduleDeepValidation(fullUrl);
+        }
+    }
+
+    private void RunInstantValidation(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            profileUrlState = UrlValidationState.Empty;
+            ValidationProfileMessage = "";
+            return;
+        }
+
+        // Must start with https://
+        if (!value.StartsWith("https://"))
+        {
+            // Allow partial typing of "https://" without screaming
+            if ("https://".StartsWith(value, StringComparison.OrdinalIgnoreCase))
             {
-                ValidationProfileMessage = "Please enter your LinkedIn username.";
-                return;
+                profileUrlState = UrlValidationState.Typing;
+                ValidationProfileMessage = "";
             }
-
-            // Strip leading/trailing slashes and whitespace
-            var cleanUsername = linkedInUsername.Trim().Trim('/');
-            Model.ProfileUri = $"https://linkedin.com/in/{cleanUsername}";
-        }
-
-        ValidationProfileMessage = "Checking ...";
-
-        if (string.IsNullOrWhiteSpace(Model.ProfileUri))
-        {
-            ValidationProfileMessage = "Profile URI is required.";
+            else
+            {
+                profileUrlState = UrlValidationState.Error;
+                ValidationProfileMessage = "URL must start with https://";
+            }
             return;
         }
 
-        // check if it starts as https://
-        if (!Model.ProfileUri.StartsWith("https://"))
+        // Has protocol but not enough content
+        if (value.Length <= "https://".Length)
         {
-            ValidationProfileMessage = "Profile URI must start with https://";
+            profileUrlState = UrlValidationState.Typing;
+            ValidationProfileMessage = "";
             return;
         }
 
-        // check if it is a valid URL
-        if (!Uri.TryCreate(Model.ProfileUri, UriKind.Absolute, out _))
+        // Check valid URL syntax
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.Host) || !uri.Host.Contains('.'))
         {
-            ValidationProfileMessage = "Invalid URL.";
+            profileUrlState = UrlValidationState.Typing;
+            ValidationProfileMessage = "";
             return;
         }
+
+        // Locally valid — show green immediately, deep check will follow
+        profileUrlState = UrlValidationState.Valid;
+        ValidationProfileMessage = "\u2713 Valid URL";
+    }
+
+    private void ScheduleDeepValidation(string url)
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await DeepValidateProfileUrl(url);
+                StateHasChanged();
+            });
+        }, null, 800, Timeout.Infinite);
+    }
+
+    private async Task DeepValidateProfileUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("https://") || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || string.IsNullOrEmpty(uri.Host) || !uri.Host.Contains('.'))
+            return;
+
+        if (url == _lastValidatedUrl)
+            return;
+        _lastValidatedUrl = url;
+
+        profileUrlState = UrlValidationState.Checking;
+        ValidationProfileMessage = "";
+        StateHasChanged();
 
         try
         {
-            ValidationProfileMessage = "✓ Valid URL";
-
             var actorHelper = new ActorHelper(Actor.PrivateKeyPem, Actor.KeyId);
-            
-            var fediverseInfo = await actorHelper.FetchActorInformationAsync(Model.ProfileUri);
+            var fediverseInfo = await actorHelper.FetchActorInformationAsync(url);
+
+            // Check the URL hasn't changed while we were fetching
+            if (Model.ProfileUri != url)
+                return;
 
             if (fediverseInfo != null)
             {
                 Model.IsActivityPubActor = true;
-                
-                ValidationProfileMessage += "✓ ActivityPub endpoint.";
-                
+                profileUrlState = UrlValidationState.ValidAP;
+                ValidationProfileMessage = "\u2713 Valid URL \u2713 ActivityPub endpoint";
+
                 if (!string.IsNullOrEmpty(fediverseInfo.Name))
                 {
                     Model.Name = fediverseInfo.Name;
-                    ValidationProfileMessage += " ✓ Name autofilled from profile.";
-                } else if (!string.IsNullOrEmpty(fediverseInfo.PreferredUsername))
+                    ValidationProfileMessage += " \u2713 Name autofilled";
+                }
+                else if (!string.IsNullOrEmpty(fediverseInfo.PreferredUsername))
                 {
                     Model.Name = fediverseInfo.PreferredUsername;
-                    ValidationProfileMessage += " ✓ Name autofilled from profile.";
+                    ValidationProfileMessage += " \u2713 Name autofilled";
                 }
-            } else {
-                // ValidationProfileMessage += "⚠️ Could not retrieve the actor information. Your badge can still be issued, but the actor may not be federated.";
+            }
+            else
+            {
                 Model.IsActivityPubActor = false;
+                profileUrlState = UrlValidationState.Valid;
+                ValidationProfileMessage = "\u2713 Valid URL";
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error validating profile URL: {ex.Message}");
-            // ValidationProfileMessage += $"⚠️ Could not validate url. Your badge can still be issued, but the actor won't be federated.";
+            if (Model.ProfileUri == url)
+            {
+                profileUrlState = UrlValidationState.Valid;
+                ValidationProfileMessage = "\u2713 Valid URL";
+            }
         }
+    }
+
+    private void SelectUrlType(string type)
+    {
+        urlPickerSelection = type;
+        // Update placeholder and hint
+        urlPlaceholder = type switch
+        {
+            "linkedin" => "https://linkedin.com/in/your-username",
+            "mastodon" => "https://mastodon.social/@you",
+            "github" => "https://github.com/your-username",
+            "fedihub" => ctaUrl + "/@you",
+            "website" => "https://yoursite.com",
+            _ => "https://your-profile-url"
+        };
+        urlPickerHint = type switch
+        {
+            "linkedin" => "e.g. <code>https://linkedin.com/in/janedoe</code>",
+            "mastodon" => "e.g. <code>https://mastodon.social/@janedoe</code> — unlocks badge sharing &amp; verification",
+            "github" => "e.g. <code>https://github.com/janedoe</code>",
+            "fedihub" => $"e.g. <code>{ctaUrl}/@janedoe</code> — your badge wallet",
+            "website" => "e.g. <code>https://janedoe.com</code>",
+            _ => hasCta
+                ? $"Any public URL works, but we recommend a <a href=\"{CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)}\" target=\"_blank\"><strong>free Badge Wallet</strong></a> for the best experience."
+                : "Any public URL: about.me, Linktree, Codeberg, Instagram, etc."
+        };
+       
+        if (type == "linkedin")
+        {
+            linkMode = "lin";
+        }
+        else
+        {
+            linkMode = "";
+        }
+    }
+
+    public async Task ValidateEmail()
+    {
+        emailValidated = acceptEmail == BadgeRecord.IssuedToEmail;
+        invalidEmail = !emailValidated;
     }
 
     public async Task HandleValidSubmit()
@@ -340,6 +643,10 @@ else if (accepted)
 
     protected override async Task OnInitializedAsync()
     {
+        // Load ProfileCTA from configuration
+        ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
+        ctaUrl = Configuration["ProfileCTA:Url"] ?? "";
+
         var id = long.Parse(Id);
         var record = DbService.GetBadgeToAccept(id);
 

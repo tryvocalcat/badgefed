@@ -7,6 +7,9 @@
 @inject ServerDiscoveryService ServerDiscoveryService
 @layout BadgeFed.Components.Layouts.LandingLayout
 @inject LocalScopedDb LocalDbService
+@inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
 
 @if (!string.IsNullOrEmpty(CustomLandingPageHtmlContent))
 {
@@ -395,6 +398,38 @@ else
 </section>
 
 
+        @if (!string.IsNullOrEmpty(walletCtaUrl))
+        {
+            <section class="section py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="container">
+                    <div class="columns is-vcentered">
+                        <div class="column is-7">
+                            <h3 class="title is-4 has-text-white">
+                                <span class="icon mr-2"><i class="fas fa-wallet"></i></span>
+                                Get Your Free Badge Wallet
+                            </h3>
+                            <p class="subtitle is-6" style="color: rgba(255,255,255,0.9);">
+                                Collect, manage, and share your digital badges in one place. Your wallet is powered by ActivityPub — verified, portable, and always yours.
+                            </p>
+                            <div class="content is-small" style="color: rgba(255,255,255,0.85);">
+                                <ul>
+                                    <li>Collect badges from any BadgeFed-compatible server</li>
+                                    <li>Share your achievements across the Fediverse</li>
+                                    <li>Cryptographic verification built in</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="column is-5 has-text-centered">
+                            <a href="@CtaHelper.BuildCtaUrl(walletCtaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="button is-white is-medium" style="font-weight:600; border-radius:10px;">
+                                <span class="icon"><i class="fas fa-arrow-right"></i></span>
+                                <span>Create Your Wallet</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        }
+
         <!-- Instance Creation Section - subtle -->
         <section class="section has-background-light py-5" id="create-instance">
             <div class="container">
@@ -430,9 +465,12 @@ else
     private List<DiscoveredServer> FollowedServers { get; set; } = new List<DiscoveredServer>();
     private InstanceDescription? InstanceDescriptionData { get; set; } = null;
     private string CustomLandingPageHtmlContent { get; set; }
+    private string walletCtaUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        walletCtaUrl = Configuration["ProfileCTA:Url"] ?? "";
+
         var db = LocalDbService;
 
         var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Value;

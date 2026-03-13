@@ -1,0 +1,381 @@
+@page "/help/profile-url"
+@layout BadgeFed.Components.Layouts.MinimalLayout
+@inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
+@rendermode InteractiveServer
+
+<PageTitle>Why Profile URLs? — BadgeFed</PageTitle>
+
+<section class="section">
+    <div class="container" style="max-width: 800px;">
+
+        <nav class="breadcrumb is-small mb-4" aria-label="breadcrumbs">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li class="is-active"><a href="#" aria-current="page">Why Profile URLs?</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+
+            <h1 class="title is-2">
+                <span class="icon-text">
+                    <span class="icon has-text-link"><i class="fas fa-link"></i></span>
+                    <span>Why Profile URLs Instead of Email?</span>
+                </span>
+            </h1>
+
+            <p class="subtitle is-5 has-text-grey">
+                BadgeFed uses <strong>profile URLs</strong> — not email addresses — to identify badge recipients. Here's why that's actually better for you.
+            </p>
+
+            <div class="notification is-info is-light">
+                <span class="icon"><i class="fas fa-bolt"></i></span>
+                <strong>Already have a LinkedIn profile or a personal website?</strong> Use that URL and you're ready.
+                Want to get the most out of BadgeFed? Check out the <a href="#fediverse-option">Fediverse option</a> — it takes 2 minutes to set up and unlocks features like automatic badge sharing and decentralized verification.
+            </div>
+
+            @* ────────── The Simple Version ────────── *@
+            <h2 class="title is-3 mt-6">
+                <span class="icon-text">
+                    <span class="icon has-text-warning"><i class="fas fa-house-chimney"></i></span>
+                    <span>The Simple Version</span>
+                </span>
+            </h2>
+
+            <div class="columns is-variable is-6">
+                <div class="column">
+                    <div class="box" style="border-left: 4px solid #f14668;">
+                        <h4 class="title is-5">
+                            <span class="icon has-text-danger"><i class="fas fa-phone"></i></span> Email = Phone Number
+                        </h4>
+                        <ul>
+                            <li>You didn't really pick it — your provider gave it to you</li>
+                            <li>If you switch providers, you might lose it</li>
+                            <li>If someone gets it, they can contact you whenever they want (spam!)</li>
+                            <li>You can't really prove you're <em>you</em> just because you have a phone number</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box" style="border-left: 4px solid #48c78e;">
+                        <h4 class="title is-5">
+                            <span class="icon has-text-success"><i class="fas fa-house-chimney"></i></span> Profile URL = Your House
+                        </h4>
+                        <ul>
+                            <li>It's YOUR place — you put your name on it</li>
+                            <li>You decide what's visible from the street</li>
+                            <li>If you move, you can set up mail forwarding (redirects)</li>
+                            <li>Visitors can walk up, see it's really your place, and verify you live there</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification is-light is-link has-text-centered">
+                <p class="is-size-5">
+                    <strong>Profile URLs = your house.</strong> Email = a phone number someone else controls.
+                </p>
+            </div>
+
+            @* ────────── Why This Matters ────────── *@
+            <h2 class="title is-3 mt-6">
+                <span class="icon-text">
+                    <span class="icon has-text-success"><i class="fas fa-shield-halved"></i></span>
+                    <span>Why This Matters</span>
+                </span>
+            </h2>
+
+            <div class="url-help-benefit-section">
+                <div class="box mb-4">
+                    <h4 class="title is-5">
+                        <span class="icon has-text-warning"><i class="fas fa-lock"></i></span>
+                        Your email is not really yours
+                    </h4>
+                    <p>Your email address is rented from a provider — Gmail, Outlook, your employer, your university. If that provider shuts down your account, your email stops working, and every badge tied to it becomes unverifiable.</p>
+                    <p class="mt-2">A profile URL that you control stays with you. Even if you move to a new platform, you can redirect or update your URL. Your badges travel with you.</p>
+                </div>
+
+                <div class="box mb-4">
+                    <h4 class="title is-5">
+                        <span class="icon has-text-danger"><i class="fas fa-eye-slash"></i></span>
+                        Badges are meant to be shared — emails aren't
+                    </h4>
+                    <p>When your email is attached to a badge, that address becomes part of a credential that may be publicly shared. That means:</p>
+                    <ul>
+                        <li><strong>Spam risk.</strong> Your email can end up in unwanted mailing lists.</li>
+                        <li><strong>Tracking.</strong> Services can link your badges across platforms using your email.</li>
+                        <li><strong>Exposure.</strong> If a badge service is breached, your email leaks along with your achievements.</li>
+                    </ul>
+                    <p class="mt-2">A profile URL only reveals what <strong>you</strong> choose to publish at that address.</p>
+                </div>
+
+                <div class="box mb-4">
+                    <h4 class="title is-5">
+                        <span class="icon has-text-link"><i class="fas fa-fingerprint"></i></span>
+                        Verification is simpler for everyone
+                    </h4>
+                    <p>With a profile URL, an employer clicks it, sees your profile, and confirms the badge belongs to you. <strong>Done.</strong></p>
+                    <p class="mt-2">With an email-based badge, verification requires special tools and your email address. No hiring manager is going to do that.</p>
+                </div>
+
+                <div class="box mb-4">
+                    <h4 class="title is-5">
+                        <span class="icon has-text-success"><i class="fas fa-infinity"></i></span>
+                        Your badges keep working even if services change
+                    </h4>
+                    <p>Profile URLs work on the open web. They don't depend on any single company staying in business. Your badge remains verifiable by anyone, anywhere.</p>
+                </div>
+            </div>
+
+            @* ────────── Technical Note ────────── *@
+            <details class="box" style="background-color: #fafafa;">
+                <summary class="title is-6" style="cursor: pointer;">
+                    <span class="icon has-text-grey"><i class="fas fa-code"></i></span>
+                    Technical note: "But OpenBadges supports hashed emails…"
+                </summary>
+                <div class="content mt-3">
+                    <p>Yes — the OpenBadges spec allows hashed emails. This sounds good in theory, but:</p>
+                    <ul>
+                        <li><strong>Verification gets harder.</strong> The verifier must already know your email and hash it to check.</li>
+                        <li><strong>It's not truly private.</strong> Email hashes with a known salt can be reverse-engineered.</li>
+                        <li><strong>It still ties your identity to email.</strong> If your email changes, the hash no longer matches.</li>
+                        <li><strong>Poor user experience.</strong> Clicking a URL is simple. Dealing with hashes and salts is not.</li>
+                    </ul>
+                    <p>Hashing emails is a workaround. Profile URLs solve the problem directly — public, verifiable, and private by design.</p>
+                </div>
+            </details>
+
+            @* ────────── What URL Should I Use ────────── *@
+            <h2 class="title is-3 mt-6" id="what-url-should-i-use">
+                <span class="icon-text">
+                    <span class="icon has-text-info"><i class="fas fa-compass"></i></span>
+                    <span>What URL Should I Use?</span>
+                </span>
+            </h2>
+
+            <p>Your URL should be a <strong>stable, public web address that represents you</strong>. Here are your options:</p>
+
+            <div class="columns is-multiline mt-4">
+                @* LinkedIn *@
+                <div class="column is-half">
+                    <div class="url-option-card box">
+                        <div class="url-option-header">
+                            <span class="icon is-medium has-text-link"><i class="fab fa-linkedin fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">LinkedIn Profile</h4>
+                                <span class="tag is-success is-light is-rounded">Recommended</span>
+                            </div>
+                        </div>
+                        <p class="mt-2">The easiest option for most people. Simply copy your profile URL from the address bar.</p>
+                        <code class="is-size-7">https://linkedin.com/in/janedoe</code>
+                        <p class="help mt-2"><strong>Best for:</strong> job seekers, professionals</p>
+                    </div>
+                </div>
+
+                @* Personal Site *@
+                <div class="column is-half">
+                    <div class="url-option-card box">
+                        <div class="url-option-header">
+                            <span class="icon is-medium has-text-info"><i class="fas fa-globe fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">Your Own Website</h4>
+                                <span class="tag is-success is-light is-rounded">Recommended</span>
+                            </div>
+                        </div>
+                        <p class="mt-2">A domain you own is the most durable form of online identity. Even if you change hosting, the domain stays yours.</p>
+                        <code class="is-size-7">https://janedoe.com</code>
+                        <p class="help mt-2"><strong>Best for:</strong> freelancers, educators, creators</p>
+                    </div>
+                </div>
+
+                @* Mastodon / Fediverse *@
+                <div class="column is-half" id="fediverse-option">
+                    <div class="url-option-card box" style="border: 2px solid #667eea;">
+                        <div class="url-option-header">
+                            <span class="icon is-medium" style="color: #6364ff;"><i class="fab fa-mastodon fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">Mastodon / Fediverse</h4>
+                                <span class="tag is-warning is-light is-rounded">Unlock full experience</span>
+                            </div>
+                        </div>
+                        <p class="mt-2">Because BadgeFed is built on the same open network, Fediverse profiles unlock:</p>
+                        <ul class="is-size-7 mt-1">
+                            <li><strong>Automatic badge sharing</strong> to your followers</li>
+                            <li><strong>Decentralized verification</strong> — no middleman</li>
+                            <li><strong>Native display</strong> on your profile and feed</li>
+                            <li><strong>True portability</strong> — move your whole identity</li>
+                        </ul>
+                        <code class="is-size-7">https://mastodon.social/@@janedoe</code>
+                        <p class="help mt-2"><strong>New?</strong> Sign up free at <a href="https://mastodon.social" target="_blank" rel="noopener">mastodon.social</a> — takes 2 minutes.</p>
+                    </div>
+                </div>
+
+                @* FediHub / Badge Wallet — only if configured *@
+                @if (hasCta && ctaType == "fedihub")
+                {
+                <div class="column is-half">
+                    <div class="url-option-card box" style="border: 2px solid #764ba2;">
+                        <div class="url-option-header">
+                            <span class="icon is-medium" style="color: #764ba2;"><i class="fas fa-wallet fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">Badge Wallet</h4>
+                                <span class="tag is-warning is-light is-rounded">Unlock full experience</span>
+                            </div>
+                        </div>
+                        <p class="mt-2">A lightweight profile that can <strong>verify and link multiple profiles</strong> — your LinkedIn, GitHub, personal website — all in one place. Think of it as a badge wallet.</p>
+                        <code class="is-size-7">@(ctaUrl)/@@janedoe</code>
+                        <p class="help mt-2">
+                            <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="has-text-weight-bold">
+                                <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                                Create your free profile
+                            </a>
+                        </p>
+                    </div>
+                </div>
+                }
+
+                @* GitHub *@
+                <div class="column is-half">
+                    <div class="url-option-card box">
+                        <div class="url-option-header">
+                            <span class="icon is-medium has-text-dark"><i class="fab fa-github fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">GitHub / GitLab / Codeberg</h4>
+                            </div>
+                        </div>
+                        <p class="mt-2">Ties your badges to your work and contributions. Supports profile READMEs where you can display badges.</p>
+                        <code class="is-size-7">https://github.com/janedoe</code>
+                        <p class="help mt-2"><strong>Best for:</strong> developers, open-source contributors</p>
+                    </div>
+                </div>
+
+                @* Other *@
+                <div class="column is-half">
+                    <div class="url-option-card box">
+                        <div class="url-option-header">
+                            <span class="icon is-medium has-text-grey"><i class="fas fa-link fa-2x"></i></span>
+                            <div>
+                                <h4 class="title is-5 mb-0">Link-in-Bio / About Me</h4>
+                            </div>
+                        </div>
+                        <p class="mt-2">Services like about.me, Linktree, or Keyoxide give you a lightweight profile page without building a website.</p>
+                        <code class="is-size-7">https://about.me/janedoe</code>
+                        <p class="help mt-2"><strong>Best for:</strong> anyone who wants something quick and easy</p>
+                    </div>
+                </div>
+            </div>
+
+            @* ────────── What Makes a Good URL ────────── *@
+            <h3 class="title is-4 mt-5">What Makes a Good URL?</h3>
+            <table class="table is-striped is-fullwidth">
+                <thead>
+                    <tr>
+                        <th>Quality</th>
+                        <th>Why It Matters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="icon has-text-success"><i class="fas fa-check"></i></span> <strong>You control it</strong></td>
+                        <td>You can update, redirect, or migrate it</td>
+                    </tr>
+                    <tr>
+                        <td><span class="icon has-text-success"><i class="fas fa-check"></i></span> <strong>It's public</strong></td>
+                        <td>Anyone can visit it and confirm your identity</td>
+                    </tr>
+                    <tr>
+                        <td><span class="icon has-text-success"><i class="fas fa-check"></i></span> <strong>It's stable</strong></td>
+                        <td>It won't disappear if a company changes its rules</td>
+                    </tr>
+                    <tr>
+                        <td><span class="icon has-text-success"><i class="fas fa-check"></i></span> <strong>It represents you</strong></td>
+                        <td>It's clearly tied to your real or professional identity</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="notification is-danger is-light">
+                <h4 class="title is-5"><span class="icon"><i class="fas fa-exclamation-triangle"></i></span> What to Avoid</h4>
+                <ul>
+                    <li><strong>Temporary or throwaway URLs</strong> (link shorteners, pastebin, etc.)</li>
+                    <li><strong>URLs you don't control</strong> (someone else's website, a company intranet)</li>
+                    <li><strong>Pages behind a login wall</strong> (verification tools can't reach them)</li>
+                    <li><strong>Profiles on unstable platforms</strong></li>
+                </ul>
+            </div>
+
+            @* ────────── FAQ ────────── *@
+            <h2 class="title is-3 mt-6">
+                <span class="icon-text">
+                    <span class="icon has-text-primary"><i class="fas fa-comments"></i></span>
+                    <span>Frequently Asked Questions</span>
+                </span>
+            </h2>
+
+            <div class="url-help-faq">
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Can I just use my LinkedIn?</summary>
+                    <p class="mt-2">Yes! For most people, your LinkedIn profile URL is the simplest and best choice.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Do I need to be technical to use this?</summary>
+                    <p class="mt-2">Not at all. If you can copy a URL from your browser's address bar, you have everything you need.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">What if I don't have a personal website?</summary>
+                    <p class="mt-2">That's completely fine. LinkedIn, GitHub, or even a free Linktree page all work. You don't need to own a domain.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">What's the Fediverse?</summary>
+                    <p class="mt-2">A network of independent social platforms (like Mastodon) that all connect to each other. Think of it like email: you can have an account on any server and still communicate with people on other servers. No single company owns it. Signing up is free and takes 2 minutes — try <a href="https://mastodon.social" target="_blank">mastodon.social</a>.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Why do Fediverse profiles get extra features?</summary>
+                    <p class="mt-2">Because BadgeFed is built on the same open network (ActivityPub). When your badge and your profile speak the same language, automatic sharing, live verification, and native display just work.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Can I use both LinkedIn and a Fediverse profile?</summary>
+                    <p class="mt-2">Absolutely. Many people use LinkedIn as their primary professional URL and add a Fediverse profile for richer badge features.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Can I change my URL later?</summary>
+                    <p class="mt-2">That depends on the badge issuer's setup, but in general it's best to pick a URL you plan to keep. Your LinkedIn profile or personal website is a safe bet.</p>
+                </details>
+                <details class="box mb-3">
+                    <summary class="has-text-weight-bold" style="cursor: pointer;">Why not just use email like everyone else?</summary>
+                    <p class="mt-2">Because email addresses are private contact info that can lead to spam and tracking, they're controlled by your provider (not you), and they make badge verification harder. A profile URL is public, yours, and easy to verify.</p>
+                </details>
+            </div>
+
+            @* ────────── TL;DR ────────── *@
+            <div class="notification is-primary is-light mt-5" style="border-radius: 8px;">
+                <h4 class="title is-5">
+                    <span class="icon"><i class="fas fa-bolt"></i></span> TL;DR
+                </h4>
+                <p>Use a URL that is <em>yours</em>, <em>public</em>, and <em>likely to still exist in five years</em>.
+                    <strong>LinkedIn or your own website</strong> are the easiest starting points. Want the full experience?
+                    A <strong><a href="#fediverse-option">Fediverse profile</a></strong> unlocks automatic badge sharing and decentralized verification — and it only takes 2 minutes to set up.
+                    @if (hasCta)
+                    {
+                        <text>You can also <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavManager.Uri)" target="_blank">create a free profile here</a>.</text>
+                    }
+                </p>
+                <p class="mt-2 has-text-weight-bold">You own your identity, not your inbox.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private string ctaType = "";
+    private string ctaUrl = "";
+    private bool hasCta => !string.IsNullOrEmpty(ctaType) && !string.IsNullOrEmpty(ctaUrl);
+
+    protected override void OnInitialized()
+    {
+        ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
+        ctaUrl = Configuration["ProfileCTA:Url"] ?? "";
+    }
+}

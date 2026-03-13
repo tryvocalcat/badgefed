@@ -24,7 +24,15 @@ namespace BadgeFed.Controllers
         public IActionResult GetIssuer(string domain, string username)
         {
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge issuer for {Username}@{Domain}", Request.Host, username, domain);
-            
+
+            var accept = Request.Headers["Accept"].ToString();
+
+            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            {
+                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge issuer {Username}@{Domain}, redirecting to view", Request.Host, username, domain);
+                return Redirect($"/view/actor/{domain}/{username}");
+            }
+
             var actor = _localDbService.GetActorByFilter($"Username = \"{username}\" AND Domain = \"{domain}\"");
             
             if (actor == null)
@@ -43,7 +51,15 @@ namespace BadgeFed.Controllers
         public IActionResult GetBadgeClass(long id)
         {
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge class for badge ID: {BadgeId}", Request.Host, id);
-            
+
+            var accept = Request.Headers["Accept"].ToString();
+
+            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            {
+                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge class {BadgeId}, redirecting to view", Request.Host, id);
+                return Redirect($"/view/badge/{id}/grants");
+            }
+
             var badge = _localDbService.GetBadgeDefinitionById(id);
             
             if (badge == null)
@@ -64,7 +80,15 @@ namespace BadgeFed.Controllers
         public IActionResult GetOpenBadge(string noteId)
         {
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge for noteId: {NoteId}", Request.Host, noteId);
-            
+
+            var accept = Request.Headers["Accept"].ToString();
+
+            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            {
+                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge {NoteId}, redirecting to view", Request.Host, noteId);
+                return Redirect($"/view/grant/{noteId}");
+            }
+
             var record = _openBadgeService.GetOpenBadgeFromBadgeRecord(noteId);
             
             if (record == null)

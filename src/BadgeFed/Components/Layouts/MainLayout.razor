@@ -1,4 +1,7 @@
 ﻿@inherits LayoutComponentBase
+@inject IConfiguration Configuration
+@inject NavigationManager NavManager
+@using BadgeFed.Core
 
 <style>
     .navbar {
@@ -84,6 +87,15 @@
                     </span>
                     <span>Documentation</span>
                 </a>
+                @if (!string.IsNullOrEmpty(Configuration["ProfileCTA:Url"]))
+                {
+                    <a class="navbar-item" href="@CtaHelper.BuildCtaUrl(Configuration["ProfileCTA:Url"], NavManager.Uri)" target="_blank" rel="noopener">
+                        <span class="icon">
+                            <i class="fas fa-wallet"></i>
+                        </span>
+                        <span>Badge Wallet</span>
+                    </a>
+                }
             </div>
             <div class="navbar-end" style="display: none;">
                 <div class="navbar-item">

@@ -1,0 +1,235 @@
+@* 
+    ProfileUrlHelpModal.razor
+    A carousel-style modal explaining why BadgeFed uses profile URLs instead of email addresses.
+    3 steps: analogy, benefits, what URL to pick.
+*@
+
+<div class="modal @(IsOpen ? "is-active" : "")">
+    <div class="modal-background" @onclick="Close"></div>
+    <div class="modal-card" style="max-width: 640px; border-radius: 12px; overflow: hidden;">
+        <header class="modal-card-head" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none;">
+            <p class="modal-card-title has-text-white has-text-weight-bold">
+                <span class="icon mr-2"><i class="fas fa-question-circle"></i></span>
+                Why a Profile URL?
+            </p>
+            <button class="delete" aria-label="close" @onclick="Close"></button>
+        </header>
+
+        <section class="modal-card-body" style="padding: 1.5rem 2rem;">
+            @* Step indicators *@
+            <div class="has-text-centered mb-4">
+                <span class="url-help-step-dot @(currentStep == 1 ? "active" : "")" @onclick="() => GoToStep(1)"></span>
+                <span class="url-help-step-dot @(currentStep == 2 ? "active" : "")" @onclick="() => GoToStep(2)"></span>
+                <span class="url-help-step-dot @(currentStep == 3 ? "active" : "")" @onclick="() => GoToStep(3)"></span>
+            </div>
+
+            @* Step 1: The Analogy *@
+            @if (currentStep == 1)
+            {
+                <div class="url-help-slide">
+                    <div class="has-text-centered mb-4">
+                        <span class="icon is-large has-text-link">
+                            <i class="fas fa-house-chimney fa-3x"></i>
+                        </span>
+                    </div>
+                    <h4 class="title is-4 has-text-centered">Your House vs. a Phone Number</h4>
+                    <div class="content">
+                        <p>Think of your <strong>email address</strong> like a <strong>phone number</strong>:</p>
+                        <ul class="url-help-comparison">
+                            <li>
+                                <span class="icon has-text-danger"><i class="fas fa-times-circle"></i></span>
+                                You didn't pick it — your provider gave it to you
+                            </li>
+                            <li>
+                                <span class="icon has-text-danger"><i class="fas fa-times-circle"></i></span>
+                                If you switch providers, you could lose it
+                            </li>
+                            <li>
+                                <span class="icon has-text-danger"><i class="fas fa-times-circle"></i></span>
+                                Anyone with it can contact you (spam!)
+                            </li>
+                        </ul>
+                        <p class="mt-4">Now think of your <strong>profile URL</strong> like your <strong>house with your name on the mailbox</strong>:</p>
+                        <ul class="url-help-comparison">
+                            <li>
+                                <span class="icon has-text-success"><i class="fas fa-check-circle"></i></span>
+                                It's <em>your</em> place — you control what's visible
+                            </li>
+                            <li>
+                                <span class="icon has-text-success"><i class="fas fa-check-circle"></i></span>
+                                If you move, you can set up forwarding
+                            </li>
+                            <li>
+                                <span class="icon has-text-success"><i class="fas fa-check-circle"></i></span>
+                                Visitors can verify it's really you
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="notification is-light is-info url-help-callout">
+                        <span class="icon"><i class="fas fa-lightbulb"></i></span>
+                        <strong>Profile URL = your house.</strong> Email = a phone number someone else controls.
+                    </div>
+                </div>
+            }
+
+            @* Step 2: Key Benefits *@
+            @if (currentStep == 2)
+            {
+                <div class="url-help-slide">
+                    <div class="has-text-centered mb-4">
+                        <span class="icon is-large has-text-success">
+                            <i class="fas fa-shield-halved fa-3x"></i>
+                        </span>
+                    </div>
+                    <h4 class="title is-4 has-text-centered">Why This Is Better For You</h4>
+                    <div class="content">
+                        <div class="url-help-benefit-card">
+                            <div class="url-help-benefit-icon">
+                                <span class="icon has-text-warning"><i class="fas fa-lock fa-lg"></i></span>
+                            </div>
+                            <div>
+                                <strong>No spam or tracking</strong>
+                                <p class="is-size-7 has-text-grey">Your email stays private. A profile URL only shows what <em>you</em> choose to publish.</p>
+                            </div>
+                        </div>
+                        <div class="url-help-benefit-card">
+                            <div class="url-help-benefit-icon">
+                                <span class="icon has-text-link"><i class="fas fa-fingerprint fa-lg"></i></span>
+                            </div>
+                            <div>
+                                <strong>Easy verification</strong>
+                                <p class="is-size-7 has-text-grey">Anyone can click your URL, see your profile, and confirm the badge is yours. No special tools needed.</p>
+                            </div>
+                        </div>
+                        <div class="url-help-benefit-card">
+                            <div class="url-help-benefit-icon">
+                                <span class="icon has-text-success"><i class="fas fa-infinity fa-lg"></i></span>
+                            </div>
+                            <div>
+                                <strong>Badges that last</strong>
+                                <p class="is-size-7 has-text-grey">Profile URLs work on the open web. Your badges stay verifiable even if platforms change.</p>
+                            </div>
+                        </div>
+                        <div class="url-help-benefit-card">
+                            <div class="url-help-benefit-icon">
+                                <span class="icon has-text-info"><i class="fas fa-rocket fa-lg"></i></span>
+                            </div>
+                            <div>
+                                <strong>Fediverse superpowers</strong>
+                                <p class="is-size-7 has-text-grey">Use a Mastodon or Fediverse profile to unlock automatic badge sharing and decentralized verification.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Step 3: What URL to pick *@
+            @if (currentStep == 3)
+            {
+                <div class="url-help-slide">
+                    <div class="has-text-centered mb-4">
+                        <span class="icon is-large has-text-warning">
+                            <i class="fas fa-link fa-3x"></i>
+                        </span>
+                    </div>
+                    <h4 class="title is-4 has-text-centered">What URL Should I Use?</h4>
+                    <div class="content">
+                        <p>Any <strong>stable, public web address</strong> that represents you. Here are great options:</p>
+
+                        <div class="url-help-option-grid">
+                            <div class="url-help-option-card">
+                                <span class="icon has-text-link"><i class="fab fa-linkedin fa-lg"></i></span>
+                                <strong>LinkedIn</strong>
+                                <span class="tag is-success is-light is-rounded is-small">Recommended</span>
+                                <code class="is-size-7">linkedin.com/in/you</code>
+                            </div>
+                            <div class="url-help-option-card">
+                                <span class="icon has-text-info"><i class="fas fa-globe fa-lg"></i></span>
+                                <strong>Personal Site</strong>
+                                <span class="tag is-success is-light is-rounded is-small">Recommended</span>
+                                <code class="is-size-7">yoursite.com</code>
+                            </div>
+                            <div class="url-help-option-card url-help-option-fediverse">
+                                <span class="icon has-text-purple"><i class="fab fa-mastodon fa-lg"></i></span>
+                                <strong>Mastodon</strong>
+                                <span class="tag is-warning is-light is-rounded is-small">Full experience</span>
+                                <code class="is-size-7">mastodon.social/&commat;you</code>
+                            </div>
+                            @if (HasCta && CtaType == "fedihub")
+                            {
+                                <div class="url-help-option-card url-help-option-fediverse">
+                                    <span class="icon" style="color: #764ba2;"><i class="fas fa-wallet fa-lg"></i></span>
+                                    <strong>Badge Wallet</strong>
+                                    <span class="tag is-warning is-light is-rounded is-small">Full experience</span>
+                                    <code class="is-size-7">@(CtaDomain)/&commat;you</code>
+                                </div>
+                            }
+                            <div class="url-help-option-card">
+                                <span class="icon has-text-dark"><i class="fab fa-github fa-lg"></i></span>
+                                <strong>GitHub</strong>
+                                <code class="is-size-7">github.com/you</code>
+                            </div>
+                            <div class="url-help-option-card">
+                                <span class="icon has-text-grey"><i class="fas fa-link fa-lg"></i></span>
+                                <strong>Any public URL</strong>
+                                <code class="is-size-7">about.me, linktr.ee, etc.</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </section>
+
+        <footer class="modal-card-foot" style="justify-content: space-between; border-top: 1px solid #eee;">
+            <div>
+                @if (currentStep > 1)
+                {
+                    <button class="button is-light is-rounded" @onclick="PreviousStep">
+                        <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                        <span>Back</span>
+                    </button>
+                }
+            </div>
+            <div class="buttons">
+                <a href="/help/profile-url" class="button is-text is-small" target="_blank">
+                    Learn more
+                </a>
+                @if (currentStep < 3)
+                {
+                    <button class="button is-primary is-rounded" @onclick="NextStep">
+                        <span>Next</span>
+                        <span class="icon"><i class="fas fa-arrow-right"></i></span>
+                    </button>
+                }
+                else
+                {
+                    <button class="button is-primary is-rounded" @onclick="Close">
+                        <span class="icon"><i class="fas fa-check"></i></span>
+                        <span>Got it!</span>
+                    </button>
+                }
+            </div>
+        </footer>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string CtaType { get; set; } = "";
+    [Parameter] public string CtaUrl { get; set; } = "";
+
+    private int currentStep = 1;
+
+    private bool HasCta => !string.IsNullOrEmpty(CtaType) && !string.IsNullOrEmpty(CtaUrl);
+    private string CtaDomain => HasCta ? new Uri(CtaUrl).Host : "";
+
+    private void GoToStep(int step) => currentStep = step;
+    private void NextStep() { if (currentStep < 3) currentStep++; }
+    private void PreviousStep() { if (currentStep > 1) currentStep--; }
+    private void Close()
+    {
+        currentStep = 1;
+        OnClose.InvokeAsync();
+    }
+}
