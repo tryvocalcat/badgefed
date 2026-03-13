@@ -349,9 +349,40 @@
                                 </span>
                             </td>
                             <td>
-                                <span class="tag @GetRoleTagClass(user.Role)">
-                                    @user.Role.ToTitleCase()
-                                </span>
+                                @if (user.Id == CurrentUser.UserId)
+                                {
+                                    <span class="tag @GetRoleTagClass(user.Role)">@user.Role.ToTitleCase()</span>
+                                }
+                                else
+                                {
+                                    <div class="field has-addons">
+                                        <div class="control">
+                                            @if (IsRoleEditing(user.Id))
+                                            {
+                                                <div class="select is-small">
+                                                    <select @onchange="@((ChangeEventArgs e) => SaveRoleChange(user.Id, e.Value?.ToString() ?? user.Role))"
+                                                            value="@user.Role">
+                                                        <option value="admin">Admin</option>
+                                                        <option value="manager">Manager</option>
+                                                        <option value="user">User</option>
+                                                    </select>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag @GetRoleTagClass(user.Role)">@user.Role.ToTitleCase()</span>
+                                            }
+                                        </div>
+                                        <div class="control">
+                                            <button class="button is-small @(IsRoleEditing(user.Id) ? "is-success" : "is-info")" 
+                                                    @onclick="() => ToggleRoleEdit(user.Id)">
+                                                <span class="icon is-small">
+                                                    <i class="fas @(IsRoleEditing(user.Id) ? "fa-check" : "fa-edit")"></i>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
                             </td>
                             <td>
                                 @if (user.Role == "admin")
@@ -489,6 +520,7 @@
     private List<UserGroup>? allGroups = new();
     private Dictionary<string, int> groupUserCounts = new();
     private HashSet<string> editingGroupUserIds = new(); // Track which users are being edited
+    private HashSet<string> editingRoleUserIds = new(); // Track which users have role being edited
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
     private bool showGroupManagement = false;
@@ -665,6 +697,36 @@
     {
         await UpdateUserGroup(userId, newGroupId);
         editingGroupUserIds.Remove(userId); // Exit edit mode after saving
+    }
+
+    private bool IsRoleEditing(string userId)
+    {
+        return editingRoleUserIds.Contains(userId);
+    }
+
+    private void ToggleRoleEdit(string userId)
+    {
+        if (editingRoleUserIds.Contains(userId))
+        {
+            editingRoleUserIds.Remove(userId);
+        }
+        else
+        {
+            editingRoleUserIds.Add(userId);
+        }
+    }
+
+    private async Task SaveRoleChange(string userId, string newRole)
+    {
+        await UpdateUserRole(userId, newRole);
+        editingRoleUserIds.Remove(userId); // Exit edit mode after saving
+
+        // If role changed to admin, move to system group
+        var user = allUsers?.FirstOrDefault(u => u.Id == userId);
+        if (user != null && newRole == "admin" && user.GroupId != "system")
+        {
+            await UpdateUserGroup(userId, "system");
+        }
     }
 
     private int GetUserCountForGroup(string groupId)
