@@ -605,9 +605,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Load wallet CTA config
-        var ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
-        walletCtaUrl = Configuration["ProfileCTA:Url"] ?? "";
+        // Load wallet CTA config from database
+        var instanceDesc = LocalDbService.GetInstanceDescription();
+        var ctaType = (instanceDesc.ProfileCTAType ?? "").ToLowerInvariant();
+        walletCtaUrl = instanceDesc.ProfileCTAUrl ?? "";
 
         if (!string.IsNullOrEmpty(RecipientUri))
         {

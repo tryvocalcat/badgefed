@@ -36,6 +36,9 @@ else if (accepted)
     <h4>
         <i class="oi oi-star"></i>
         Congratulations!
+        <a href="/pages/how-to-accept-a-badge.html" target="_blank" title="Need help accepting your badge?" style="margin-left: 8px; font-size: 0.75em; color: #4f46e5; vertical-align: middle;">
+            <i class="fas fa-question-circle"></i>
+        </a>
     </h4>
     <p>You've earned this @Badge.BadgeType. Accept it to add it to your collection.</p>
 </div>
@@ -274,6 +277,28 @@ else if (accepted)
 
                   
 
+                    @if (showWalletReplacePrompt)
+                    {
+                        <div class="notification is-warning is-light mt-3" style="border-radius: 10px;">
+                            <p class="is-size-7 mb-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Your wallet returned a profile URL</strong> that differs from the one below.
+                                Make sure <strong>@Model.ProfileUri</strong> is added as a verified URI in your wallet. If it isn't, you can use your wallet URL instead.
+                            </p>
+                            <p class="is-size-7 mb-2">Replace with: <code>@walletReturnUrl</code></p>
+                            <div class="buttons are-small">
+                                <button type="button" class="button is-warning is-small" @onclick="AcceptWalletUrl">
+                                    <span class="icon is-small"><i class="fas fa-exchange-alt"></i></span>
+                                    <span>Use wallet URL</span>
+                                </button>
+                                <button type="button" class="button is-light is-small" @onclick="DismissWalletPrompt">
+                                    <span class="icon is-small"><i class="fas fa-times"></i></span>
+                                    <span>Keep current</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+
                     @if (hasCta)
                     {
                         <div class="profile-cta mt-3">
@@ -414,9 +439,28 @@ else if (accepted)
     private string ctaUrl = string.Empty;
     private bool hasCta => !string.IsNullOrEmpty(ctaType) && !string.IsNullOrEmpty(ctaUrl);
 
+    private string walletReturnUrl = string.Empty;
+    private bool showWalletReplacePrompt = false;
+
     private void OpenHelpModal() => showHelpModal = true;
     private void CloseHelpModal() => showHelpModal = false;
     private void ToggleProfileHelp() => showProfileHelp = !showProfileHelp;
+
+    private void AcceptWalletUrl()
+    {
+        Model.ProfileUri = walletReturnUrl;
+        linkMode = "";
+        showWalletReplacePrompt = false;
+        RunInstantValidation(walletReturnUrl);
+        ScheduleDeepValidation(walletReturnUrl);
+        walletReturnUrl = string.Empty;
+    }
+
+    private void DismissWalletPrompt()
+    {
+        showWalletReplacePrompt = false;
+        walletReturnUrl = string.Empty;
+    }
 
     private void OnProfileUrlInput(ChangeEventArgs e)
     {
@@ -643,9 +687,10 @@ else if (accepted)
 
     protected override async Task OnInitializedAsync()
     {
-        // Load ProfileCTA from configuration
-        ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
-        ctaUrl = Configuration["ProfileCTA:Url"] ?? "";
+        // Load ProfileCTA from database
+        var instanceDesc = DbService.GetInstanceDescription();
+        ctaType = (instanceDesc.ProfileCTAType ?? "").ToLowerInvariant();
+        ctaUrl = instanceDesc.ProfileCTAUrl ?? "";
 
         var id = long.Parse(Id);
         var record = DbService.GetBadgeToAccept(id);
@@ -685,11 +730,36 @@ else if (accepted)
 
         emailValidated = string.IsNullOrEmpty(BadgeRecord.IssuedToEmail);
 
-        // Parse query parameter "l" for link mode
+        // Parse query parameters
         var uri = new Uri(NavManager.Uri);
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("l", out var lValue))
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        if (queryParams.TryGetValue("l", out var lValue))
         {
             linkMode = lValue.ToString().ToLowerInvariant();
+        }
+
+        // Handle wallet return with profileUrl
+        if (queryParams.TryGetValue("profileUrl", out var returnedProfileUrl))
+        {
+            var walletUrl = returnedProfileUrl.ToString().Trim();
+            if (!string.IsNullOrEmpty(walletUrl) && walletUrl.StartsWith("https://"))
+            {
+                if (!string.IsNullOrEmpty(Model.ProfileUri) && Model.ProfileUri != walletUrl)
+                {
+                    // Profile already set and different — ask user
+                    walletReturnUrl = walletUrl;
+                    showWalletReplacePrompt = true;
+                }
+                else
+                {
+                    // No profile yet or same URL — just set it
+                    Model.ProfileUri = walletUrl;
+                    linkMode = ""; // ensure full-URL mode
+                    RunInstantValidation(walletUrl);
+                    ScheduleDeepValidation(walletUrl);
+                }
+            }
         }
 
         // Auto-detect LinkedIn from existing IssuedToSubjectUri

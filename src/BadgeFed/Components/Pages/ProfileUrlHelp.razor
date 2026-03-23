@@ -2,6 +2,7 @@
 @layout BadgeFed.Components.Layouts.MinimalLayout
 @inject IConfiguration Configuration
 @inject NavigationManager NavManager
+@inject LocalScopedDb LocalDbService
 @using BadgeFed.Core
 @rendermode InteractiveServer
 
@@ -375,7 +376,8 @@
 
     protected override void OnInitialized()
     {
-        ctaType = (Configuration["ProfileCTA:Type"] ?? "").ToLowerInvariant();
-        ctaUrl = Configuration["ProfileCTA:Url"] ?? "";
+        var instanceDesc = LocalDbService.GetInstanceDescription();
+        ctaType = (instanceDesc.ProfileCTAType ?? "").ToLowerInvariant();
+        ctaUrl = instanceDesc.ProfileCTAUrl ?? "";
     }
 }

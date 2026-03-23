@@ -94,6 +94,10 @@ else
                             <span class="icon"><i class="fas fa-compass"></i></span>
                             <span>Explore Badges</span>
                         </a>
+                        <a href="/pages/how-to-accept-a-badge.html" class="button is-light is-large">
+                            <span class="icon"><i class="fas fa-hand-holding-heart"></i></span>
+                            <span>How to Accept</span>
+                        </a>
                     </div>
                 </div>
                 <div class="column is-5">
@@ -469,8 +473,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        walletCtaUrl = Configuration["ProfileCTA:Url"] ?? "";
-
         var db = LocalDbService;
 
         var requestHost = HttpContextAccessor.HttpContext?.Request.Host.Value;
@@ -485,6 +487,9 @@ else
             {
                 Console.WriteLine($"Error loading instance description: {ex.Message}");
             }
+
+            // Load wallet CTA from instance description
+            walletCtaUrl = InstanceDescriptionData?.ProfileCTAUrl ?? "";
 
             // Handle different landing page types
             if (InstanceDescriptionData != null)

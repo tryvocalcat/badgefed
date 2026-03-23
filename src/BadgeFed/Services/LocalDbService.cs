@@ -2071,7 +2071,9 @@ public class ActorStats
                 CustomLandingPageHtml = reader.IsDBNull(reader.GetOrdinal("CustomLandingPageHtml")) ? "" : reader.GetString(reader.GetOrdinal("CustomLandingPageHtml")),
                 IsEnabled = reader.GetBoolean(reader.GetOrdinal("IsEnabled")),
                 LandingPageType = reader.IsDBNull(reader.GetOrdinal("LandingPageType")) ? "default" : reader.GetString(reader.GetOrdinal("LandingPageType")),
-                StaticPageFilename = reader.IsDBNull(reader.GetOrdinal("StaticPageFilename")) ? "" : reader.GetString(reader.GetOrdinal("StaticPageFilename"))
+                StaticPageFilename = reader.IsDBNull(reader.GetOrdinal("StaticPageFilename")) ? "" : reader.GetString(reader.GetOrdinal("StaticPageFilename")),
+                ProfileCTAType = reader.IsDBNull(reader.GetOrdinal("ProfileCTAType")) ? "" : reader.GetString(reader.GetOrdinal("ProfileCTAType")),
+                ProfileCTAUrl = reader.IsDBNull(reader.GetOrdinal("ProfileCTAUrl")) ? "" : reader.GetString(reader.GetOrdinal("ProfileCTAUrl"))
             };
         }
 
@@ -2096,8 +2098,8 @@ public class ActorStats
         if (description.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename)
-                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename);
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename, ProfileCTAType, ProfileCTAUrl)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename, @ProfileCTAType, @ProfileCTAUrl);
                 SELECT last_insert_rowid();
             ";
         }
@@ -2112,7 +2114,9 @@ public class ActorStats
                     CustomLandingPageHtml = @CustomLandingPageHtml,
                     IsEnabled = @IsEnabled,
                     LandingPageType = @LandingPageType,
-                    StaticPageFilename = @StaticPageFilename
+                    StaticPageFilename = @StaticPageFilename,
+                    ProfileCTAType = @ProfileCTAType,
+                    ProfileCTAUrl = @ProfileCTAUrl
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", description.Id);
@@ -2126,6 +2130,8 @@ public class ActorStats
         command.Parameters.AddWithValue("@IsEnabled", description.IsEnabled);
         command.Parameters.AddWithValue("@LandingPageType", description.LandingPageType);
         command.Parameters.AddWithValue("@StaticPageFilename", description.StaticPageFilename);
+        command.Parameters.AddWithValue("@ProfileCTAType", description.ProfileCTAType ?? "");
+        command.Parameters.AddWithValue("@ProfileCTAUrl", description.ProfileCTAUrl ?? "");
 
         if (description.Id == 0)
         {

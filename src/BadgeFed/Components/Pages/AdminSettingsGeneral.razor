@@ -150,6 +150,75 @@
             </div>
         }
     </div>
+
+    <!-- Profile CTA -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-bullhorn"></i>
+                </span>
+                <span>Profile CTA (Call to Action)</span>
+            </span>
+        </h2>
+
+        <div class="content">
+            <p>Configure the badge wallet link shown in navigation and profile pages.</p>
+        </div>
+
+        <div class="field">
+            <label class="label">CTA Type</label>
+            <div class="control">
+                <div class="select">
+                    <select @bind="instanceDescription.ProfileCTAType">
+                        <option value="">None (disabled)</option>
+                        <option value="fedihub">FediHub</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+            </div>
+            <p class="help">The type of badge wallet service to link to</p>
+        </div>
+
+        <div class="field">
+            <label class="label">CTA URL</label>
+            <div class="control">
+                <input @bind="instanceDescription.ProfileCTAUrl" class="input" placeholder="e.g., https://hub.vocalcat.com/login" maxlength="500" />
+            </div>
+            <p class="help">The URL for the badge wallet or profile service (leave empty to disable)</p>
+        </div>
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="SaveProfileCta" disabled="@isSavingCta">
+                    @if (isSavingCta)
+                    {
+                        <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span class="icon"><i class="fas fa-save"></i></span>
+                        <span>Save CTA Settings</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(CtaMessage))
+        {
+            <div class="notification is-success is-light">
+                @CtaMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(CtaError))
+        {
+            <div class="notification is-danger is-light">
+                <strong>Error:</strong> @CtaError
+            </div>
+        }
+    </div>
 </div>
 
 @code {
@@ -164,9 +233,28 @@
     private string CssMessage { get; set; } = string.Empty;
     private string CssError { get; set; } = string.Empty;
 
+    private InstanceDescription instanceDescription = new();
+    private bool isSavingCta = false;
+    private string CtaMessage { get; set; } = string.Empty;
+    private string CtaError { get; set; } = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCustomCss();
+        LoadProfileCta();
+    }
+
+    private void LoadProfileCta()
+    {
+        try
+        {
+            LocalDbService.InitializeInstanceDescriptionTable();
+            instanceDescription = LocalDbService.GetInstanceDescription();
+        }
+        catch (Exception ex)
+        {
+            CtaError = $"Error loading CTA settings: {ex.Message}";
+        }
     }    private void OnLogoFileSelected(InputFileChangeEventArgs e)
     {
         LogoUploadMessage = null;
@@ -292,6 +380,31 @@
         if (string.IsNullOrEmpty(CssError))
         {
             successMessage = "CSS content reloaded from file.";
+        }
+    }
+
+    private async Task SaveProfileCta()
+    {
+        CtaMessage = string.Empty;
+        CtaError = string.Empty;
+        errorMessage = string.Empty;
+        isSavingCta = true;
+
+        try
+        {
+            LocalDbService.SaveInstanceDescription(instanceDescription);
+            CtaMessage = "CTA settings saved successfully!";
+            successMessage = "Profile CTA has been updated.";
+        }
+        catch (Exception ex)
+        {
+            CtaError = $"Error saving CTA settings: {ex.Message}";
+            errorMessage = $"Failed to save CTA settings: {ex.Message}";
+        }
+        finally
+        {
+            isSavingCta = false;
+            StateHasChanged();
         }
     }
 }

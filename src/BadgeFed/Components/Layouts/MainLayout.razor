@@ -1,7 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @inject IConfiguration Configuration
 @inject NavigationManager NavManager
+@inject LocalScopedDb LocalDbService
 @using BadgeFed.Core
+@using BadgeFed.Services
 
 <style>
     .navbar {
@@ -87,9 +89,16 @@
                     </span>
                     <span>Documentation</span>
                 </a>
-                @if (!string.IsNullOrEmpty(Configuration["ProfileCTA:Url"]))
+                <a class="navbar-item" href="/pages/how-to-accept-a-badge.html">
+                    <span class="icon">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </span>
+                    <span>How to Accept</span>
+                </a>
+                @{ var _instanceDesc = LocalDbService.GetInstanceDescription(); }
+                @if (!string.IsNullOrEmpty(_instanceDesc.ProfileCTAUrl))
                 {
-                    <a class="navbar-item" href="@CtaHelper.BuildCtaUrl(Configuration["ProfileCTA:Url"], NavManager.Uri)" target="_blank" rel="noopener">
+                    <a class="navbar-item" href="@CtaHelper.BuildCtaUrl(_instanceDesc.ProfileCTAUrl, NavManager.Uri)" target="_blank" rel="noopener">
                         <span class="icon">
                             <i class="fas fa-wallet"></i>
                         </span>

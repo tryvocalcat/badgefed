@@ -25,6 +25,12 @@ namespace BadgeFed.Models
         // New fields for landing page management
         public string LandingPageType { get; set; } = "default"; // "default", "custom_html", "static_page"
         public string StaticPageFilename { get; set; } = ""; // If using static page redirect
+
+        // Profile CTA settings (moved from appsettings.json)
+        [MaxLength(50)]
+        public string ProfileCTAType { get; set; } = ""; // e.g. "fedihub"
+        [MaxLength(500)]
+        public string ProfileCTAUrl { get; set; } = ""; // e.g. "https://hub.vocalcat.com/login"
     }
 
     public class StaticPage
