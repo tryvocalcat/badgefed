@@ -10,6 +10,7 @@
 @using Markdig
 @inject HttpClient HttpClient
 @inject IConfiguration Configuration
+@inject JobQueueService JobQueue
 @rendermode InteractiveServer
 
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -281,11 +282,9 @@ else if (accepted)
                     {
                         <div class="notification is-warning is-light mt-3" style="border-radius: 10px;">
                             <p class="is-size-7 mb-2">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <strong>Your wallet returned a profile URL</strong> that differs from the one below.
-                                Make sure <strong>@Model.ProfileUri</strong> is added as a verified URI in your wallet. If it isn't, you can use your wallet URL instead.
+                                <i class="fas fa-wallet"></i>
+                                Your wallet URL is <strong>@walletReturnUrl</strong> — want to use it instead?
                             </p>
-                            <p class="is-size-7 mb-2">Replace with: <code>@walletReturnUrl</code></p>
                             <div class="buttons are-small">
                                 <button type="button" class="button is-warning is-small" @onclick="AcceptWalletUrl">
                                     <span class="icon is-small"><i class="fas fa-exchange-alt"></i></span>
@@ -296,6 +295,7 @@ else if (accepted)
                                     <span>Keep current</span>
                                 </button>
                             </div>
+                            <p class="is-size-7 has-text-grey" style="margin-top: -0.25rem;">Either way, you can add the other URL to your wallet later.</p>
                         </div>
                     }
 
@@ -673,6 +673,14 @@ else if (accepted)
 
         try {
             BadgeRecord = await BadgeProcessor.SignAndGenerateBadge(BadgeRecord.Id);
+
+            if (BadgeRecord != null)
+            {
+                await JobQueue.QueueGrantBroadcastAsync(
+                    BadgeRecord.Id,
+                    "AcceptGrant",
+                    $"Queued after inline grant acceptance {BadgeRecord.Id}");
+            }
 
             if (!string.IsNullOrEmpty(BadgeRecord?.NoteId))
             {

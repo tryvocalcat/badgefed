@@ -7,6 +7,33 @@ namespace BadgeFed.Services;
 
 public class NotesService
 {
+    public static string GetVerifyRecordUrl(BadgeRecord record)
+    {
+        if (string.IsNullOrWhiteSpace(record.NoteId))
+        {
+            return string.Empty;
+        }
+
+        var noteIdSegment = record.NoteId.Trim().TrimEnd('/').Split('/').LastOrDefault();
+
+        if (string.IsNullOrWhiteSpace(noteIdSegment))
+        {
+            return record.NoteId;
+        }
+
+        if (Uri.TryCreate(record.NoteId, UriKind.Absolute, out var noteUri))
+        {
+            return $"{noteUri.Scheme}://{noteUri.Authority}/view/grant/{Uri.EscapeDataString(noteIdSegment)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(record.Actor?.Domain))
+        {
+            return $"https://{record.Actor.Domain}/view/grant/{Uri.EscapeDataString(noteIdSegment)}";
+        }
+
+        return $"/view/grant/{Uri.EscapeDataString(noteIdSegment)}";
+    }
+
     public static string GetLinkUniqueHash(string input)
     {
         using (MD5 md5 = MD5.Create())
@@ -122,12 +149,13 @@ public class NotesService
         }
 
         var url = $"{record.NoteId}";
+        var verifyRecordUrl = GetVerifyRecordUrl(record);
 
         var note = GetNote(
             domain: actor.Domain,
             content: @$"<p>{GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags)}</p>
             <p>You have been awarded the {record.Badge.Title} badge!</p>
-            <p>Your badge is ready to share. Go to <a href='{url}'>{url}</a> to view it.</p>
+            <p>Your badge is ready to share. Go to <a href='{verifyRecordUrl}'>{verifyRecordUrl}</a> to view it.</p>
             <p>Remember that you can also follow me for receiving updates.</p>",
             url: url,
             attributedTo: actor.Uri?.ToString()!,
@@ -200,6 +228,7 @@ public class NotesService
         ";
 
         var url = $"{record.NoteId}";
+        var verifyRecordUrl = GetVerifyRecordUrl(record);
 
         var tags = new List<ActivityPubNote.Tag>();
 
@@ -242,7 +271,7 @@ public class NotesService
             .Replace("{ActorFediverseHandle}", GetMention(record.Actor.FediverseHandle, record.Actor?.Uri?.ToString(), tags))
             .Replace("{AcceptedOn}", record.AcceptedOn?.ToString() ?? "Not accepted")
             .Replace("{IssuedTo}", GetMention(record.IssuedToName, record.IssuedToSubjectUri, tags))
-            .Replace("{BadgeUrl}", url)
+            .Replace("{BadgeUrl}", verifyRecordUrl)
             .Replace("{BadgeId}", record.Id.ToString())
             .Replace("{Fingerprint}", record.FingerPrint)
             .Replace("{Hashtags}", hashtagsContent);

@@ -7,6 +7,7 @@
 @inject IWebHostEnvironment Environment
 @inject ICustomAssetPathService CustomAssetPathService
 @inject LocalScopedDb LocalDbService
+@inject OpenRegistrationService OpenRegistrationService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -219,6 +220,60 @@
             </div>
         }
     </div>
+
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-user-plus"></i>
+                </span>
+                <span>Open Registration</span>
+            </span>
+        </h2>
+
+        <div class="content">
+            <p>Control whether new users can self-provision through Mastodon or LinkedIn sign-in.</p>
+        </div>
+
+        <div class="field">
+            <label class="checkbox">
+                <input type="checkbox" @bind="openRegistrationEnabled" />
+                Enable open registration
+            </label>
+            <p class="help">New users will receive manager-limited accounts when this is enabled.</p>
+        </div>
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-success" @onclick="SaveOpenRegistration" disabled="@isSavingOpenRegistration">
+                    @if (isSavingOpenRegistration)
+                    {
+                        <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span class="icon"><i class="fas fa-save"></i></span>
+                        <span>Save Open Registration</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(OpenRegistrationMessage))
+        {
+            <div class="notification is-success is-light">
+                @OpenRegistrationMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(OpenRegistrationError))
+        {
+            <div class="notification is-danger is-light">
+                <strong>Error:</strong> @OpenRegistrationError
+            </div>
+        }
+    </div>
 </div>
 
 @code {
@@ -237,6 +292,10 @@
     private bool isSavingCta = false;
     private string CtaMessage { get; set; } = string.Empty;
     private string CtaError { get; set; } = string.Empty;
+    private bool openRegistrationEnabled;
+    private bool isSavingOpenRegistration = false;
+    private string OpenRegistrationMessage { get; set; } = string.Empty;
+    private string OpenRegistrationError { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -250,12 +309,15 @@
         {
             LocalDbService.InitializeInstanceDescriptionTable();
             instanceDescription = LocalDbService.GetInstanceDescription();
+            openRegistrationEnabled = OpenRegistrationService.IsEnabled();
         }
         catch (Exception ex)
         {
             CtaError = $"Error loading CTA settings: {ex.Message}";
         }
-    }    private void OnLogoFileSelected(InputFileChangeEventArgs e)
+    }
+
+    private void OnLogoFileSelected(InputFileChangeEventArgs e)
     {
         LogoUploadMessage = null;
         LogoUploadError = null;
@@ -380,6 +442,32 @@
         if (string.IsNullOrEmpty(CssError))
         {
             successMessage = "CSS content reloaded from file.";
+        }
+    }
+
+    private async Task SaveOpenRegistration()
+    {
+        OpenRegistrationMessage = string.Empty;
+        OpenRegistrationError = string.Empty;
+        errorMessage = string.Empty;
+        isSavingOpenRegistration = true;
+
+        try
+        {
+            instanceDescription.OpenRegistrationEnabled = openRegistrationEnabled;
+            LocalDbService.SaveInstanceDescription(instanceDescription);
+            OpenRegistrationMessage = "Open registration setting saved successfully!";
+            successMessage = "Open registration has been updated.";
+        }
+        catch (Exception ex)
+        {
+            OpenRegistrationError = $"Error saving open registration setting: {ex.Message}";
+            errorMessage = $"Failed to save open registration setting: {ex.Message}";
+        }
+        finally
+        {
+            isSavingOpenRegistration = false;
+            StateHasChanged();
         }
     }
 

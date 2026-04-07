@@ -9,15 +9,15 @@ namespace BadgeFed.Controllers
     [ApiController]
     public class NodeInfoController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
         private readonly LocalScopedDb _localDbService;
+        private readonly OpenRegistrationService _openRegistrationService;
         private readonly IMemoryCache _cache;
         private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(48);
 
-        public NodeInfoController(IConfiguration configuration, LocalScopedDb localDbService, IMemoryCache cache)
+        public NodeInfoController(LocalScopedDb localDbService, OpenRegistrationService openRegistrationService, IMemoryCache cache)
         {
-            _configuration = configuration;
             _localDbService = localDbService;
+            _openRegistrationService = openRegistrationService;
             _cache = cache;
         }
 
@@ -76,7 +76,7 @@ namespace BadgeFed.Controllers
                     },
                     localPosts = instanceStats.IssuedCount - instanceStats.ExternalBadgesCount
                 },
-                openRegistrations = false,
+                openRegistrations = _openRegistrationService.IsEnabled(),
                 metadata = new
                 {
                     nodeName = !string.IsNullOrEmpty(instanceDescription.Name) ? instanceDescription.Name : "BadgeFed",

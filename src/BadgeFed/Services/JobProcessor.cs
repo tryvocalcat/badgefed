@@ -104,15 +104,12 @@ public class JobProcessor
         {
             try
             {
-                // Skip if any job already exists for this notify grant (pending, processing, completed, or failed)
-                if (jobQueue.HasExistingJob("notify_grant", "BadgeRecord", grantId.ToString()))
+                var wasQueued = await jobQueue.QueueGrantNotificationAsync(grantId, "JobProcessor");
+                if (!wasQueued)
                 {
-                    Logger?.LogInformation("Notify grant ID {GrantId} already has a job in the queue, skipping.", grantId);
                     continue;
                 }
 
-                var payload = new { GrantId = grantId };
-                await jobQueue.AddJobAsync("notify_grant", payload, createdBy: "JobProcessor", notes: $"Auto-queued notify grant {grantId}", entityType: "BadgeRecord", entityId: grantId.ToString());
                 queued++;
                 Logger?.LogInformation("Queued notify grant ID {GrantId} for processing.", grantId);
             }
@@ -145,15 +142,12 @@ public class JobProcessor
         {
             try
             {
-                // Skip if any job already exists for this grant (pending, processing, completed, or failed)
-                if (jobQueue.HasExistingJob("process_grant", "BadgeRecord", record.Id.ToString()))
+                var wasQueued = await jobQueue.QueueGrantProcessingAsync(record.Id, "JobProcessor");
+                if (!wasQueued)
                 {
-                    Logger?.LogInformation("Grant ID {GrantId} already has a job in the queue, skipping.", record.Id);
                     continue;
                 }
 
-                var payload = new { GrantId = record.Id };
-                await jobQueue.AddJobAsync("process_grant", payload, createdBy: "JobProcessor", notes: $"Auto-queued grant {record.Id}", entityType: "BadgeRecord", entityId: record.Id.ToString());
                 queued++;
                 Logger?.LogInformation("Queued grant ID {GrantId} for processing.", record.Id);
             }
@@ -239,6 +233,9 @@ public class JobProcessor
                         break;
                     case "process_grant":
                         await ProcessGrantJob(job, domain);
+                        break;
+                    case "broadcast_grant":
+                        await ProcessBroadcastGrantJob(job, domain);
                         break;
                     case "notify_grant":
                         await ProcessNotifyGrantJob(job, domain);
@@ -330,9 +327,22 @@ public class JobProcessor
 
             if (record != null)
             {
-                await jobQueue.AddJobLogAsync(job.Id, $"Signed and generated badge for grant {grantId}, broadcasting.");
-                await badgeProcessor.BroadcastGrant(grantId);
-                await badgeProcessor.NotifyProcessedGrant(grantId);
+                await jobQueue.AddJobLogAsync(job.Id, $"Signed and generated badge for grant {grantId}.");
+
+                var broadcastQueued = await jobQueue.QueueGrantBroadcastAsync(
+                    grantId,
+                    "JobProcessor",
+                    $"Queued after processing grant {grantId}");
+
+                if (broadcastQueued)
+                {
+                    await jobQueue.AddJobLogAsync(job.Id, $"Queued broadcast job for grant {grantId}");
+                }
+                else
+                {
+                    await jobQueue.AddJobLogAsync(job.Id, $"Broadcast job already exists for grant {grantId}");
+                }
+
                 await jobQueue.AddJobLogAsync(job.Id, $"Successfully processed grant {grantId}");
             }
             else
@@ -346,6 +356,51 @@ public class JobProcessor
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Failed to process grant job {JobId}", job.Id);
+            await jobQueue.AddJobLogAsync(job.Id, $"FAILED: {ex.Message}");
+            await jobQueue.FailJobAsync(job.Id, ex.Message);
+        }
+    }
+
+    private async Task ProcessBroadcastGrantJob(SimpleJob job, string domain)
+    {
+        var jobQueue = new JobQueueService(domain, Logger as ILogger<JobQueueService>);
+
+        try
+        {
+            if (string.IsNullOrEmpty(job.Payload))
+            {
+                throw new InvalidOperationException("Job payload is empty");
+            }
+
+            var payload = JsonDocument.Parse(job.Payload);
+            var grantId = payload.RootElement.GetProperty("GrantId").GetInt64();
+
+            await jobQueue.AddJobLogAsync(job.Id, $"Broadcasting processed grant ID: {grantId}");
+
+            var db = new LocalScopedDb(domain);
+            var openBadgeService = new OpenBadgeService(db);
+            var badgeService = new BadgeService(db, openBadgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService);
+
+            var record = await badgeProcessor.BroadcastGrant(grantId);
+
+            if (record != null)
+            {
+                await jobQueue.AddJobLogAsync(job.Id, $"Broadcasted grant {grantId}, notifying recipient.");
+                await badgeProcessor.NotifyProcessedGrant(grantId);
+                await jobQueue.AddJobLogAsync(job.Id, $"Successfully broadcasted grant {grantId}");
+            }
+            else
+            {
+                await jobQueue.AddJobLogAsync(job.Id, $"BroadcastGrant returned null for grant {grantId}");
+            }
+
+            await jobQueue.CompleteJobAsync(job.Id);
+            Logger?.LogInformation("Successfully processed broadcast grant job {JobId} for grant {GrantId}", job.Id, grantId);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Failed to process broadcast grant job {JobId}", job.Id);
             await jobQueue.AddJobLogAsync(job.Id, $"FAILED: {ex.Message}");
             await jobQueue.FailJobAsync(job.Id, ex.Message);
         }

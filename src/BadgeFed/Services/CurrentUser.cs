@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BadgeFed.Services;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 public class CurrentUser
@@ -7,10 +8,13 @@ public class CurrentUser
 
     private readonly ProtectedSessionStorage _protectedSessionStorage;
 
-    public CurrentUser(IHttpContextAccessor httpContextAccessor, ProtectedSessionStorage protectedSessionStorage)
+    private readonly IBillingService _billingService;
+
+    public CurrentUser(IHttpContextAccessor httpContextAccessor, ProtectedSessionStorage protectedSessionStorage, IBillingService billingService)
     {
         _httpContextAccessor = httpContextAccessor;
         _protectedSessionStorage = protectedSessionStorage;
+        _billingService = billingService;
     }
 
     public string? Issuer => _httpContextAccessor.HttpContext?.User.Identity.AuthenticationType;
@@ -48,7 +52,10 @@ public class CurrentUser
     public bool CanManage()
     {
         var role = GetRole();
-        return !string.IsNullOrEmpty(role) && role.Equals("manager", StringComparison.OrdinalIgnoreCase) || IsAdmin();
+        return !string.IsNullOrEmpty(role)
+            && (role.Equals("manager", StringComparison.OrdinalIgnoreCase)
+                || role.Equals(OpenRegistrationService.LimitedManagerRole, StringComparison.OrdinalIgnoreCase))
+            || IsAdmin();
     }
 
     public bool CanCollaborate()
@@ -56,4 +63,11 @@ public class CurrentUser
         var role = GetRole();
         return !string.IsNullOrEmpty(role) && role.Equals("collaborator", StringComparison.OrdinalIgnoreCase) || CanManage();
     }
+
+    /// <summary>
+    /// Returns true if the current user's group has an active subscription.
+    /// Always returns true when no billing plugin is installed.
+    /// </summary>
+    public Task<bool> HasActiveSubscription() =>
+        _billingService.HasActiveSubscription(GetGroupId());
 } 

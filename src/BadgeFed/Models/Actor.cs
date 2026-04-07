@@ -30,6 +30,11 @@ public class Actor
     {
         get
         {
+            if (string.IsNullOrEmpty(Domain) || string.IsNullOrEmpty(Username))
+            {
+                return null;
+            }
+            
             return new Uri($"https://{Domain}/actors/{Domain}/{Username}");
         }
     }

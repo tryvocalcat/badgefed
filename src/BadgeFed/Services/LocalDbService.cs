@@ -2073,7 +2073,10 @@ public class ActorStats
                 LandingPageType = reader.IsDBNull(reader.GetOrdinal("LandingPageType")) ? "default" : reader.GetString(reader.GetOrdinal("LandingPageType")),
                 StaticPageFilename = reader.IsDBNull(reader.GetOrdinal("StaticPageFilename")) ? "" : reader.GetString(reader.GetOrdinal("StaticPageFilename")),
                 ProfileCTAType = reader.IsDBNull(reader.GetOrdinal("ProfileCTAType")) ? "" : reader.GetString(reader.GetOrdinal("ProfileCTAType")),
-                ProfileCTAUrl = reader.IsDBNull(reader.GetOrdinal("ProfileCTAUrl")) ? "" : reader.GetString(reader.GetOrdinal("ProfileCTAUrl"))
+                ProfileCTAUrl = reader.IsDBNull(reader.GetOrdinal("ProfileCTAUrl")) ? "" : reader.GetString(reader.GetOrdinal("ProfileCTAUrl")),
+                OpenRegistrationEnabled = reader.IsDBNull(reader.GetOrdinal("OpenRegistrationEnabled"))
+                    ? null
+                    : reader.GetBoolean(reader.GetOrdinal("OpenRegistrationEnabled"))
             };
         }
 
@@ -2098,8 +2101,8 @@ public class ActorStats
         if (description.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename, ProfileCTAType, ProfileCTAUrl)
-                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename, @ProfileCTAType, @ProfileCTAUrl);
+                INSERT INTO InstanceDescription (Name, Description, Purpose, ContactInfo, CustomLandingPageHtml, IsEnabled, LandingPageType, StaticPageFilename, ProfileCTAType, ProfileCTAUrl, OpenRegistrationEnabled)
+                VALUES (@Name, @Description, @Purpose, @ContactInfo, @CustomLandingPageHtml, @IsEnabled, @LandingPageType, @StaticPageFilename, @ProfileCTAType, @ProfileCTAUrl, @OpenRegistrationEnabled);
                 SELECT last_insert_rowid();
             ";
         }
@@ -2116,7 +2119,8 @@ public class ActorStats
                     LandingPageType = @LandingPageType,
                     StaticPageFilename = @StaticPageFilename,
                     ProfileCTAType = @ProfileCTAType,
-                    ProfileCTAUrl = @ProfileCTAUrl
+                    ProfileCTAUrl = @ProfileCTAUrl,
+                    OpenRegistrationEnabled = @OpenRegistrationEnabled
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", description.Id);
@@ -2132,6 +2136,7 @@ public class ActorStats
         command.Parameters.AddWithValue("@StaticPageFilename", description.StaticPageFilename);
         command.Parameters.AddWithValue("@ProfileCTAType", description.ProfileCTAType ?? "");
         command.Parameters.AddWithValue("@ProfileCTAUrl", description.ProfileCTAUrl ?? "");
+        command.Parameters.AddWithValue("@OpenRegistrationEnabled", description.OpenRegistrationEnabled.HasValue ? description.OpenRegistrationEnabled.Value : (object)DBNull.Value);
 
         if (description.Id == 0)
         {
@@ -2158,7 +2163,8 @@ public class ActorStats
                 Description TEXT NOT NULL DEFAULT '',
                 Purpose TEXT NOT NULL DEFAULT '',
                 ContactInfo TEXT NOT NULL DEFAULT '',
-                IsEnabled BOOLEAN NOT NULL DEFAULT 0
+                IsEnabled BOOLEAN NOT NULL DEFAULT 0,
+                OpenRegistrationEnabled BOOLEAN NULL
             );
         ";
         command.ExecuteNonQuery();
@@ -2757,16 +2763,18 @@ public class ActorStats
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO UserGroups (id, name, description, createdAt)
-            VALUES (@Id, @Name, @Description, COALESCE(@CreatedAt, CURRENT_TIMESTAMP))
+            INSERT INTO UserGroups (id, name, description, onboardingCompleted, createdAt)
+            VALUES (@Id, @Name, @Description, @OnboardingCompleted, COALESCE(@CreatedAt, CURRENT_TIMESTAMP))
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
-                description = excluded.description;
+                description = excluded.description,
+                onboardingCompleted = excluded.onboardingCompleted;
         ";
 
         command.Parameters.AddWithValue("@Id", userGroup.Id);
         command.Parameters.AddWithValue("@Name", userGroup.Name);
         command.Parameters.AddWithValue("@Description", userGroup.Description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@OnboardingCompleted", userGroup.OnboardingCompleted);
         command.Parameters.AddWithValue("@CreatedAt", userGroup.CreatedAt == default ? (object)DBNull.Value : userGroup.CreatedAt);
 
         command.ExecuteNonQuery();
@@ -2790,6 +2798,7 @@ public class ActorStats
                 Id = reader["id"].ToString()!,
                 Name = reader["name"].ToString()!,
                 Description = reader["description"]?.ToString(),
+                OnboardingCompleted = reader["onboardingCompleted"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("onboardingCompleted")),
                 CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt"))
             });
         }
@@ -2814,6 +2823,7 @@ public class ActorStats
                 Id = reader["id"].ToString()!,
                 Name = reader["name"].ToString()!,
                 Description = reader["description"]?.ToString(),
+                OnboardingCompleted = reader["onboardingCompleted"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("onboardingCompleted")),
                 CreatedAt = reader["createdAt"] == DBNull.Value ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("createdAt"))
             };
         }

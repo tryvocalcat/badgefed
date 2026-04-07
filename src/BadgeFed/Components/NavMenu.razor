@@ -2,8 +2,10 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Web
 @using BadgeFed.Components
+@using BadgeFed.Services
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject CurrentUser CurrentUser
+@inject IBillingService BillingService
 
 @rendermode InteractiveServer
 
@@ -228,6 +230,15 @@
                                     </span>
                                     <span>User Management</span>
                                 </a>
+                                @if (BillingService.IsEnabled)
+                                {
+                                    <a class="navbar-item" href="/admin/billing">
+                                        <span class="icon">
+                                            <i class="fas fa-credit-card"></i>
+                                        </span>
+                                        <span>Billing</span>
+                                    </a>
+                                }
                                 <a class="navbar-item" href="/admin/servers">
                                     <span class="icon">
                                         <i class="fas fa-user-plus"></i>

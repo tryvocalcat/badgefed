@@ -242,18 +242,18 @@ namespace BadgeFed.Controllers
 
         private List<BadgeRecord> GetGrantsForActor(string actorUri, string? maxId, string? minId, int limit)
         {
-            var whereClause = "IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != ''";
+            var whereClause = "br.IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != ''";
             var parameters = new Dictionary<string, object> { { "ActorUri", actorUri } };
 
             if (!string.IsNullOrEmpty(maxId))
             {
-                whereClause += " AND Id < @MaxId";
+                whereClause += " AND br.Id < @MaxId";
                 parameters.Add("MaxId", long.Parse(maxId));
             }
 
             if (!string.IsNullOrEmpty(minId))
             {
-                whereClause += " AND Id > @MinId";
+                whereClause += " AND br.Id > @MinId";
                 parameters.Add("MinId", long.Parse(minId));
             }
 
@@ -287,7 +287,7 @@ namespace BadgeFed.Controllers
         {
             var filter = new LocalScopedDb.Filter
             {
-                Where = "IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != '' AND Id > @AfterId",
+                Where = "br.IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != '' AND br.Id > @AfterId",
                 Parameters = { { "ActorUri", actorUri }, { "AfterId", afterId } }
             };
 
@@ -299,7 +299,7 @@ namespace BadgeFed.Controllers
         {
             var filter = new LocalScopedDb.Filter
             {
-                Where = "IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != '' AND Id < @BeforeId",
+                Where = "br.IssuedBy = @ActorUri AND FingerPrint IS NOT NULL AND FingerPrint != '' AND br.Id < @BeforeId",
                 Parameters = { { "ActorUri", actorUri }, { "BeforeId", beforeId } }
             };
 

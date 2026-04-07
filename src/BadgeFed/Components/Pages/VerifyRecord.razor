@@ -1911,9 +1911,9 @@ else
             badge = DbService.GetBadgeDefinitionById(badgeRecord.Badge.Id);
             badgeRecord.Badge = badge;
             badgeRecord.Actor = DbService.GetActorById(badge.IssuedBy);
-            actorUri = badgeRecord.Actor.Uri;
-            actorName = badgeRecord.Actor.FullName;
-
+            actorUri = badgeRecord?.Actor?.Uri ?? new Uri(badgeRecord.IssuedBy);
+            actorName = badgeRecord?.Actor?.FullName ?? string.Empty;
+            
             var extension = Path.GetExtension(badgeRecord.Image);
             var directory = Path.GetDirectoryName(badgeRecord.Image);
             var filename = Path.GetFileNameWithoutExtension(badgeRecord.Image);

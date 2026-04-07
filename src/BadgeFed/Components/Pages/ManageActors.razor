@@ -11,13 +11,46 @@
 @using System.Security.Claims;
 @inject CurrentUser CurrentUser
 
-@attribute [Authorize(Roles = "admin, manager")]
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
 <h1 class="title">Manage Issuers</h1>
 
 <div class="mb-4 has-text-right">
     <a href="/admin/actors/create" class="button is-success">Create New Issuer</a>
 </div>
+
+@if (ShowCreateBadgePrompt)
+{
+    <div class="first-badge-banner mb-5">
+        <div class="first-badge-copy">
+            <span class="first-badge-kicker">Next step</span>
+            <h2 class="title is-3 mb-2">Create your first badge</h2>
+            <p>
+                Your issuer is ready. Now create the first badge people will actually receive from this workspace.
+            </p>
+            <div class="first-badge-checklist">
+                <div class="first-badge-item">
+                    <span class="first-badge-dot"></span>
+                    <span>Choose the issuer you just created</span>
+                </div>
+                <div class="first-badge-item">
+                    <span class="first-badge-dot"></span>
+                    <span>Write the badge title, description, and criteria</span>
+                </div>
+                <div class="first-badge-item">
+                    <span class="first-badge-dot"></span>
+                    <span>Save it, then you will be ready to grant it</span>
+                </div>
+            </div>
+        </div>
+        <div class="first-badge-actions">
+            <a href="/admin/badges/create" class="button is-primary is-medium first-badge-button">
+                <span class="icon"><i class="fas fa-certificate"></i></span>
+                <span>Create My First Badge</span>
+            </a>
+        </div>
+    </div>
+}
 
 @if (actors == null)
 {
@@ -70,9 +103,95 @@ else
     </div>
 }
 
+<style>
+    .first-badge-banner {
+        display: flex;
+        justify-content: space-between;
+        gap: 1.5rem;
+        align-items: center;
+        padding: 1.75rem;
+        border-radius: 24px;
+        border: 1px solid #dceaf7;
+        background: linear-gradient(140deg, #fffef7 0%, #ffffff 55%, #eef7ff 100%);
+        box-shadow: 0 18px 45px rgba(21, 44, 74, 0.08);
+    }
+
+    .first-badge-copy {
+        max-width: 42rem;
+    }
+
+    .first-badge-kicker {
+        display: inline-flex;
+        border-radius: 999px;
+        background: #15304a;
+        color: white;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.85rem;
+    }
+
+    .first-badge-checklist {
+        display: grid;
+        gap: 0.6rem;
+        margin-top: 1rem;
+    }
+
+    .first-badge-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        color: #4f6074;
+        font-weight: 500;
+    }
+
+    .first-badge-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #1f6feb;
+        flex: 0 0 auto;
+    }
+
+    .first-badge-actions {
+        flex: 0 0 auto;
+    }
+
+    .first-badge-button {
+        min-height: 3.25rem;
+        border-radius: 999px;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        font-weight: 700;
+        box-shadow: 0 12px 28px rgba(31, 111, 235, 0.16);
+    }
+
+    @@media (max-width: 768px) {
+        .first-badge-banner {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .first-badge-actions {
+            width: 100%;
+        }
+
+        .first-badge-button {
+            width: 100%;
+        }
+    }
+</style>
+
 @code {
     private List<Actor> actors;
+    private int ownedBadgeCount;
     private string errorMessage;
+    private bool ShowCreateBadgePrompt => !CurrentUser.IsAdmin()
+        && actors != null
+        && actors.Any(a => !a.IsMain)
+        && ownedBadgeCount == 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,10 +203,12 @@ else
         if (CurrentUser.IsAdmin())
         {
             actors = LocalDbService.GetActors();
+            ownedBadgeCount = LocalDbService.GetAllBadgeDefinitions().Count;
         }
         else
         {
             actors = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
+            ownedBadgeCount = LocalDbService.GetAllBadgeDefinitions(true, $"a.OwnerId = '{CurrentUser.GetGroupId()}'").Count;
         }
     }
 

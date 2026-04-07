@@ -33,5 +33,11 @@ namespace BadgeFed.Services
 
             return _instances.GetOrAdd(domain, d => new LocalDbService($"{d}.db"));
         }
+
+        /// <summary>
+        /// Returns all currently active database instances.
+        /// Useful for cross-domain lookups in webhook handlers.
+        /// </summary>
+        public IEnumerable<LocalDbService> GetAllInstances() => _instances.Values;
     }
 }

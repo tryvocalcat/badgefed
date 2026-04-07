@@ -31,6 +31,8 @@ namespace BadgeFed.Models
         public string ProfileCTAType { get; set; } = ""; // e.g. "fedihub"
         [MaxLength(500)]
         public string ProfileCTAUrl { get; set; } = ""; // e.g. "https://hub.vocalcat.com/login"
+
+        public bool? OpenRegistrationEnabled { get; set; }
     }
 
     public class StaticPage

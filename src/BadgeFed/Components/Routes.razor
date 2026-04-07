@@ -1,4 +1,7 @@
-<Router AppAssembly="typeof(Program).Assembly">
+@inject IEnumerable<BadgeFed.Services.IPluginAssemblyProvider> PluginAssemblyProviders
+
+<Router AppAssembly="typeof(Program).Assembly"
+        AdditionalAssemblies="@PluginAssemblyProviders.Select(p => p.GetAssembly()).ToList()">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layouts.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

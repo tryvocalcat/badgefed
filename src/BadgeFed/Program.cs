@@ -14,6 +14,7 @@ using BadgeFed.Core;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -105,7 +106,7 @@ builder.Services.AddScoped<TokenGrantService>();
 
 builder.Services.AddScoped<InvitationService>();
 
-builder.Services.AddScoped<RegistrationService>();
+builder.Services.AddScoped<OpenRegistrationService>();
 
 builder.Services.AddScoped<UserService>();
 
@@ -113,6 +114,11 @@ builder.Services.AddScoped<RelayActorService>();
 
 // Add custom asset path service
 builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
+
+// Billing: register the no-op default. A private billing plugin can replace this
+// by registering its own IBillingService implementation via IHostingStartup
+// before this line runs (using ASPNETCORE_HOSTINGSTARTUPASSEMBLIES env var).
+builder.Services.TryAddScoped<IBillingService, NullBillingService>();
 
 // Add Mastodon registration service
 builder.Services.AddScoped<MastodonRegistrationService>(provider =>
@@ -407,7 +413,6 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     return (clientId, clientSecret);
 }
 
-
 public static class StringExtensions
 {
     public static string ToTitleCase(this string input)
@@ -416,6 +421,40 @@ public static class StringExtensions
             return input;
 
         return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+}
+
+public static class OpenRegistrationProvisioning
+{
+    public static User? TryProvisionOpenRegistration(
+        HttpContext httpContext,
+        string provider,
+        string userId,
+        string? email,
+        string? givenName,
+        string? surname,
+        string? displayName)
+    {
+        var openRegistrationService = httpContext.RequestServices.GetRequiredService<OpenRegistrationService>();
+        if (!openRegistrationService.IsEnabled())
+        {
+            return null;
+        }
+
+        if (!openRegistrationService.IsProviderEligible(provider))
+        {
+            return null;
+        }
+
+        return openRegistrationService.ProvisionUser(new OpenRegistrationIdentity
+        {
+            UserId = userId,
+            Provider = provider,
+            Email = email,
+            GivenName = givenName,
+            Surname = surname,
+            DisplayName = displayName
+        });
     }
 }
 
@@ -529,6 +568,15 @@ public static class MastodonOAuthExtensions
                                 Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
+
+                        registeredUser ??= OpenRegistrationProvisioning.TryProvisionOpenRegistration(
+                            context.HttpContext,
+                            "GotoSocial",
+                            userId,
+                            null,
+                            username,
+                            string.Empty,
+                            username);
 
                         var role = registeredUser != null ? registeredUser.Role : "user";
 
@@ -706,6 +754,15 @@ public static class MastodonOAuthExtensions
                                     Console.WriteLine($"User created from invitation: {userId} with role {invitation.Role} and group {invitation.GroupId}");
                                 }
                             }
+
+                            registeredUser ??= OpenRegistrationProvisioning.TryProvisionOpenRegistration(
+                                context.HttpContext,
+                                "Mastodon",
+                                userId,
+                                null,
+                                username,
+                                string.Empty,
+                                username);
 
                             var role = registeredUser != null ? registeredUser.Role : "user";
 
@@ -911,6 +968,15 @@ public static class MastodonOAuthExtensions
                                 }
                             }
 
+                            registeredUser ??= OpenRegistrationProvisioning.TryProvisionOpenRegistration(
+                                context.HttpContext,
+                                "Mastodon",
+                                userId,
+                                null,
+                                username,
+                                string.Empty,
+                                username);
+
                             var role = registeredUser != null ? registeredUser.Role : "user";
 
                             context.Principal.AddIdentity(new ClaimsIdentity(new[] {
@@ -1034,22 +1100,15 @@ public static class LinkedInOAuthExtensions
                                 Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
-                        else if (registeredUser == null)
-                        {
-                            registeredUser = new User
-                            {
-                                Id = registeredUserId,
-                                Email = userEmail ?? string.Empty,
-                                GivenName = name ?? "User",
-                                Surname = string.Empty,
-                                CreatedAt = DateTime.UtcNow,
-                                Provider = "LinkedIn",
-                                Role = "user",
-                                IsActive = false
-                            };
 
-                            localDbService.UpsertUser(registeredUser);
-                        }
+                        registeredUser ??= OpenRegistrationProvisioning.TryProvisionOpenRegistration(
+                            context.HttpContext,
+                            "LinkedIn",
+                            registeredUserId,
+                            userEmail,
+                            name,
+                            string.Empty,
+                            name);
 
                         role = registeredUser != null ? registeredUser.Role : "user";
                         groupId = registeredUser != null ? registeredUser.GroupId : "system";
@@ -1140,6 +1199,7 @@ public static class GoogleOAuthExtensions
                     Console.WriteLine($"Is admin: {isAdmin}");
 
                     var role = "user";
+                    var groupId = "system";
 
                     // Check for invitation code
                     var invitationCode = context.Properties.Items.ContainsKey("invitationCode") 
@@ -1181,24 +1241,18 @@ public static class GoogleOAuthExtensions
                                 Console.WriteLine($"User created from invitation: {registeredUserId} with role {invitation.Role} and group {invitation.GroupId}");
                             }
                         }
-                        else if (registeredUser == null)
-                        {
-                            registeredUser = new User
-                            {
-                                Id = registeredUserId,
-                                Email = userEmail ?? string.Empty,
-                                GivenName = givenName ?? name ?? "User",
-                                Surname = familyName ?? string.Empty,
-                                CreatedAt = DateTime.UtcNow,
-                                Provider = "Google",
-                                Role = "user",
-                                IsActive = false
-                            };
 
-                            localDbService.UpsertUser(registeredUser);
-                        }
+                        registeredUser ??= OpenRegistrationProvisioning.TryProvisionOpenRegistration(
+                            context.HttpContext,
+                            "Google",
+                            registeredUserId,
+                            userEmail,
+                            givenName ?? name,
+                            familyName,
+                            name);
 
                         role = registeredUser != null ? registeredUser.Role : "user";
+                        groupId = registeredUser != null ? registeredUser.GroupId : "system";
                     }
 
                     var userName = context.Identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.NewGuid().ToString();
@@ -1213,6 +1267,7 @@ public static class GoogleOAuthExtensions
                             new Claim(ClaimTypes.Email, userEmail ?? string.Empty),
                             new Claim(ClaimTypes.GivenName, givenName ?? ""),
                             new Claim(ClaimTypes.Surname, familyName ?? ""),
+                            new Claim("urn:badgefed:group", groupId),
                             new Claim("urn:google:profile", userJson.RootElement.TryGetProperty("link", out var linkElement) ? linkElement.GetString() ?? "" : ""),
                             new Claim("urn:google:image", userJson.RootElement.TryGetProperty("picture", out var pictureElement) ? pictureElement.GetString() ?? "" : ""),
                         ], "Google"));

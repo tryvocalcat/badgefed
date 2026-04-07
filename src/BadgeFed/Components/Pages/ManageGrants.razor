@@ -12,7 +12,7 @@
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
-@attribute [Authorize(Roles = "admin, manager")]
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
 <style>
     .table {
@@ -655,8 +655,8 @@ else
             filter.Parameters.Add("Term", $"%{searchTerm}%");
         }
 
-        if (!CurrentUser.IsAdmin() && false) { //FIXME
-            whereClauses.Add("br.OwnerId = @OwnerId");
+        if (!CurrentUser.IsAdmin()) {
+            whereClauses.Add("b.OwnerId = @OwnerId");
             filter.Parameters.Add("OwnerId", CurrentUser.GetGroupId());
         }
 
@@ -754,8 +754,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var actorList = LocalDbService.GetActors();
-        actors = actorList.ToDictionary(a => a.Uri!.ToString());
+        var actorList = CurrentUser.IsAdmin()
+            ? LocalDbService.GetActors()
+            : LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
+        actors = actorList
+            .Where(a => a.Uri != null)
+            .GroupBy(a => a.Uri!.ToString())
+            .ToDictionary(group => group.Key, group => group.First());
 
         ParseQueryParameters();
         ApplyFilters();

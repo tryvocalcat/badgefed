@@ -106,6 +106,21 @@ public class JobQueueService
         return jobId;
     }
 
+    public async Task<bool> QueueGrantProcessingAsync(long grantId, string createdBy, string? notes = null)
+    {
+        return await QueueGrantJobAsync("process_grant", grantId, createdBy, notes ?? $"Auto-queued grant {grantId}");
+    }
+
+    public async Task<bool> QueueGrantBroadcastAsync(long grantId, string createdBy, string? notes = null)
+    {
+        return await QueueGrantJobAsync("broadcast_grant", grantId, createdBy, notes ?? $"Auto-queued grant broadcast {grantId}");
+    }
+
+    public async Task<bool> QueueGrantNotificationAsync(long grantId, string createdBy, string? notes = null)
+    {
+        return await QueueGrantJobAsync("notify_grant", grantId, createdBy, notes ?? $"Auto-queued notify grant {grantId}");
+    }
+
     /// <summary>
     /// Get the next job to process
     /// </summary>
@@ -340,6 +355,19 @@ public class JobQueueService
 
         var count = (long)command.ExecuteScalar();
         return count > 0;
+    }
+
+    private async Task<bool> QueueGrantJobAsync(string jobType, long grantId, string createdBy, string notes)
+    {
+        if (HasExistingJob(jobType, "BadgeRecord", grantId.ToString()))
+        {
+            _logger?.LogInformation("Grant ID {GrantId} already has a {JobType} job in the queue, skipping.", grantId, jobType);
+            return false;
+        }
+
+        var payload = new { GrantId = grantId };
+        await AddJobAsync(jobType, payload, createdBy: createdBy, notes: notes, entityType: "BadgeRecord", entityId: grantId.ToString());
+        return true;
     }
 
     /// <summary>

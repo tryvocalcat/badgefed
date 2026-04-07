@@ -8,6 +8,7 @@
 @inject IConfiguration Configuration
 @inject IHttpContextAccessor HttpContextAccessor
 @inject HttpClient Http
+@inject OpenRegistrationService OpenRegistrationService
 @inject ProtectedSessionStorage ProtectedSessionStore
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -29,6 +30,13 @@
                     else
                     {
                         <p class="has-text-centered mb-4">Login with your accounts</p>
+
+                        @if (IsOpenRegistrationEnabled)
+                        {
+                            <div class="notification is-info is-light mb-4">
+                                Open registration is enabled. New accounts are created automatically when users sign in with Mastodon or LinkedIn.
+                            </div>
+                        }
                         
                         @if (IsMastodonConfigured)
                         {
@@ -479,6 +487,7 @@
     private bool IsGotoSocialConfigured;
     private bool IsLinkedInConfigured;
     private bool IsGoogleConfigured;
+    private bool IsOpenRegistrationEnabled;
 
     private string mastodonServer;
     private string gotoSocialServer;
@@ -556,6 +565,8 @@
             var googleSection = Configuration.GetSection("GoogleConfig");
             IsGoogleConfigured = !string.IsNullOrEmpty(googleSection["ClientId"]) &&
                                  !string.IsNullOrEmpty(googleSection["ClientSecret"]);
+
+            IsOpenRegistrationEnabled = OpenRegistrationService.IsEnabled();
 
 
             if (User != null)

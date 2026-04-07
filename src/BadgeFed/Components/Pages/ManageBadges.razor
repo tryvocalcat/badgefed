@@ -10,13 +10,35 @@
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
-@attribute [Authorize(Roles = "admin, manager")]
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
     <h1 class="title">Manage Badges</h1>
 
     <div class="mb-4 has-text-right">
         <a href="/admin/badges/create" class="button is-success">Create New Badge</a>
     </div>
+
+    @if (ShowGrantPrompt)
+    {
+        <div class="first-grant-banner mb-5">
+            <div class="first-grant-copy">
+                <span class="first-grant-kicker">Next step</span>
+                <h2 class="title is-3 mb-2">Issue your first badge</h2>
+                <p>You already created a badge. Now send the first grant so recipients can actually receive it.</p>
+                <div class="first-grant-checklist">
+                    <div class="first-grant-item"><span class="first-grant-dot"></span><span>Pick the badge you want to start with</span></div>
+                    <div class="first-grant-item"><span class="first-grant-dot"></span><span>Add one recipient by profile URL or email</span></div>
+                    <div class="first-grant-item"><span class="first-grant-dot"></span><span>Send it and this page will start showing live badge activity</span></div>
+                </div>
+            </div>
+            <div class="first-grant-actions">
+                <a href="@FirstGrantHref" class="button is-primary is-medium first-grant-button">
+                    <span class="icon"><i class="fas fa-paper-plane"></i></span>
+                    <span>Issue My First Badge</span>
+                </a>
+            </div>
+        </div>
+    }
 
     @if (badges == null)
     {
@@ -52,7 +74,10 @@
                             <td>
                                 <div class="buttons">
                                     <button class="button is-primary" @onclick="() => GrantBadge(badge)">Grant</button>
-                                    <button class="button is-info" @onclick="() => BulkGrantBadge(badge)">Bulk Grant</button>
+                                    @if (!IsLimitedManager())
+                                    {
+                                        <button class="button is-info" @onclick="() => BulkGrantBadge(badge)">Bulk Grant</button>
+                                    }
                                     <button class="button is-link" @onclick="() => PreviewBadge(badge)">View</button>
                                     <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
                                     <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
@@ -66,12 +91,97 @@
         </div>
     }
 
+<style>
+    .first-grant-banner {
+        display: flex;
+        justify-content: space-between;
+        gap: 1.5rem;
+        align-items: center;
+        padding: 1.75rem;
+        border-radius: 24px;
+        border: 1px solid #d9e7f6;
+        background: linear-gradient(140deg, #fefcf4 0%, #ffffff 58%, #edf6ff 100%);
+        box-shadow: 0 18px 45px rgba(21, 44, 74, 0.08);
+    }
+
+    .first-grant-copy {
+        max-width: 42rem;
+    }
+
+    .first-grant-kicker {
+        display: inline-flex;
+        border-radius: 999px;
+        background: #15304a;
+        color: white;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.85rem;
+    }
+
+    .first-grant-checklist {
+        display: grid;
+        gap: 0.6rem;
+        margin-top: 1rem;
+    }
+
+    .first-grant-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        color: #4f6074;
+        font-weight: 500;
+    }
+
+    .first-grant-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #1f6feb;
+        flex: 0 0 auto;
+    }
+
+    .first-grant-actions {
+        flex: 0 0 auto;
+    }
+
+    .first-grant-button {
+        min-height: 3.25rem;
+        border-radius: 999px;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        font-weight: 700;
+        box-shadow: 0 12px 28px rgba(31, 111, 235, 0.16);
+    }
+
+    @@media (max-width: 768px) {
+        .first-grant-banner {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .first-grant-actions {
+            width: 100%;
+        }
+
+        .first-grant-button {
+            width: 100%;
+        }
+    }
+</style>
+
 @code {
     private List<Badge> badges;
 
     private Dictionary<long, Actor> actors;
 
     private string errorMessage;
+    private int totalGrantCount;
+    private long? firstBadgeId;
+    private bool ShowGrantPrompt => badges != null && badges.Count > 0 && totalGrantCount == 0 && firstBadgeId.HasValue;
+    private string FirstGrantHref => firstBadgeId.HasValue ? $"/admin/grant/{firstBadgeId.Value}" : "/admin/badges";
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,14 +198,47 @@
         }
 
         badges = LocalDbService.GetAllBadgeDefinitions(true, filter);
+        firstBadgeId = badges.FirstOrDefault()?.Id;
+        totalGrantCount = CurrentUser.IsAdmin() ? GetTotalGrantCount() : GetOwnedGrantCount(CurrentUser.GetGroupId());
     }    private void GrantBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/admin/grant/{badge.Id}");
     }
 
+    private int GetTotalGrantCount()
+    {
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM BadgeRecord;";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private int GetOwnedGrantCount(string ownerGroupId)
+    {
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(*)
+            FROM BadgeRecord AS br
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE b.OwnerId = @OwnerId;
+        ";
+        command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     private void BulkGrantBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/admin/bulk-grant/{badge.Id}");
+    }
+
+    private bool IsLimitedManager()
+    {
+        return CurrentUser.GetRole().Equals(OpenRegistrationService.LimitedManagerRole, StringComparison.OrdinalIgnoreCase);
     }
 
     private void PreviewBadge(Badge badge)

@@ -431,11 +431,12 @@
         var sqlExisting = $"BadgeId = {Model.BadgeId}";
         if (string.IsNullOrEmpty(recipient.ProfileUri))
         {
+            sqlExisting += $" AND IssuedToEmail = '{recipient.Email}'";
             //sqlExisting += $" AND IssuedToEmail = '{recipient.Email.Replace("'", "''")}'";
         }
         else
         {
-            //sqlExisting += $" AND IssuedToSubjectUri = '{recipient.ProfileUri.Replace("'", "''")}'";
+            sqlExisting += $" AND IssuedToSubjectUri = '{recipient.ProfileUri}'";
         }
 
         var existing = LocalDbService.GetBadgeRecords(sqlExisting);

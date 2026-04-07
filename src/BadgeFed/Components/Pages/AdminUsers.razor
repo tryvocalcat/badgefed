@@ -7,6 +7,7 @@
 @inject IJSRuntime JSRuntime
 @inject CurrentUser CurrentUser
 @inject LocalScopedDb LocalScopedDb
+@inject OpenRegistrationService OpenRegistrationService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -26,7 +27,7 @@
             <div class="level-item">
                 <div>
                     <h1 class="title">User Management Dashboard</h1>
-                    <p class="subtitle">Manage system users, registrations, and invitations</p>
+                    <p class="subtitle">Manage system users, groups, invitations, and self-service access</p>
                 </div>
             </div>
         </div>
@@ -41,24 +42,24 @@
                         <div class="media-left">
                             <figure class="image is-48x48">
                                 <span class="icon is-large has-text-info">
-                                    <i class="fas fa-clipboard-list fa-2x"></i>
+                                    <i class="fas fa-user-plus fa-2x"></i>
                                 </span>
                             </figure>
                         </div>
                         <div class="media-content">
-                            <p class="title is-6">User Registrations</p>
-                            <p class="subtitle is-7">Review user applications</p>
+                            <p class="title is-6">Self-Service Access</p>
+                            <p class="subtitle is-7">Direct OAuth onboarding</p>
                         </div>
                     </div>
                     <div class="content">
-                        <p>Manage user registration requests where users apply to join your instance.</p>
+                        <p>Users can create their own accounts with Mastodon or LinkedIn when open registration is enabled.</p>
                         <br>
-                        <a class="button is-info is-fullwidth" href="/admin/registrations">
+                        <span class="tag @(openRegistrationEnabled ? "is-success" : "is-light") is-medium">
                             <span class="icon">
-                                <i class="fas fa-clipboard-list"></i>
+                                <i class="fas @(openRegistrationEnabled ? "fa-lock-open" : "fa-lock")"></i>
                             </span>
-                            <span>Manage Registrations</span>
-                        </a>
+                            <span>@(openRegistrationEnabled ? "Open registration enabled" : "Open registration disabled")</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -300,7 +301,7 @@
         </div>
         <div class="column">
             <div class="box has-text-centered">
-                <p class="heading">Managers</p>
+                <p class="heading">Issuer Managers</p>
                 <p class="title">@managerUsers</p>
             </div>
         </div>
@@ -364,6 +365,7 @@
                                                             value="@user.Role">
                                                         <option value="admin">Admin</option>
                                                         <option value="manager">Manager</option>
+                                                        <option value="manager-limited">Manager Limited</option>
                                                         <option value="user">User</option>
                                                     </select>
                                                 </div>
@@ -534,9 +536,11 @@
     private int activeUsers = 0;
     private int adminUsers = 0;
     private int managerUsers = 0;
+    private bool openRegistrationEnabled;
 
     protected override async Task OnInitializedAsync()
     {
+        openRegistrationEnabled = OpenRegistrationService.IsEnabled();
         await LoadUsers();
         await LoadGroups();
         CalculateStatistics();
@@ -747,7 +751,7 @@
         totalUsers = allUsers.Count;
         activeUsers = allUsers.Count(u => u.IsActive);
         adminUsers = allUsers.Count(u => u.Role == "admin");
-        managerUsers = allUsers.Count(u => u.Role == "manager");
+        managerUsers = allUsers.Count(u => u.Role == "manager" || u.Role == "manager-limited");
     }
 
     private async Task UpdateUserRole(string userId, string newRole)
@@ -798,6 +802,7 @@
         {
             "admin" => "is-danger",
             "manager" => "is-warning",
+            "manager-limited" => "is-primary",
             "user" => "is-info",
             _ => "is-light"
         };

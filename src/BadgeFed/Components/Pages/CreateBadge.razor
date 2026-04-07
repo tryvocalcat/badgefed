@@ -12,7 +12,7 @@
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "admin, manager")]
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
 @if (string.IsNullOrEmpty(BadgeId))
 {

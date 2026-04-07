@@ -1,4 +1,5 @@
 @page "/admin/"
+@page "/register/"
 
 @using BadgeFed.Models
 @using System.IO
@@ -6,25 +7,73 @@
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject IWebHostEnvironment Environment
+@inject CurrentUser CurrentUser
+@inject OpenRegistrationService OpenRegistrationService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
 
-@attribute [Authorize(Roles = "admin, manager")]
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
 <div class="container is-fluid">
     <div class="mb-5">
         <div class="level mb-3">
             <div class="level-left">
-                <h1 class="title is-2 mb-0">Administration Portal</h1>
+                <h1 class="title is-2 mb-0">@(IsSystemAdmin ? "Administration Portal" : "Issuer Workspace")</h1>
             </div>
             <div class="level-right">
                 <span class="tag is-dark">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
             </div>
         </div>
-        <p class="subtitle is-6 has-text-grey">Manage your badge ecosystem</p>
+        <p class="subtitle is-6 has-text-grey">@(IsSystemAdmin ? "Manage your badge ecosystem" : "Track activity for your issuers and badges")</p>
     </div>
-    
+
+    @if (ShowSetupPrompt)
+    {
+        <div class="issuer-setup-shell">
+            <div class="issuer-setup-card">
+                <div class="issuer-setup-badge">New workspace</div>
+                <h2 class="title is-2 issuer-setup-title">@SetupTitle</h2>
+                <p class="issuer-setup-copy">
+                    @SetupDescription
+                </p>
+
+                <div class="issuer-setup-steps">
+                    <div class="issuer-step @(GetSetupStepClass(1))">
+                        <div class="issuer-step-number">1</div>
+                        <div>
+                            <p class="issuer-step-title">Create issuer</p>
+                            <p class="issuer-step-copy">Set the name, description, handle, and avatar for the profile that will issue your badges.</p>
+                        </div>
+                    </div>
+                    <div class="issuer-step @(GetSetupStepClass(2))">
+                        <div class="issuer-step-number">2</div>
+                        <div>
+                            <p class="issuer-step-title">Create badge</p>
+                            <p class="issuer-step-copy">After the issuer exists, you can define the badge people will receive.</p>
+                        </div>
+                    </div>
+                    <div class="issuer-step @(GetSetupStepClass(3))">
+                        <div class="issuer-step-number">3</div>
+                        <div>
+                            <p class="issuer-step-title">Grant it</p>
+                            <p class="issuer-step-copy">Issue the badge to recipients and start building activity in this workspace.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="issuer-setup-actions">
+                    <a href="@SetupActionHref" class="button is-primary is-medium issuer-setup-button">
+                        <span class="icon"><i class="fas @SetupActionIcon"></i></span>
+                        <span>@SetupActionLabel</span>
+                    </a>
+                    <p class="issuer-setup-help">@SetupHelp</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
     <div class="columns is-multiline">
         <!-- Analytics Panel -->
         <div class="column is-8">
@@ -34,7 +83,7 @@
                         <span class="icon has-text-info">
                             <i class="fas fa-chart-bar"></i>
                         </span>
-                        <span>Analytics Overview</span>
+                        <span>@(IsSystemAdmin ? "Analytics Overview" : "Your Analytics")</span>
                     </span>
                 </h2>
                 
@@ -73,13 +122,13 @@
                         </div>
                         <div class="column is-4">
                             <div class="has-background-link-light p-4 has-radius">
-                                <p class="heading is-size-7">Followers</p>
+                                <p class="heading is-size-7">@(IsSystemAdmin ? "Followers" : "Followers on Your Issuers")</p>
                                 <p class="title is-3 has-text-link">@stats.FollowerCount</p>
                             </div>
                         </div>
                         <div class="column is-4">
                             <div class="has-background-primary-light  p-4 has-radius">
-                                <p class="heading is-size-7">Followed Instances</p>
+                                <p class="heading is-size-7">@(IsSystemAdmin ? "Followed Instances" : "Followed Issuers")</p>
                                 <p class="title is-3">@stats.FollowedInstancesCount</p>
                             </div>
                         </div>
@@ -96,69 +145,71 @@
             </div>
         </div>
         
-        <!-- Recent Activity Panel -->
-        <div class="column is-4">
-            <div class="box">
-                <h2 class="title is-5 mb-4">
-                    <span class="icon-text">
-                        <span class="icon has-text-danger">
-                            <i class="fas fa-history"></i>
+        @if (IsSystemAdmin)
+        {
+            <div class="column is-4">
+                <div class="box">
+                    <h2 class="title is-5 mb-4">
+                        <span class="icon-text">
+                            <span class="icon has-text-danger">
+                                <i class="fas fa-history"></i>
+                            </span>
+                            <span>Recent Activity</span>
                         </span>
-                        <span>Recent Activity</span>
-                    </span>
-                </h2>
-                
-                @if (!string.IsNullOrEmpty(recentActivityError))
-                {
-                    <div class="notification is-danger is-light">
-                        <p>Error loading recent activity: @recentActivityError</p>
-                    </div>
-                }
-                else if (recentActivityLogs.Count == 0)
-                {
-                    <p class="has-text-grey">No recent activity to display.</p>
-                } else {
-                    @foreach (var log in recentActivityLogs)
-                        {
-                            var timeSpan = DateTime.UtcNow - log.CreatedAt;
-                            string humanRelativeTime;
+                    </h2>
+                    
+                    @if (!string.IsNullOrEmpty(recentActivityError))
+                    {
+                        <div class="notification is-danger is-light">
+                            <p>Error loading recent activity: @recentActivityError</p>
+                        </div>
+                    }
+                    else if (recentActivityLogs.Count == 0)
+                    {
+                        <p class="has-text-grey">No recent activity to display.</p>
+                    } else {
+                        @foreach (var log in recentActivityLogs)
+                            {
+                                var timeSpan = DateTime.UtcNow - log.CreatedAt;
+                                string humanRelativeTime;
 
-                            if (timeSpan.TotalSeconds < 60)
-                                humanRelativeTime = "Just now";
-                            else if (timeSpan.TotalMinutes < 60)
-                                humanRelativeTime = $"{(int)timeSpan.TotalMinutes}m ago";
-                            else if (timeSpan.TotalHours < 24)
-                                humanRelativeTime = $"{(int)timeSpan.TotalHours}h ago";
-                            else if (timeSpan.TotalDays < 7)
-                                humanRelativeTime = $"{(int)timeSpan.TotalDays}d ago";
-                            else
-                                humanRelativeTime = $"{(int)(timeSpan.TotalDays / 7)}w ago";
-                            
-                            <div class="mb-2 pb-2" style="border-bottom: 1px solid #f5f5f5; padding: 0.75rem 0;">
-                                <div class="is-flex is-align-items-flex-start is-gap-2">
-                                    <div style="flex: 1; min-width: 0;">
-                                        @if (!string.IsNullOrEmpty(log.EntityUrl))
-                                        {
-                                            <a href="@log.EntityUrl" class="is-size-6 has-text-weight-semibold has-text-dark" style="display: flex; align-items: center; gap: 0.35rem; word-break: break-word;">
-                                                @log.Title
-                                                <span style="display: inline-flex; align-items: center;">
-                                                    <i class="fas fa-external-link-alt" style="font-size: 0.65rem; opacity: 0.6;"></i>
-                                                </span>
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <span class="is-size-6 has-text-weight-semibold has-text-dark" style="display: block;">@log.Title</span>
-                                        }
-                                        <p class="is-size-7 has-text-grey-dark" style="margin-top: 0.25rem;">@log.Description</p>
+                                if (timeSpan.TotalSeconds < 60)
+                                    humanRelativeTime = "Just now";
+                                else if (timeSpan.TotalMinutes < 60)
+                                    humanRelativeTime = $"{(int)timeSpan.TotalMinutes}m ago";
+                                else if (timeSpan.TotalHours < 24)
+                                    humanRelativeTime = $"{(int)timeSpan.TotalHours}h ago";
+                                else if (timeSpan.TotalDays < 7)
+                                    humanRelativeTime = $"{(int)timeSpan.TotalDays}d ago";
+                                else
+                                    humanRelativeTime = $"{(int)(timeSpan.TotalDays / 7)}w ago";
+                                
+                                <div class="mb-2 pb-2" style="border-bottom: 1px solid #f5f5f5; padding: 0.75rem 0;">
+                                    <div class="is-flex is-align-items-flex-start is-gap-2">
+                                        <div style="flex: 1; min-width: 0;">
+                                            @if (!string.IsNullOrEmpty(log.EntityUrl))
+                                            {
+                                                <a href="@log.EntityUrl" class="is-size-6 has-text-weight-semibold has-text-dark" style="display: flex; align-items: center; gap: 0.35rem; word-break: break-word;">
+                                                    @log.Title
+                                                    <span style="display: inline-flex; align-items: center;">
+                                                        <i class="fas fa-external-link-alt" style="font-size: 0.65rem; opacity: 0.6;"></i>
+                                                    </span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="is-size-6 has-text-weight-semibold has-text-dark" style="display: block;">@log.Title</span>
+                                            }
+                                            <p class="is-size-7 has-text-grey-dark" style="margin-top: 0.25rem;">@log.Description</p>
+                                        </div>
+                                        <span class="tag is-small is-light" style="white-space: nowrap; margin-top: 0.2rem;">@humanRelativeTime</span>
                                     </div>
-                                    <span class="tag is-small is-light" style="white-space: nowrap; margin-top: 0.2rem;">@humanRelativeTime</span>
                                 </div>
-                            </div>
-                        }
-                }
+                            }
+                    }
+                </div>
             </div>
-        </div>
+        }
 
         <!-- Last Comments Panel -->
         <div class="column is-4">
@@ -168,7 +219,7 @@
                         <span class="icon has-text-link">
                             <i class="fas fa-comments"></i>
                         </span>
-                        <span>Last Comments</span>
+                        <span>@(IsSystemAdmin ? "Last Comments" : "Comments on Your Badges")</span>
                     </span>
                 </h2>
                 @if (lastComments.Count == 0)
@@ -209,7 +260,7 @@
                         <span class="icon has-text-success">
                             <i class="fas fa-check-circle"></i>
                         </span>
-                        <span>Last Accepted</span>
+                        <span>@(IsSystemAdmin ? "Last Accepted" : "Latest Accepted on Your Badges")</span>
                     </span>
                 </h2>
                 @if (lastAccepted.Count == 0)
@@ -251,7 +302,7 @@
                         <span class="icon has-text-primary">
                             <i class="fas fa-inbox"></i>
                         </span>
-                        <span>Last Received</span>
+                        <span>@(IsSystemAdmin ? "Last Received" : "External Badges for Your Issuers")</span>
                     </span>
                 </h2>
                 @if (lastReceivedExternal.Count == 0)
@@ -287,7 +338,10 @@
             </div>
         </div>
  
-        @((MarkupString)adminResourcesHtml)
+        @if (IsSystemAdmin)
+        {
+            @((MarkupString)adminResourcesHtml)
+        }
         
         <!-- Pending Tasks -->
         <div class="column is-6" style="display: none;">
@@ -329,19 +383,23 @@
         </div>
     </div>
     
-    <div class="notification is-info is-light mt-5">
-        <div class="level">
-            <div class="level-left">
-                <div>
-                    <p class="title is-5 mb-2">Platform Updates</p>
-                    <p>Check out new features and improvements. <strong>Current Version:</strong> @assemblyVersion</p>
+    @if (IsSystemAdmin)
+    {
+        <div class="notification is-info is-light mt-5">
+            <div class="level">
+                <div class="level-left">
+                    <div>
+                        <p class="title is-5 mb-2">Platform Updates</p>
+                        <p>Check out new features and improvements. <strong>Current Version:</strong> @assemblyVersion</p>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <a href="https://github.com/tryvocalcat/badgefed/releases" target="_blank" class="button is-info">Verify Updates</a>
                 </div>
             </div>
-            <div class="level-right">
-                <a href="https://github.com/tryvocalcat/badgefed/releases" target="_blank" class="button is-info">Verify Updates</a>
-            </div>
         </div>
-    </div>
+    }
+    }
 </div>
 
 <style>
@@ -370,6 +428,126 @@
         display: flex;
         flex-direction: column;
     }
+
+    .issuer-setup-shell {
+        display: flex;
+        justify-content: center;
+        padding: 2rem 0 1rem;
+    }
+
+    .issuer-setup-card {
+        width: min(760px, 100%);
+        background: linear-gradient(145deg, #fff8ec 0%, #ffffff 55%, #eef7ff 100%);
+        border: 1px solid #f3dcc0;
+        border-radius: 28px;
+        padding: 2.5rem;
+        box-shadow: 0 22px 60px rgba(43, 62, 88, 0.12);
+    }
+
+    .issuer-setup-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #13293d;
+        color: #fff;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .issuer-setup-title {
+        margin-top: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .issuer-setup-copy {
+        font-size: 1.05rem;
+        color: #465467;
+        max-width: 52rem;
+    }
+
+    .issuer-setup-steps {
+        display: grid;
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .issuer-step {
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        gap: 1rem;
+        align-items: start;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid #e7edf3;
+        border-radius: 18px;
+        padding: 1rem;
+    }
+
+    .issuer-step.is-active {
+        border-color: #1f6feb;
+        box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.08);
+    }
+
+    .issuer-step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: #13293d;
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .issuer-step-title {
+        font-weight: 700;
+        color: #13293d;
+        margin-bottom: 0.25rem;
+    }
+
+    .issuer-step-copy {
+        color: #526173;
+        margin: 0;
+    }
+
+    .issuer-setup-actions {
+        margin-top: 1.75rem;
+    }
+
+    .issuer-setup-button {
+        min-height: 3.25rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        border-radius: 999px;
+        font-weight: 700;
+        box-shadow: 0 12px 28px rgba(31, 111, 235, 0.18);
+    }
+
+    .issuer-setup-help {
+        margin-top: 0.85rem;
+        color: #5f6d7c;
+    }
+
+    @@media (max-width: 768px) {
+        .issuer-setup-card {
+            padding: 1.5rem;
+            border-radius: 22px;
+        }
+
+        .issuer-step {
+            grid-template-columns: 44px 1fr;
+        }
+
+        .issuer-step-number {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+        }
+    }
 </style>
 
 @code {
@@ -386,62 +564,235 @@
     
     private string adminResourcesHtml = "";
     private string assemblyVersion = "";
+    private int ownedIssuerCount;
+    private int ownedBadgeCount;
+    private int ownedGrantCount;
+    private long? firstOwnedBadgeId;
+    private bool IsSystemAdmin => CurrentUser.IsAdmin();
+    private string CurrentOwnerGroupId => CurrentUser.GetGroupId();
+    private bool ShowIssuerSetupPrompt => !IsSystemAdmin && ownedIssuerCount == 0;
+    private bool ShowBadgeSetupPrompt => !IsSystemAdmin && ownedIssuerCount > 0 && ownedBadgeCount == 0;
+    private bool ShowGrantSetupPrompt => !IsSystemAdmin && ownedIssuerCount > 0 && ownedBadgeCount > 0 && ownedGrantCount == 0 && firstOwnedBadgeId.HasValue;
+    private bool ShowSetupPrompt => ShowIssuerSetupPrompt || ShowBadgeSetupPrompt || ShowGrantSetupPrompt;
+    private string SetupTitle => ShowIssuerSetupPrompt
+        ? "Create your first issuer"
+        : ShowBadgeSetupPrompt
+            ? "Create your first badge"
+            : "Issue your first badge";
+    private string SetupDescription => ShowIssuerSetupPrompt
+        ? "BadgeFed is ready, but your workspace is still empty. Start by creating one issuer profile for your organization, project, or community."
+        : ShowBadgeSetupPrompt
+            ? "Your issuer is ready. Now create the first badge people will receive from this workspace."
+            : "You already have an issuer and a badge. The next move is simple: grant that badge to your first recipient and bring this workspace to life.";
+    private string SetupActionHref => ShowIssuerSetupPrompt
+        ? "/admin/actors/create"
+        : ShowBadgeSetupPrompt
+            ? "/admin/badges/create"
+            : $"/admin/grant/{firstOwnedBadgeId}";
+    private string SetupActionLabel => ShowIssuerSetupPrompt
+        ? "Create My First Issuer"
+        : ShowBadgeSetupPrompt
+            ? "Create My First Badge"
+            : "Issue My First Badge";
+    private string SetupActionIcon => ShowIssuerSetupPrompt
+        ? "fa-magic"
+        : ShowBadgeSetupPrompt
+            ? "fa-certificate"
+            : "fa-paper-plane";
+    private string SetupHelp => ShowIssuerSetupPrompt
+        ? "This takes just a minute. Once the issuer exists, the rest of the dashboard will appear automatically."
+        : ShowBadgeSetupPrompt
+            ? "Create one badge and the dashboard will unlock the next step automatically."
+            : "Send one grant and the workspace will start showing real activity, comments, and badge progress.";
 
     protected override async Task OnInitializedAsync()
     {
+        if (CurrentUser.GetRole() == OpenRegistrationService.LimitedManagerRole
+            && OpenRegistrationService.NeedsOnboarding(CurrentUser.GetGroupId()))
+        {
+            NavigationManager.NavigateTo("/admin/onboarding", true);
+            return;
+        }
+
         // Get assembly version dynamically
         var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         assemblyVersion = version?.ToString() ?? "unknown";
+
+        if (!IsSystemAdmin)
+        {
+            ownedIssuerCount = LocalDbService.GetActors($"OwnerId = '{CurrentOwnerGroupId}'").Count;
+            var ownedBadges = LocalDbService.GetAllBadgeDefinitions(true, $"a.OwnerId = '{CurrentOwnerGroupId}'");
+            ownedBadgeCount = ownedBadges.Count;
+            firstOwnedBadgeId = ownedBadges.FirstOrDefault()?.Id;
+            ownedGrantCount = GetOwnedGrantCount(CurrentOwnerGroupId);
+        }
+
+        if (ShowIssuerSetupPrompt)
+        {
+            return;
+        }
+
         try {
-            stats = LocalDbService.GetInstanceStats();
+            stats = IsSystemAdmin ? LocalDbService.GetInstanceStats() : GetOwnedStats(CurrentOwnerGroupId);
             statsError = ""; // Clear any previous errors
         } catch (Exception ex) {
             stats = new InstanceStats();
             statsError = ex.Message;
         }        
 
-        try {
-            recentActivityLogs = LocalDbService.GetRecentActivityLogs(5);
-            recentActivityError = ""; // Clear any previous errors
-        } catch (Exception ex) {
-            recentActivityLogs = new List<RecentActivityLog>();
-            recentActivityError = ex.Message;
+        if (IsSystemAdmin)
+        {
+            try {
+                recentActivityLogs = LocalDbService.GetRecentActivityLogs(5);
+                recentActivityError = ""; // Clear any previous errors
+            } catch (Exception ex) {
+                recentActivityLogs = new List<RecentActivityLog>();
+                recentActivityError = ex.Message;
+            }
         }
 
         try {
-            lastComments = GetLastComments(5);
+            lastComments = GetLastComments(5, IsSystemAdmin ? null : CurrentOwnerGroupId);
         } catch (Exception ex) {
             lastComments = new List<CommentItem>();
         }
 
         try {
-            lastAccepted = GetLastAcceptedBadges(5);
+            lastAccepted = GetLastAcceptedBadges(5, IsSystemAdmin ? null : CurrentOwnerGroupId);
         } catch (Exception ex) {
             lastAccepted = new List<BadgeRecord>();
         }
 
         try {
-            lastReceivedExternal = GetLastReceivedExternalBadges(5);
+            lastReceivedExternal = GetLastReceivedExternalBadges(5, IsSystemAdmin ? null : CurrentOwnerGroupId);
         } catch (Exception ex) {
             lastReceivedExternal = new List<BadgeRecord>();
         }
         
         // Load admin resources HTML from static file
-        await LoadAdminResourcesHtml();
+        if (IsSystemAdmin)
+        {
+            await LoadAdminResourcesHtml();
+        }
     }
 
-    private List<CommentItem> GetLastComments(int limit)
+    private InstanceStats GetOwnedStats(string ownerGroupId)
+    {
+        var stats = new InstanceStats();
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(br.AcceptedOn) AS acceptedCount,
+                    COUNT(*) AS issuedCount,
+                    COUNT(CASE WHEN br.AcceptedOn IS NULL THEN 1 END) AS pendingCount
+            FROM BadgeRecord AS br
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE b.OwnerId = @OwnerId;
+            SELECT COUNT(*) AS followerCount
+            FROM Follower AS f
+            INNER JOIN Actor AS a ON f.ActorId = a.Id
+            WHERE a.OwnerId = @OwnerId;
+            SELECT COUNT(*) AS followedIssuerCount
+            FROM FollowedIssuer AS fi
+            INNER JOIN Actor AS a ON fi.ActorId = a.Id
+            WHERE a.OwnerId = @OwnerId;
+            SELECT COUNT(*)
+            FROM BadgeRecord AS br
+            INNER JOIN Actor AS a ON br.IssuedBy = a.Uri
+            WHERE br.IsExternal = TRUE AND a.OwnerId = @OwnerId;
+        ";
+        command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            stats.AcceptedCount = reader.GetInt32(0);
+            stats.IssuedCount = reader.GetInt32(1);
+            stats.PendingCount = reader.GetInt32(2);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.FollowerCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.FollowedInstancesCount = reader.GetInt32(0);
+        }
+
+        if (reader.NextResult() && reader.Read())
+        {
+            stats.ExternalBadgesCount = reader.GetInt32(0);
+        }
+
+        return stats;
+    }
+
+    private int GetOwnedGrantCount(string ownerGroupId)
+    {
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(*)
+            FROM BadgeRecord AS br
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE b.OwnerId = @OwnerId;
+        ";
+        command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private string GetSetupStepClass(int step)
+    {
+        if (ShowIssuerSetupPrompt)
+        {
+            return step == 1 ? "is-active" : string.Empty;
+        }
+
+        if (ShowBadgeSetupPrompt)
+        {
+            return step <= 2 ? (step == 2 ? "is-active" : "is-complete") : string.Empty;
+        }
+
+        if (ShowGrantSetupPrompt)
+        {
+            return step <= 3 ? (step == 3 ? "is-active" : "is-complete") : string.Empty;
+        }
+
+        return string.Empty;
+    }
+
+    private List<CommentItem> GetLastComments(int limit, string? ownerGroupId = null)
     {
         var comments = new List<CommentItem>();
         using var connection = LocalDbService.GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = @"
+        command.CommandText = ownerGroupId == null
+            ? @"
             SELECT Id, NoteId, AuthorId, CreatedAt FROM BadgeRecordComment 
             ORDER BY CreatedAt DESC 
+            LIMIT @Limit"
+            : @"
+            SELECT c.Id, c.NoteId, c.AuthorId, c.CreatedAt
+            FROM BadgeRecordComment AS c
+            INNER JOIN BadgeRecord AS br ON c.BadgeRecordId = br.Id
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE b.OwnerId = @OwnerId
+            ORDER BY c.CreatedAt DESC
             LIMIT @Limit";
         command.Parameters.AddWithValue("@Limit", limit);
+        if (ownerGroupId != null)
+        {
+            command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -458,22 +809,36 @@
         return comments;
     }
 
-    private List<BadgeRecord> GetLastAcceptedBadges(int limit)
+    private List<BadgeRecord> GetLastAcceptedBadges(int limit, string? ownerGroupId = null)
     {
         var records = new List<BadgeRecord>();
         using var connection = LocalDbService.GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = @"
+        command.CommandText = ownerGroupId == null
+            ? @"
             SELECT Id, Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
                    Hashtags, IssuedOn, IssuedToEmail, IssuedToName, IssuedToSubjectUri, 
                    AcceptedOn, LastUpdated, FingerPrint, AcceptKey, BadgeId, NoteId
             FROM BadgeRecord 
             WHERE AcceptedOn IS NOT NULL
             ORDER BY AcceptedOn DESC
+            LIMIT @Limit"
+            : @"
+            SELECT br.Id, br.Title, br.IssuedBy, br.Description, br.Image, br.ImageAltText, br.EarningCriteria,
+                   br.Hashtags, br.IssuedOn, br.IssuedToEmail, br.IssuedToName, br.IssuedToSubjectUri,
+                   br.AcceptedOn, br.LastUpdated, br.FingerPrint, br.AcceptKey, br.BadgeId, br.NoteId
+            FROM BadgeRecord AS br
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE br.AcceptedOn IS NOT NULL AND b.OwnerId = @OwnerId
+            ORDER BY br.AcceptedOn DESC
             LIMIT @Limit";
         command.Parameters.AddWithValue("@Limit", limit);
+        if (ownerGroupId != null)
+        {
+            command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -484,22 +849,36 @@
         return records;
     }
 
-    private List<BadgeRecord> GetLastReceivedExternalBadges(int limit)
+    private List<BadgeRecord> GetLastReceivedExternalBadges(int limit, string? ownerGroupId = null)
     {
         var records = new List<BadgeRecord>();
         using var connection = LocalDbService.GetConnection();
         connection.Open();
 
         var command = connection.CreateCommand();
-        command.CommandText = @"
+        command.CommandText = ownerGroupId == null
+            ? @"
             SELECT Id, Title, IssuedBy, Description, Image, ImageAltText, EarningCriteria, 
                    Hashtags, IssuedOn, IssuedToEmail, IssuedToName, IssuedToSubjectUri, 
                    AcceptedOn, LastUpdated, FingerPrint, AcceptKey, BadgeId, NoteId
             FROM BadgeRecord 
             WHERE IsExternal = 1
             ORDER BY IssuedOn DESC
+            LIMIT @Limit"
+            : @"
+            SELECT br.Id, br.Title, br.IssuedBy, br.Description, br.Image, br.ImageAltText, br.EarningCriteria,
+                   br.Hashtags, br.IssuedOn, br.IssuedToEmail, br.IssuedToName, br.IssuedToSubjectUri,
+                   br.AcceptedOn, br.LastUpdated, br.FingerPrint, br.AcceptKey, br.BadgeId, br.NoteId
+            FROM BadgeRecord AS br
+            INNER JOIN Actor AS a ON br.IssuedBy = a.Uri
+            WHERE br.IsExternal = 1 AND a.OwnerId = @OwnerId
+            ORDER BY br.IssuedOn DESC
             LIMIT @Limit";
         command.Parameters.AddWithValue("@Limit", limit);
+        if (ownerGroupId != null)
+        {
+            command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
