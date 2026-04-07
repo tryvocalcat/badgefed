@@ -1,0 +1,151 @@
+@page "/admin/onboarding"
+@using Microsoft.AspNetCore.Authorization
+@using BadgeFed.Models
+@using BadgeFed.Services
+@inject CurrentUser CurrentUser
+@inject LocalScopedDb LocalDbService
+@inject NavigationManager NavigationManager
+@inject OpenRegistrationService OpenRegistrationService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
+
+<div class="container is-fluid">
+    <div class="columns is-centered">
+        <div class="column is-7-desktop is-9-tablet">
+            <div class="box onboarding-box">
+                <div class="content mb-5">
+                    <h1 class="title is-3">Finish setting up your issuer space</h1>
+                    <p class="subtitle is-6 has-text-grey-dark">Choose the public name and description for the group that will own your badges, issuers, and grants.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="notification is-success">@successMessage</div>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="notification is-danger">@errorMessage</div>
+                }
+
+                @if (group == null)
+                {
+                    <div class="notification is-warning">We could not find your account group. Please contact an administrator.</div>
+                }
+                else
+                {
+                    <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+                        <div class="field">
+                            <label class="label">Company or account name</label>
+                            <div class="control">
+                                <input class="input" @bind="groupName" maxlength="120" placeholder="Acme Foundation" />
+                            </div>
+                            <p class="help">This name will identify the issuer space tied to your account.</p>
+                        </div>
+
+                        <div class="field">
+                            <label class="label">Description</label>
+                            <div class="control">
+                                <textarea class="textarea" @bind="groupDescription" rows="5" maxlength="500" placeholder="Describe your organization, team, or account."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="field is-grouped is-justify-content-flex-end mt-5">
+                            <div class="control">
+                                <button class="button is-primary" type="submit" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span>Saving...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Continue to dashboard</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .onboarding-box {
+        margin-top: 2rem;
+    }
+</style>
+
+@code {
+    private UserGroup? group;
+    private string groupName = string.Empty;
+    private string groupDescription = string.Empty;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isSaving;
+
+    protected override void OnInitialized()
+    {
+        var groupId = CurrentUser.GetGroupId();
+        if (string.IsNullOrWhiteSpace(groupId) || string.Equals(groupId, "system", StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo("/admin/");
+            return;
+        }
+
+        if (CurrentUser.GetRole() != OpenRegistrationService.LimitedManagerRole
+            || !OpenRegistrationService.NeedsOnboarding(groupId))
+        {
+            NavigationManager.NavigateTo("/admin/");
+            return;
+        }
+
+        group = LocalDbService.GetUserGroupById(groupId);
+        if (group != null)
+        {
+            groupName = group.Name;
+            groupDescription = group.Description ?? string.Empty;
+        }
+    }
+
+    private void SaveAsync()
+    {
+        if (group == null || isSaving)
+        {
+            return;
+        }
+
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            errorMessage = "A company or account name is required.";
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            group.Name = groupName.Trim();
+            group.Description = string.IsNullOrWhiteSpace(groupDescription) ? null : groupDescription.Trim();
+            group.OnboardingCompleted = true;
+            LocalDbService.UpsertUserGroup(group);
+            successMessage = "Issuer space updated.";
+            NavigationManager.NavigateTo("/admin/", true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to save your issuer space: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
