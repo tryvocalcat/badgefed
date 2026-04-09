@@ -7,6 +7,15 @@ public class OpenRegistrationService
 {
     public const string LimitedManagerRole = "manager-limited";
 
+    /// <summary>
+    /// Plan limits enforced for manager-limited users without an active subscription.
+    /// An admin can lift these limits by changing the user's role to "manager" in the Users panel.
+    /// A billing plugin can grant access programmatically via IBillingService.HasActiveSubscription.
+    /// </summary>
+    public const int MaxIssuersForLimitedManager = 1;
+    public const int MaxBadgesForLimitedManager = 1;
+    public const int MaxGrantsForLimitedManager = 5;
+
     private readonly LocalScopedDb _db;
     private readonly ILogger<OpenRegistrationService> _logger;
 

@@ -7,6 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject CurrentUser CurrentUser
+@inject IBillingService BillingService
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
@@ -14,9 +15,16 @@
 
     <h1 class="title">Manage Badges</h1>
 
-    <div class="mb-4 has-text-right">
-        <a href="/admin/badges/create" class="button is-success">Create New Badge</a>
-    </div>
+    @if (isAtBadgeLimit)
+    {
+        <LimitReachedBanner ResourceName="badge" Max="@OpenRegistrationService.MaxBadgesForLimitedManager" UpgradeUrl="@upgradeUrl" />
+    }
+    else
+    {
+        <div class="mb-4 has-text-right">
+            <a href="/admin/badges/create" class="button is-success">Create New Badge</a>
+        </div>
+    }
 
     @if (ShowGrantPrompt)
     {
@@ -80,7 +88,7 @@
                                     }
                                     <button class="button is-link" @onclick="() => PreviewBadge(badge)">View</button>
                                     <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
-                                    <button class="button is-danger" @onclick="() => DeleteBadge(badge)">Delete</button>
+                                    <button class="button is-danger" @onclick="() => ShowDeleteConfirmation(badge)">Delete</button>
 
                                 </div>
                             </td>
@@ -88,6 +96,29 @@
                     }
                 </tbody>
             </table>
+        </div>
+    }
+
+    @if (showDeleteConfirmation && badgeToDelete != null)
+    {
+        <div class="modal is-active">
+            <div class="modal-background" @onclick="HideDeleteConfirmation"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Confirm Delete</p>
+                    <button class="delete" aria-label="close" @onclick="HideDeleteConfirmation"></button>
+                </header>
+                <section class="modal-card-body">
+                    <p>Are you sure you want to delete the badge "<strong>@badgeToDelete.Title</strong>"?</p>
+                    <p class="has-text-danger mt-3">
+                        <strong>This action cannot be undone.</strong> The badge definition will be permanently removed.
+                    </p>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-danger" @onclick="ConfirmDeleteBadge">Delete</button>
+                    <button class="button" @onclick="HideDeleteConfirmation">Cancel</button>
+                </footer>
+            </div>
         </div>
     }
 
@@ -174,11 +205,15 @@
 
 @code {
     private List<Badge> badges;
+    private Badge? badgeToDelete;
 
     private Dictionary<long, Actor> actors;
 
     private string errorMessage;
     private int totalGrantCount;
+    private bool isAtBadgeLimit;
+    private bool showDeleteConfirmation;
+    private string? upgradeUrl;
     private long? firstBadgeId;
     private bool ShowGrantPrompt => badges != null && badges.Count > 0 && totalGrantCount == 0 && firstBadgeId.HasValue;
     private string FirstGrantHref => firstBadgeId.HasValue ? $"/admin/grant/{firstBadgeId.Value}" : "/admin/badges";
@@ -186,6 +221,13 @@
     protected override async Task OnInitializedAsync()
     {
         FetchBadges();
+        if (IsLimitedManager())
+        {
+            var hasSubscription = await CurrentUser.HasActiveSubscription();
+            isAtBadgeLimit = !hasSubscription && badges.Count >= OpenRegistrationService.MaxBadgesForLimitedManager;
+            if (isAtBadgeLimit)
+                upgradeUrl = await BillingService.GetCheckoutUrl(CurrentUser.GetGroupId(), "/admin/badges");
+        }
     }
 
     private void FetchBadges()
@@ -251,10 +293,25 @@
         NavigationManager.NavigateTo($"/admin/badges/edit/{badge.Id}");
     }
 
-    private void DeleteBadge(Badge badge)
+    private void ShowDeleteConfirmation(Badge badge)
     {
-        LocalDbService.DeleteBadgeDefinition(badge.Id);
-       
+        badgeToDelete = badge;
+        showDeleteConfirmation = true;
+    }
+
+    private void HideDeleteConfirmation()
+    {
+        badgeToDelete = null;
+        showDeleteConfirmation = false;
+    }
+
+    private void ConfirmDeleteBadge()
+    {
+        if (badgeToDelete == null)
+            return;
+
+        LocalDbService.DeleteBadgeDefinition(badgeToDelete.Id);
+        HideDeleteConfirmation();
         FetchBadges();
     }
     

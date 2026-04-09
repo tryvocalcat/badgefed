@@ -120,26 +120,35 @@ builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
 // before this line runs (using ASPNETCORE_HOSTINGSTARTUPASSEMBLIES env var).
 builder.Services.TryAddScoped<IBillingService, NullBillingService>();
 
+// Detect listen port for localhost fallback domain
+var listenUrl = (builder.Configuration["urls"] ?? builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000")
+    .Split(';')[0];
+// Kestrel allows http://+:80, http://*:5000, http://0.0.0.0:5000 etc. — normalise to a parseable URI
+var normalisedUrl = listenUrl.Replace("://+", "://localhost").Replace("://*", "://localhost").Replace("://0.0.0.0", "://localhost");
+var fallbackDomain = Uri.TryCreate(normalisedUrl, UriKind.Absolute, out var listenUri) && listenUri.Port is not (80 or 443)
+    ? $"localhost:{listenUri.Port}"
+    : "localhost";
+
 // Add Mastodon registration service
 builder.Services.AddScoped<MastodonRegistrationService>(provider =>
 {
     var httpClient = provider.GetRequiredService<HttpClient>();
     var config = provider.GetRequiredService<IConfiguration>();
-    var domains = config.GetSection("BadgesDomains").Get<string[]>() ?? new[] { "localhost:5000" };
-    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(domains));
+    var domains = config.GetSection("BadgesDomains").Get<string[]>()
+        ?? new[] { fallbackDomain };
+
     var primaryDomain = domains.First();
-    Console.WriteLine(primaryDomain);
     var primaryScheme = primaryDomain.Contains("localhost") ? "http" : "https";
     var website = $"{primaryScheme}://{primaryDomain}";
-    
-    // Create redirect URIs for both HTTP and HTTPS schemes for each domain
-    var redirectUris = new List<string>();
+
+    var redirectUris = new List<string> { "urn:ietf:wg:oauth:2.0:oob" };
     foreach (var domain in domains)
     {
+        Console.WriteLine($"Adding Mastodon redirect URIs for domain: {domain}");
         redirectUris.Add($"https://{domain}/signin-mastodon-dynamic");
         redirectUris.Add($"http://{domain}/signin-mastodon-dynamic");
     }
-    
+
     return new MastodonRegistrationService(httpClient, "BadgeFed", website, redirectUris.ToArray());
 });
 
@@ -160,7 +169,7 @@ var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.Authe
 
 // Always add dynamic Mastodon support (no pre-configuration needed)
 auth.AddDynamicMastodon(adminConfig, o => {
-    o.Scope.Add("read:accounts");
+    o.Scope.Add("read");
     o.Scope.Add("profile");
     o.SaveTokens = true;
 }, localDbFactory);

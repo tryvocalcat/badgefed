@@ -17,226 +17,606 @@
 }
 else
 {
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: white;
-            padding: 4rem 0;
-            margin-bottom: 3rem;
-        }
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-        .hero-subtitle {
-            font-size: 1.5rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-        }
-        .feature-card {
-            border-radius: 12px;
-            padding: 2rem;
-            height: 100%;
-            transition: transform 0.3s ease;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: #4f46e5;
-        }
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .stats-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #4f46e5;
-        }
-        .stats-label {
-            font-size: 1rem;
-            color: #6b7280;
-        }
-        .actor-card {
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform 0.3s ease;
-        }
-        .actor-card:hover {
-            transform: translateY(-5px);
-        }
-        .cta-section {
-            background: #f9fafb;
-            padding: 4rem 0;
-            margin-top: 4rem;
-        }
-    </style>
+<style>
+/* ═══════════════════════════════════════════════════
+   BadgeFed — Landing page  |  Light Edition
+   ═══════════════════════════════════════════════════ */
 
-    <div class="hero-section">
-        <div class="container">
+/* ── Root ─────────────────────────────────────────── */
+.bf { background:#f8fafc; color:#0f172a; font-family:'Inter',system-ui,-apple-system,sans-serif; }
+
+/* ── Hero ─────────────────────────────────────────── */
+.bf-hero {
+    position:relative; overflow:hidden;
+    padding:6rem 0 5rem;
+    background:
+        radial-gradient(ellipse 75% 55% at 50% -10%, rgba(99,102,241,.12) 0%, transparent 65%),
+        #f8fafc;
+}
+.bf-hero-dots {
+    position:absolute; inset:0; pointer-events:none;
+    background-image: radial-gradient(rgba(99,102,241,.08) 1px, transparent 1px);
+    background-size:32px 32px;
+}
+.bf-hero-glow {
+    position:absolute; width:600px; height:600px; pointer-events:none;
+    background:radial-gradient(circle, rgba(99,102,241,.08) 0%, transparent 65%);
+    top:-150px; left:-180px;
+}
+
+/* eyebrow pill */
+.bf-pill {
+    display:inline-flex; align-items:center; gap:.45rem;
+    background:rgba(99,102,241,.08); border:1px solid rgba(99,102,241,.2);
+    border-radius:999px; padding:.28rem .9rem .28rem .5rem;
+    font-size:.72rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+    color:#6366f1; margin-bottom:1.5rem;
+}
+.bf-pill-dot {
+    width:6px; height:6px; border-radius:50%; background:#6366f1;
+}
+@@keyframes bfpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
+.bf-pill-dot { animation:bfpulse 2.4s ease-in-out infinite; }
+
+/* hero title */
+.bf-h1 {
+    font-size:clamp(2.8rem,6.5vw,5rem); font-weight:900;
+    letter-spacing:-.04em; line-height:1.01; color:#0f172a;
+    margin-bottom:1.4rem;
+}
+.bf-grad {
+    background:linear-gradient(95deg, #6366f1 0%, #06b6d4 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.bf-hero-sub {
+    font-size:1.08rem; color:#64748b; line-height:1.8;
+    max-width:480px; margin-bottom:2.4rem;
+}
+
+/* CTA row */
+.bf-ctas { display:flex; flex-wrap:wrap; gap:.7rem; }
+.bf-btn {
+    display:inline-flex; align-items:center; gap:.45rem;
+    border-radius:11px; padding:.72rem 1.4rem;
+    font-size:.88rem; font-weight:600; text-decoration:none;
+    transition:transform .15s, box-shadow .15s, background .15s, border-color .15s;
+    white-space:nowrap; border:none; cursor:pointer;
+}
+.bf-btn-primary {
+    background:linear-gradient(135deg,#6366f1,#7c3aed); color:#fff !important;
+    box-shadow:0 0 24px rgba(99,102,241,.28);
+}
+.bf-btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 32px rgba(99,102,241,.42); }
+.bf-btn-ghost {
+    background:#fff; color:#334155 !important;
+    border:1px solid #e2e8f0;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.bf-btn-ghost:hover { background:#f8fafc; border-color:#c7d2fe; color:#4f46e5 !important; }
+
+/* hero image */
+.bf-hero-img {
+    width:100%; border-radius:20px;
+    box-shadow:0 24px 60px rgba(99,102,241,.15), 0 0 0 1px rgba(99,102,241,.08);
+}
+
+/* ── Marquee ──────────────────────────────────────── */
+.bf-mq {
+    border-top:1px solid #e2e8f0;
+    border-bottom:1px solid #e2e8f0;
+    padding:.85rem 0; overflow:hidden;
+    background:#fff;
+}
+.bf-mq-track { display:flex; gap:0; width:max-content; }
+@@keyframes bfmq { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.bf-mq-track { animation:bfmq 32s linear infinite; }
+.bf-mq-track:hover { animation-play-state:paused; }
+.bf-mq-item {
+    display:flex; align-items:center; gap:.55rem; padding:0 2.5rem;
+    font-size:.72rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+    color:#64748b; white-space:nowrap;
+}
+.bf-mq-item i { color:#6366f1; }
+.bf-mq-sep { color:#cbd5e1; padding:0 .5rem; }
+
+/* ── Shared layout utils ──────────────────────────── */
+.bf-container { max-width:1200px; margin:0 auto; padding:0 1.5rem; }
+.bf-s  { padding:5rem 0; }
+.bf-ss { padding:3rem 0; }
+.bf-lbl {
+    display:inline-block; font-size:.68rem; font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase; color:#6366f1; margin-bottom:.65rem;
+}
+.bf-h2 {
+    font-size:clamp(1.7rem,2.8vw,2.4rem); font-weight:800;
+    letter-spacing:-.025em; color:#0f172a; line-height:1.18; margin-bottom:.55rem;
+}
+.bf-lead { color:#64748b; font-size:.95rem; line-height:1.72; }
+.bf-center { text-align:center; }
+.bf-mb { margin-bottom:2.5rem; }
+
+/* ── Stats row ────────────────────────────────────── */
+.bf-stats {
+    display:grid; grid-template-columns:repeat(4,1fr);
+    border:1px solid #e2e8f0; border-radius:18px;
+    overflow:hidden; background:#e2e8f0; gap:1px;
+}
+.bf-stat {
+    background:#fff; padding:2rem 1.5rem; text-align:center;
+    transition:background .2s;
+}
+.bf-stat:hover { background:#f8fafc; }
+.bf-stat-n {
+    font-size:2.5rem; font-weight:900; letter-spacing:-.04em; line-height:1;
+    background:linear-gradient(130deg,#6366f1,#06b6d4);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    margin-bottom:.35rem;
+}
+.bf-stat-l { font-size:.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
+
+/* ── Bento grid ───────────────────────────────────── */
+.bf-bento {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1rem;
+}
+/* explicit placement */
+.bf-bento > *:nth-child(1) { grid-column:1;   grid-row:1/3; }
+.bf-bento > *:nth-child(2) { grid-column:2/4; grid-row:1;   }
+.bf-bento > *:nth-child(3) { grid-column:2;   grid-row:2;   }
+.bf-bento > *:nth-child(4) { grid-column:3;   grid-row:2;   }
+
+.bf-bc {
+    background:#fff; border:1px solid #e2e8f0;
+    border-radius:18px; padding:2rem;
+    position:relative; overflow:hidden;
+    transition:border-color .2s, transform .2s, box-shadow .2s;
+}
+.bf-bc:hover { border-color:#c7d2fe; transform:translateY(-2px); box-shadow:0 8px 32px rgba(99,102,241,.1); }
+.bf-bc.accent {
+    background:linear-gradient(160deg,#eef2ff 0%,#f5f3ff 100%);
+    border-color:#c7d2fe;
+}
+
+/* icon tile */
+.bf-icon {
+    width:46px; height:46px; border-radius:12px;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.18);
+    display:flex; align-items:center; justify-content:center;
+    color:#6366f1; font-size:1.05rem; margin-bottom:1.2rem;
+}
+.bf-icon.teal { background:rgba(6,182,212,.1);  border-color:rgba(6,182,212,.2);  color:#0891b2; }
+.bf-icon.green{ background:rgba(22,163,74,.1);  border-color:rgba(22,163,74,.2);  color:#16a34a; }
+
+.bf-bc-title { font-size:1.05rem; font-weight:700; color:#0f172a; margin-bottom:.5rem; }
+.bf-bc-desc  { font-size:.85rem;  color:#64748b;   line-height:1.65; }
+
+/* inline checklist inside bento */
+.bf-cl { list-style:none; margin-top:1.2rem; display:flex; flex-direction:column; gap:.6rem; }
+.bf-cl li { display:flex; align-items:flex-start; gap:.6rem; font-size:.82rem; color:#475569; line-height:1.55; }
+.bf-ck {
+    flex-shrink:0; width:18px; height:18px; border-radius:5px;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.2);
+    display:flex; align-items:center; justify-content:center;
+    color:#6366f1; font-size:.57rem; margin-top:.12rem;
+}
+
+/* glow blob inside card */
+.bf-blob {
+    position:absolute; pointer-events:none; border-radius:50%;
+    filter:blur(55px); width:200px; height:200px; opacity:.12;
+}
+
+/* ── Instance description ─────────────────────────── */
+.bf-inst {
+    background:#fff; border:1px solid #e2e8f0;
+    border-radius:18px; overflow:hidden;
+}
+.bf-inst-head {
+    padding:2.5rem 2.5rem 2rem;
+    background:linear-gradient(135deg,rgba(99,102,241,.04) 0%,transparent 60%);
+    border-bottom:1px solid #f1f5f9;
+}
+.bf-inst-title { font-size:1.6rem; font-weight:800; letter-spacing:-.022em; color:#0f172a; margin-bottom:.4rem; }
+.bf-inst-sub   { font-size:.9rem; color:#64748b; line-height:1.7; }
+.bf-inst-body  { padding:1.5rem 2.5rem 2rem; }
+.bf-infoblock {
+    display:flex; gap:.9rem; align-items:flex-start;
+    padding:1.1rem; background:#f8fafc;
+    border:1px solid #e2e8f0; border-radius:12px; margin-bottom:.6rem;
+}
+.bf-infoblock-icon {
+    flex-shrink:0; width:34px; height:34px; border-radius:8px;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.18);
+    display:flex; align-items:center; justify-content:center;
+    color:#6366f1; font-size:.8rem;
+}
+.bf-infoblock-label { font-size:.67rem; font-weight:700; color:#6366f1; letter-spacing:.07em; text-transform:uppercase; margin-bottom:.25rem; }
+.bf-infoblock-text  { font-size:.85rem; color:#475569; line-height:1.6; }
+
+/* ── Issuer cards ─────────────────────────────────── */
+.bf-issuer {
+    background:#fff; border:1px solid #e2e8f0;
+    border-radius:18px; padding:1.5rem;
+    display:flex; flex-direction:column; gap:.85rem;
+    height:100%; transition:border-color .2s, transform .2s, box-shadow .2s;
+}
+.bf-issuer:hover { border-color:#c7d2fe; transform:translateY(-2px); box-shadow:0 6px 24px rgba(99,102,241,.1); }
+.bf-issuer-top { display:flex; align-items:center; gap:.8rem; }
+.bf-avatar {
+    flex-shrink:0; width:50px; height:50px; border-radius:13px;
+    object-fit:cover; border:1px solid #e2e8f0;
+}
+.bf-avatar-ph {
+    flex-shrink:0; width:50px; height:50px; border-radius:13px;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.16);
+    display:flex; align-items:center; justify-content:center; color:#6366f1; font-size:1.1rem;
+}
+.bf-issuer-name   { font-size:.92rem; font-weight:700; color:#0f172a; }
+.bf-issuer-handle { font-size:.72rem; color:#94a3b8; }
+.bf-issuer-bio    { font-size:.8rem; color:#64748b; line-height:1.6; flex:1; }
+.bf-btn-xs {
+    display:inline-flex; align-items:center; gap:.32rem;
+    background:rgba(99,102,241,.08); border:1px solid rgba(99,102,241,.2);
+    color:#6366f1 !important; border-radius:8px; padding:.32rem .75rem;
+    font-size:.72rem; font-weight:600; text-decoration:none;
+    transition:background .15s; align-self:flex-start;
+}
+.bf-btn-xs:hover { background:rgba(99,102,241,.16); }
+
+/* ── Search band ──────────────────────────────────── */
+.bf-search {
+    background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+    border:1px solid rgba(99,102,241,.3); border-radius:18px; padding:2.5rem 3rem;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:2rem; flex-wrap:wrap;
+    position:relative; overflow:hidden;
+}
+.bf-search::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 50% 200% at 100% 50%, rgba(99,102,241,.25) 0%, transparent 55%);
+}
+.bf-search-title { font-size:1.45rem; font-weight:800; letter-spacing:-.02em; color:#fff; margin-bottom:.25rem; }
+.bf-search-sub   { font-size:.88rem; color:#a5b4fc; }
+.bf-btn-search {
+    display:inline-flex; align-items:center; gap:.5rem;
+    background:#fff; color:#4f46e5 !important;
+    border-radius:11px; padding:.7rem 1.5rem; font-size:.88rem; font-weight:700;
+    text-decoration:none; white-space:nowrap;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+    transition:transform .15s, box-shadow .15s; position:relative; z-index:1;
+}
+.bf-btn-search:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.28); }
+
+/* ── Server cards ─────────────────────────────────── */
+.bf-server {
+    background:#fff; border:1px solid #e2e8f0;
+    border-radius:18px; overflow:hidden;
+    display:flex; flex-direction:column; height:100%;
+    transition:border-color .2s, transform .2s, box-shadow .2s;
+}
+.bf-server:hover { border-color:#c7d2fe; transform:translateY(-2px); box-shadow:0 6px 24px rgba(99,102,241,.1); }
+.bf-server-body { padding:1.5rem; text-align:center; flex:1; }
+.bf-server-logo {
+    width:68px; height:68px; border-radius:14px; object-fit:cover;
+    margin:0 auto .75rem; display:block; border:1px solid #e2e8f0;
+}
+.bf-server-init {
+    width:68px; height:68px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto .75rem; font-size:1.25rem; font-weight:800; color:#fff;
+}
+.bf-server-name { font-size:.92rem; font-weight:700; color:#0f172a; margin-bottom:.35rem; }
+.bf-server-desc { font-size:.76rem; color:#64748b; line-height:1.55; margin-bottom:.5rem; }
+.bf-domain {
+    display:inline-block; background:#f1f5f9;
+    border:1px solid #e2e8f0; color:#64748b;
+    border-radius:6px; padding:.15rem .5rem;
+    font-size:.68rem; font-weight:600; font-family:'JetBrains Mono','Fira Code',monospace;
+}
+.bf-server-foot { border-top:1px solid #f1f5f9; padding:.75rem; text-align:center; }
+.bf-link {
+    display:inline-flex; align-items:center; gap:.35rem;
+    color:#94a3b8 !important; font-size:.75rem; font-weight:500;
+    text-decoration:none; transition:color .15s;
+}
+.bf-link:hover { color:#6366f1 !important; }
+
+/* ── Wallet CTA ───────────────────────────────────── */
+.bf-wallet {
+    background:linear-gradient(135deg,#1e1b4b 0%,#2e1065 100%);
+    border:1px solid rgba(99,102,241,.3); border-radius:18px;
+    padding:3rem; display:flex; align-items:center; gap:3rem; flex-wrap:wrap;
+    position:relative; overflow:hidden;
+}
+.bf-wallet::before {
+    content:''; position:absolute; pointer-events:none;
+    width:350px; height:350px; border-radius:50%;
+    background:radial-gradient(circle,rgba(99,102,241,.3) 0%,transparent 65%);
+    top:-120px; right:-80px;
+}
+.bf-wallet-title { font-size:1.45rem; font-weight:800; letter-spacing:-.02em; color:#fff; margin-bottom:.45rem; }
+.bf-wallet-sub   { font-size:.86rem; color:#a5b4fc; line-height:1.72; margin-bottom:.9rem; }
+.bf-wallet-list  { list-style:none; display:flex; flex-direction:column; gap:.3rem; }
+.bf-wallet-list li { font-size:.8rem; color:#c4b5fd; display:flex; align-items:center; gap:.45rem; }
+.bf-wallet-list li i { color:#a5b4fc; font-size:.65rem; }
+.bf-btn-wallet {
+    display:inline-flex; align-items:center; gap:.5rem;
+    background:#fff; color:#4f46e5 !important;
+    border-radius:12px; padding:.82rem 1.75rem;
+    font-size:.92rem; font-weight:700; text-decoration:none; white-space:nowrap;
+    box-shadow:0 4px 20px rgba(0,0,0,.25);
+    transition:transform .15s, box-shadow .15s;
+}
+.bf-btn-wallet:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,0,0,.32); }
+
+/* ── Terminal / Create CTA ────────────────────────── */
+.bf-terminal {
+    background:#0f172a; border:1px solid #1e293b; border-radius:18px; overflow:hidden;
+}
+.bf-terminal-bar {
+    background:#1e293b; border-bottom:1px solid #334155;
+    padding:.65rem 1rem; display:flex; align-items:center; gap:.4rem;
+}
+.bf-dot { width:11px; height:11px; border-radius:50%; }
+.bf-dot-r { background:#ff5f57; }
+.bf-dot-y { background:#ffbd2e; }
+.bf-dot-g { background:#28ca41; }
+.bf-terminal-body {
+    padding:2.5rem 3rem;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:3rem; flex-wrap:wrap;
+}
+.bf-prompt {
+    font-family:'JetBrains Mono','Fira Code','Courier New',monospace;
+    font-size:.78rem; color:#475569; line-height:2; margin-top:1.1rem;
+}
+.bf-prompt .g { color:#4ade80; }
+.bf-prompt .v { color:#818cf8; }
+.bf-prompt .c { color:#22d3ee; }
+.bf-btn-terminal {
+    display:inline-flex; align-items:center; gap:.5rem;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+    color:#e2e8f0 !important; border-radius:11px;
+    padding:.75rem 1.5rem; font-size:.88rem; font-weight:600;
+    text-decoration:none; transition:background .15s, border-color .15s; white-space:nowrap;
+}
+.bf-btn-terminal:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); }
+
+/* ── Empty state ──────────────────────────────────── */
+.bf-empty {
+    text-align:center; padding:3rem; color:#94a3b8;
+    border:1px dashed #e2e8f0; border-radius:18px; font-size:.88rem;
+}
+.bf-empty i { font-size:1.8rem; color:#cbd5e1; display:block; margin-bottom:.7rem; }
+
+/* ── Responsive ───────────────────────────────────── */
+@@media (max-width:960px) {
+    .bf-bento { grid-template-columns:1fr 1fr; }
+    .bf-bento > *:nth-child(1) { grid-column:1;   grid-row:auto; }
+    .bf-bento > *:nth-child(2) { grid-column:1/3; grid-row:auto; }
+    .bf-bento > *:nth-child(3) { grid-column:1;   grid-row:auto; }
+    .bf-bento > *:nth-child(4) { grid-column:2;   grid-row:auto; }
+    .bf-stats { grid-template-columns:1fr 1fr; }
+}
+@@media (max-width:580px) {
+    .bf-bento { grid-template-columns:1fr; }
+    .bf-bento > *:nth-child(1),
+    .bf-bento > *:nth-child(2),
+    .bf-bento > *:nth-child(3),
+    .bf-bento > *:nth-child(4) { grid-column:1; grid-row:auto; }
+    .bf-stats { grid-template-columns:1fr 1fr; }
+    .bf-search { padding:2rem 1.5rem; }
+    .bf-terminal-body { padding:2rem 1.5rem; }
+    .bf-h1 { font-size:2.4rem; }
+}
+</style>
+
+<div class="bf">
+
+    @* ══ HERO ══════════════════════════════════════════ *@
+    <section class="bf-hero">
+        <div class="bf-hero-dots"></div>
+        <div class="bf-hero-glow"></div>
+        <div class="container" style="position:relative;z-index:2;">
             <div class="columns is-vcentered">
-                <div class="column is-7">
-                    <h1 class="hero-title">Empower Your Community with Digital Badges</h1>
-                    <p class="hero-subtitle">Create, issue, and verify digital credentials in a decentralized, secure, and community-driven ecosystem.</p>
-                    <div class="buttons">
-                        <a href="#create-instance" class="button is-primary is-large">
-                            <span class="icon"><i class="fas fa-rocket"></i></span>
-                            <span>Get Started</span>
+                <div class="column is-6">
+                    <div class="bf-pill">
+                        <span class="bf-pill-dot"></span>
+                        Open Badge Infrastructure
+                    </div>
+                    <h1 class="bf-h1">
+                        Your Achievements,<br />
+                        <span class="bf-grad">Verified Forever.</span>
+                    </h1>
+                    <p class="bf-hero-sub">
+                        Create, issue, and share digital credentials across a decentralized,
+                        cryptographically secure network — built on the open social web.
+                    </p>
+                    <div class="bf-ctas">
+                        <a href="#create-instance" class="bf-btn bf-btn-primary">
+                            <i class="fas fa-rocket"></i> Get Started
                         </a>
-                        <a href="/explore" class="button is-light is-large">
-                            <span class="icon"><i class="fas fa-compass"></i></span>
-                            <span>Explore Badges</span>
+                        <a href="/explore" class="bf-btn bf-btn-ghost">
+                            <i class="fas fa-compass"></i> Explore Badges
                         </a>
-                        <a href="/pages/how-to-accept-a-badge.html" class="button is-light is-large">
-                            <span class="icon"><i class="fas fa-hand-holding-heart"></i></span>
-                            <span>How to Accept</span>
+                        <a href="/pages/how-to-accept-a-badge.html" class="bf-btn bf-btn-ghost">
+                            <i class="fas fa-hand-holding-heart"></i> How to Accept
                         </a>
                     </div>
                 </div>
-                <div class="column is-5">
-                    <img src="hero1.png" alt="Digital Badges" style="max-width: 100%;">
+                <div class="column is-6">
+                    <img src="hero1.png" alt="BadgeFed — Digital Badges" class="bf-hero-img" />
                 </div>
             </div>
+        </div>
+    </section>
+
+    @* ══ MARQUEE ══════════════════════════════════════ *@
+    <div class="bf-mq">
+        <div class="bf-mq-track">
+            <span class="bf-mq-item"><i class="fas fa-certificate"></i>Cryptographically Verified</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-code-branch"></i>100% Open Source</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-network-wired"></i>ActivityPub Native</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-globe"></i>17M+ Fediverse Accounts</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-shield-alt"></i>No Central Authority</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-lock"></i>Open Standards</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-mobile-alt"></i>Mobile Friendly</span>
+            <span class="bf-mq-sep">·</span>
+            <!-- duplicate for seamless loop -->
+            <span class="bf-mq-item"><i class="fas fa-certificate"></i>Cryptographically Verified</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-code-branch"></i>100% Open Source</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-network-wired"></i>ActivityPub Native</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-globe"></i>17M+ Fediverse Accounts</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-shield-alt"></i>No Central Authority</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-lock"></i>Open Standards</span>
+            <span class="bf-mq-sep">·</span>
+            <span class="bf-mq-item"><i class="fas fa-mobile-alt"></i>Mobile Friendly</span>
+            <span class="bf-mq-sep">·</span>
         </div>
     </div>
 
     <div class="container">
-        <section class="section">
-            <div class="columns is-multiline">
-                <div class="column is-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <h3 class="title is-4">Secure & Verifiable</h3>
-                        <p class="subtitle is-6">Built on open standards with cryptographic verification to ensure badge authenticity and prevent fraud.</p>
-                    </div>
+
+        @* ══ STATS ════════════════════════════════════════ *@
+        <div class="bf-ss" style="padding-top:3.5rem;">
+            <div class="bf-stats">
+                <div class="bf-stat">
+                    <div class="bf-stat-n">17 M</div>
+                    <div class="bf-stat-l">Fediverse Accounts</div>
                 </div>
-                <div class="column is-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-network-wired"></i>
-                        </div>
-                        <h3 class="title is-4">Decentralized</h3>
-                        <p class="subtitle is-6">No single point of control. Badge issuers maintain their own systems while staying connected.</p>
-                    </div>
+                <div class="bf-stat">
+                    <div class="bf-stat-n">7.3 M</div>
+                    <div class="bf-stat-l">Active Users</div>
                 </div>
-                <div class="column is-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h3 class="title is-4">Community-Focused</h3>
-                        <p class="subtitle is-6">Designed for communities to create and manage their own badge ecosystems with full autonomy.</p>
-                    </div>
+                <div class="bf-stat">
+                    <div class="bf-stat-n">100%</div>
+                    <div class="bf-stat-l">Open Source</div>
+                </div>
+                <div class="bf-stat">
+                    <div class="bf-stat-n">&#8734;</div>
+                    <div class="bf-stat-l">Decentralized</div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="section">
-            <div class="columns is-vcentered">
-                <div class="column is-6">
-                    <h2 class="title is-2">Why Choose BadgeFed?</h2>
-                    <div class="content">
-                        <ul>
-                            <li>🎯 Create custom badges that reflect real achievements and skills</li>
-                            <li>🔒 Secure verification system built on open standards</li>
-                            <li>🌐 Interoperable with other badge systems and platforms</li>
-                            <li>⚡ Lightning-fast badge issuance and verification</li>
-                            <li>📱 Mobile-friendly design for badge display and verification</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="column is-6">
-                    <div class="stats-card">
-                        <div class="columns is-multiline">
-                            <div class="column is-6">
-                                <div class="has-text-centered">
-                                    <div class="stats-number">17 M</div>
-                                    <div class="stats-label">Fediverse Accounts</div>
-                                </div>
-                            </div>
-                            <div class="column is-6">
-                                <div class="has-text-centered">
-                                    <div class="stats-number">100%</div>
-                                    <div class="stats-label">Open Source</div>
-                                </div>
-                            </div>                        
-                            <div class="column is-6">
-                                <div class="has-text-centered">
-                                    <div class="stats-number">100%</div>
-                                    <div class="stats-label">Decentralized</div>
-                                </div>
-                            </div>
-                             <div class="column is-6">
-                                <div class="has-text-centered">
-                                    <div class="stats-number">7.3 M</div>
-                                    <div class="stats-label">Active Users</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        @* ══ BENTO FEATURES ════════════════════════════════ *@
+        <div class="bf-s" style="padding-top:4rem;">
+            <div class="bf-mb">
+                <span class="bf-lbl">What we offer</span>
+                <h2 class="bf-h2">Badge infrastructure<br />built for trust.</h2>
             </div>
-        </section>
+            <div class="bf-bento">
 
-        <!-- Instance Description Section -->
+                @* Card 1: Tall left — Verified *@
+                <div class="bf-bc accent">
+                    <div class="bf-blob" style="background:#6366f1;top:-40px;left:-40px;"></div>
+                    <div class="bf-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="bf-bc-title">Cryptographically<br />Verified</div>
+                    <div class="bf-bc-desc">Every badge is signed with a cryptographic key. Recipients prove authenticity without relying on any central authority.</div>
+                    <ul class="bf-cl">
+                        <li><span class="bf-ck"><i class="fas fa-check"></i></span>W3C open standards</li>
+                        <li><span class="bf-ck"><i class="fas fa-check"></i></span>Signed with actor keys</li>
+                        <li><span class="bf-ck"><i class="fas fa-check"></i></span>Portable credentials</li>
+                        <li><span class="bf-ck"><i class="fas fa-check"></i></span>Fraud-resistant by design</li>
+                    </ul>
+                </div>
+
+                @* Card 2: Wide top-right — Decentralized *@
+                <div class="bf-bc">
+                    <div class="bf-blob" style="background:#22d3ee;top:-60px;right:-40px;"></div>
+                    <div class="bf-icon teal"><i class="fas fa-network-wired"></i></div>
+                    <div class="bf-bc-title">Decentralized by Design</div>
+                    <div class="bf-bc-desc">
+                        Run your own node. Join the federation. No platform lock-in, no single point of failure.
+                        BadgeFed is built on ActivityPub — the same open protocol powering Mastodon and millions of users worldwide.
+                    </div>
+                </div>
+
+                @* Card 3: Bottom middle — Open Source *@
+                <div class="bf-bc">
+                    <div class="bf-icon green"><i class="fas fa-code-branch"></i></div>
+                    <div class="bf-bc-title">100% Open Source</div>
+                    <div class="bf-bc-desc">Fork it, self-host it, audit it. No vendor lock-in, ever.</div>
+                </div>
+
+                @* Card 4: Bottom right — Community *@
+                <div class="bf-bc">
+                    <div class="bf-icon"><i class="fas fa-users"></i></div>
+                    <div class="bf-bc-title">Community Focused</div>
+                    <div class="bf-bc-desc">Designed for organizations that want full autonomy over their badge ecosystems.</div>
+                </div>
+
+            </div>
+        </div>
+
+        @* ══ INSTANCE DESCRIPTION ══════════════════════════ *@
         @if (InstanceDescriptionData?.IsEnabled == true && !string.IsNullOrWhiteSpace(InstanceDescriptionData.Name))
         {
-            <section class="section has-background-white-ter py-6 rounded-lg shadow-sm">
-                <div class="container">
-                    <div class="box has-background-white px-5 py-6" style="border-radius: 16px;">
-                        <h2 class="title is-2 has-text-centered mb-2" style="color: #4f46e5;">
-                            <span class="icon is-large mr-2"><i class="fas fa-info-circle"></i></span>
-                            @InstanceDescriptionData.Name
-                        </h2>
-                        <br />
-                        <p class="subtitle is-5 has-text-centered mb-5" style="color: #374151;">
-                            @InstanceDescriptionData.Description
-                        </p>
-                        
+            <div class="bf-s" style="padding-top:0;">
+                <div class="bf-inst">
+                    <div class="bf-inst-head">
+                        <span class="bf-lbl">About this instance</span>
+                        <div class="bf-inst-title">@InstanceDescriptionData.Name</div>
+                        <div class="bf-inst-sub">@InstanceDescriptionData.Description</div>
+                    </div>
+                    <div class="bf-inst-body">
                         @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.Purpose))
                         {
-                            <div class="notification is-info is-light mt-4 px-4 py-3" style="border-radius: 12px;">
-                                <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-bullseye"></i></span> Our Purpose</h3>
-                                <p>@InstanceDescriptionData.Purpose</p>
+                            <div class="bf-infoblock">
+                                <div class="bf-infoblock-icon"><i class="fas fa-bullseye"></i></div>
+                                <div>
+                                    <div class="bf-infoblock-label">Our Purpose</div>
+                                    <div class="bf-infoblock-text">@InstanceDescriptionData.Purpose</div>
+                                </div>
                             </div>
                         }
-                        
                         @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.ContactInfo))
                         {
-                            <div class="notification is-link is-light mt-3 px-4 py-3" style="border-radius: 12px;">
-                                <h3 class="title is-5 mb-2"><span class="icon"><i class="fas fa-envelope"></i></span> Contact Information</h3>
-                                <p>@InstanceDescriptionData.ContactInfo</p>
+                            <div class="bf-infoblock">
+                                <div class="bf-infoblock-icon"><i class="fas fa-envelope"></i></div>
+                                <div>
+                                    <div class="bf-infoblock-label">Contact</div>
+                                    <div class="bf-infoblock-text">@InstanceDescriptionData.ContactInfo</div>
+                                </div>
                             </div>
                         }
                     </div>
                 </div>
-            </section>
+            </div>
         }
 
-        <section class="section">
-            <h2 class="title is-2 has-text-centered">Featured Badge Issuers</h2>
-            <p class="subtitle is-5 has-text-centered mb-6">Discover trusted organizations issuing verifiable badges</p>
+        @* ══ FEATURED ISSUERS ══════════════════════════════ *@
+        <div class="bf-s" style="padding-top:0;">
+            <div class="bf-mb">
+                <span class="bf-lbl">The Network</span>
+                <h2 class="bf-h2">Featured Badge Issuers</h2>
+                <p class="bf-lead">Trusted organizations issuing verifiable credentials on this network.</p>
+            </div>
 
             @if (Actors == null)
             {
-                <div class="has-text-centered">
-                    <div class="loader is-loading"></div>
-                    <p>Loading badge issuers...</p>
+                <div style="text-align:center;padding:3rem 0;color:#334155;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:.7rem;"></i>
+                    Loading badge issuers...
                 </div>
             }
             else if (!Actors.Any())
             {
-                <div class="notification is-info">
-                    No featured badge issuers available at the moment. Please check back later to discover trusted organizations in our network.
+                <div class="bf-empty">
+                    <i class="fas fa-building"></i>
+                    No featured badge issuers yet. Check back soon.
                 </div>
             }
             else
@@ -245,225 +625,185 @@ else
                     @foreach (var actor in Actors)
                     {
                         <div class="column is-4">
-                            <div class="actor-card box">
-                                <article class="media">
-                                    <div class="media-left">
-                                        <figure class="image is-64x64">
-                                            @if (!string.IsNullOrEmpty(actor.AvatarPath))
-                                            {
-                                                <img class="issuer-avatar" src="@actor.AvatarPath" alt="@actor.FullName" />
-                                            }
-                                            else
-                                            {
-                                                <div class="issuer-avatar has-background-light" style="display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 64px; height: 64px;">
-                                                    <span class="icon is-large" style="color: #4f46e5;"><i class="fas fa-users fa-2x"></i></span>
-                                                </div>
-                                            }
-                                        </figure>
+                            <div class="bf-issuer">
+                                <div class="bf-issuer-top">
+                                    @if (!string.IsNullOrEmpty(actor.AvatarPath))
+                                    {
+                                        <img class="bf-avatar" src="@actor.AvatarPath" alt="@actor.FullName" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bf-avatar-ph"><i class="fas fa-users"></i></div>
+                                    }
+                                    <div>
+                                        <div class="bf-issuer-name">@actor.FullName</div>
+                                        <div class="bf-issuer-handle">@actor.Username</div>
                                     </div>
-                                    <div class="media-content">
-                                        <div class="content">
-                                            <p>
-                                                <strong>@actor.FullName</strong>
-                                                <small>@actor.Username</small>
-                                                <br>
-                                                @actor.Summary
-                                            </p>
-                                        </div>
-                                        <div class="field is-grouped">
-                                            <p class="control">
-                                                <a class="button is-small is-primary" href="/view/actor/@actor.Domain/@actor.Username">
-                                                    <span class="icon"><i class="fas fa-eye"></i></span>
-                                                    <span>View Badges</span>
-                                                </a>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </article>
+                                </div>
+                                <div class="bf-issuer-bio">@actor.Summary</div>
+                                <a class="bf-btn-xs" href="/view/actor/@actor.Domain/@actor.Username">
+                                    <i class="fas fa-eye"></i> View Badges
+                                </a>
                             </div>
                         </div>
                     }
                 </div>
             }
-        </section>
-    <!-- Search Section - subtle background, smaller button -->
-    <section class="section has-background-light">
-      <div class="container">
-        <div class="columns is-vcentered is-variable is-8">
-          <div class="column is-8">
-            <h2 class="title is-3">Find Your Achievements</h2>
-            <p class="subtitle is-5">Search through your accomplishments.</p>
-          </div>
-          <div class="column is-4 has-text-right">
-            <a href="/search" class="button is-link is-medium is-rounded">
-              <span class="icon">
-                <i class="fas fa-search"></i>
-              </span>
-              <span>Start Searching</span>
-            </a>
-          </div>
         </div>
-      </div>
-    </section>
 
-       <section class="section">
-    <div class="container">
-        <h3 class="title is-4 has-text-centered">Federated Servers</h3>
-        <p class="subtitle is-6 has-text-centered mb-5">
-            Part of a growing decentralized network of BadgeFed servers
-        </p>
-
-        @if (FollowedServers == null)
-        {
-            <div class="has-text-centered">
-                <div class="loader is-loading"></div>
-                <p>Loading federated servers...</p>
+        @* ══ SEARCH CTA ═════════════════════════════════ *@
+        <div style="padding-bottom:4rem;">
+            <div class="bf-search">
+                <div>
+                    <div class="bf-search-title">Find Your Achievements</div>
+                    <div class="bf-search-sub">Search badges, issuers, and credentials across the entire network.</div>
+                </div>
+                <a href="/search" class="bf-btn-search">
+                    <i class="fas fa-search"></i> Start Searching
+                </a>
             </div>
-        }
-        else if (!FollowedServers.Any())
-        {
-            <div class="notification is-light has-text-centered">
-                Our network is growing! Stay tuned as more servers join the federation.
+        </div>
+
+        @* ══ FEDERATED SERVERS ══════════════════════════ *@
+        <div class="bf-s" style="padding-top:0;">
+            <div class="bf-mb">
+                <span class="bf-lbl">Federation</span>
+                <h2 class="bf-h2">Connected Servers</h2>
+                <p class="bf-lead">Part of a growing decentralized network of BadgeFed nodes.</p>
             </div>
-        }
-        else
-        {
-            <div class="columns is-multiline is-centered">
-                @foreach (var server in FollowedServers)
-                {
-                    var initials = string.Join("", (server.Name ?? "")
-                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(w => w[0])
-                        .Take(2))
-                        .ToUpper();
 
-                    string[] colors = { "has-background-primary", "has-background-link", "has-background-info", "has-background-success", "has-background-warning", "has-background-danger" };
-                    var colorClass = colors[Math.Abs(server.Id.GetHashCode()) % colors.Length];
-                    var serverCategories = server.GetCategories();
-                    var serverDomain = "";
-                    try { serverDomain = new Uri(server.Url).Host; } catch { }
-                    var logoUrl = $"{server.Url?.TrimEnd('/')}/pages/img/logo.{serverDomain}.png";
+            @if (FollowedServers == null)
+            {
+                <div style="text-align:center;padding:3rem 0;color:#334155;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:.7rem;"></i>
+                    Loading servers...
+                </div>
+            }
+            else if (!FollowedServers.Any())
+            {
+                <div class="bf-empty">
+                    <i class="fas fa-satellite-dish"></i>
+                    Network is growing. More servers coming soon.
+                </div>
+            }
+            else
+            {
+                <div class="columns is-multiline">
+                    @foreach (var server in FollowedServers)
+                    {
+                        var initials = string.Join("", (server.Name ?? "")
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(w => w[0]).Take(2)).ToUpper();
 
-                    <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
-                        <div class="card is-flex is-flex-direction-column" style="height:100%;">
-                            <div class="card-content has-text-centered">
+                        string[] grads = {
+                            "background:linear-gradient(135deg,#6366f1,#4f46e5)",
+                            "background:linear-gradient(135deg,#7c3aed,#5b21b6)",
+                            "background:linear-gradient(135deg,#0ea5e9,#0284c7)",
+                            "background:linear-gradient(135deg,#10b981,#059669)",
+                            "background:linear-gradient(135deg,#f59e0b,#d97706)",
+                            "background:linear-gradient(135deg,#ef4444,#dc2626)"
+                        };
+                        var gradStyle = grads[Math.Abs(server.Id.GetHashCode()) % grads.Length];
+                        var serverCategories = server.GetCategories();
+                        var serverDomain = "";
+                        try { serverDomain = new Uri(server.Url).Host; } catch { }
+                        var logoUrl = $"{server.Url?.TrimEnd('/')}/pages/img/logo.{serverDomain}.png";
 
-                                <figure class="image is-96x96 mx-auto mb-3">
-                                    <img src="@logoUrl" alt="@server.Name" class="is-rounded"
-                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                                    <div class="@colorClass has-text-white"
-                                         style="display:none;width:96px;height:96px;align-items:center;justify-content:center;border-radius:50%;margin:0 auto;font-size:1.5rem;font-weight:600;">
-                                        @initials
-                                    </div>
-                                </figure>
-
-                                <h4 class="title is-5 mb-2">@server.Name</h4>
-
-                                @if (!string.IsNullOrEmpty(server.Description))
-                                {
-                                    <p class="is-size-7 has-text-grey mb-2">@server.Description</p>
-                                }
-
-                                @if (serverCategories.Any())
-                                {
-                                    <div class="tags is-centered mb-2">
-                                        @foreach (var category in serverCategories)
-                                        {
-                                            <span class="tag is-light">@category</span>
-                                        }
-                                    </div>
-                                }
-
-                                @if (!string.IsNullOrEmpty(server.Url))
-                                {
-                                    try
+                        <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
+                            <div class="bf-server">
+                                <div class="bf-server-body">
+                                    <img src="@logoUrl" alt="@server.Name" class="bf-server-logo"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                                    <div class="bf-server-init" style="display:none;@gradStyle">@initials</div>
+                                    <div class="bf-server-name">@server.Name</div>
+                                    @if (!string.IsNullOrEmpty(server.Description))
                                     {
-                                        var domain = new Uri(server.Url).Host;
-                                        <p class="mt-2">
-                                            <span class="tag is-light is-info">@domain</span>
-                                        </p>
+                                        <div class="bf-server-desc">@server.Description</div>
                                     }
-                                    catch { }
-                                }
+                                    @if (serverCategories.Any())
+                                    {
+                                        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem;margin:.5rem 0;">
+                                            @foreach (var cat in serverCategories)
+                                            {
+                                                <span style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.18);color:#818cf8;border-radius:5px;padding:.13rem .5rem;font-size:.67rem;font-weight:600;">@cat</span>
+                                            }
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(serverDomain))
+                                    {
+                                        <span class="bf-domain">@serverDomain</span>
+                                    }
+                                </div>
+                                <div class="bf-server-foot">
+                                    <a href="@server.Url" class="bf-link" target="_blank">
+                                        <i class="fas fa-external-link-alt"></i> Visit Server
+                                    </a>
+                                </div>
                             </div>
-
-                            <footer class="card-footer mt-auto">
-                                <a href="@server.Url" class="card-footer-item" target="_blank">
-                                    <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                                    <span>Visit Server</span>
-                                </a>
-                            </footer>
                         </div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</section>
+                    }
+                </div>
+            }
+        </div>
 
-
+        @* ══ WALLET CTA ══════════════════════════════════ *@
         @if (!string.IsNullOrEmpty(walletCtaUrl))
         {
-            <section class="section py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div class="container">
-                    <div class="columns is-vcentered">
-                        <div class="column is-7">
-                            <h3 class="title is-4 has-text-white">
-                                <span class="icon mr-2"><i class="fas fa-wallet"></i></span>
-                                Get Your Free Badge Wallet
-                            </h3>
-                            <p class="subtitle is-6" style="color: rgba(255,255,255,0.9);">
-                                Collect, manage, and share your digital badges in one place. Your wallet is powered by ActivityPub — verified, portable, and always yours.
-                            </p>
-                            <div class="content is-small" style="color: rgba(255,255,255,0.85);">
-                                <ul>
-                                    <li>Collect badges from any BadgeFed-compatible server</li>
-                                    <li>Share your achievements across the Fediverse</li>
-                                    <li>Cryptographic verification built in</li>
-                                </ul>
-                            </div>
+            <div style="padding-bottom:4rem;">
+                <div class="bf-wallet">
+                    <div style="flex:1;min-width:260px;position:relative;z-index:1;">
+                        <div class="bf-wallet-title">
+                            <i class="fas fa-wallet" style="color:#818cf8;margin-right:.4rem;"></i>Get Your Free Badge Wallet
                         </div>
-                        <div class="column is-5 has-text-centered">
-                            <a href="@CtaHelper.BuildCtaUrl(walletCtaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="button is-white is-medium" style="font-weight:600; border-radius:10px;">
-                                <span class="icon"><i class="fas fa-arrow-right"></i></span>
-                                <span>Create Your Wallet</span>
-                            </a>
-                        </div>
+                        <p class="bf-wallet-sub">Collect, manage, and share your digital badges in one place. Powered by ActivityPub — verified, portable, and always yours.</p>
+                        <ul class="bf-wallet-list">
+                            <li><i class="fas fa-check-circle"></i> Collect badges from any BadgeFed-compatible server</li>
+                            <li><i class="fas fa-check-circle"></i> Share your achievements across the Fediverse</li>
+                            <li><i class="fas fa-check-circle"></i> Cryptographic verification built in</li>
+                        </ul>
                     </div>
-                </div>
-            </section>
-        }
-
-        <!-- Instance Creation Section - subtle -->
-        <section class="section has-background-light py-5" id="create-instance">
-            <div class="container">
-                <div class="columns is-vcentered">
-                    <div class="column is-7">
-                        <h3 class="title is-4">Create Your Badge System</h3>
-                        <p class="subtitle is-6">Want to run your own badge instance? Set up a dedicated badge system for your organization and join our decentralized network.</p>
-                        <div class="content is-small">
-                            <ul>
-                                <li>Full control over your badge infrastructure</li>
-                                <li>Custom branding and domain setup</li>
-                                <li>Interoperable with the BadgeFed network</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="column is-5 has-text-right">
-                        <a href="https://github.com/tryvocalcat/badgefed" class="button is-info is-outlined">
-                            <span class="icon">
-                                <i class="fas fa-server"></i>
-                            </span>
-                            <span>Get Started</span>
+                    <div style="position:relative;z-index:1;">
+                        <a href="@CtaHelper.BuildCtaUrl(walletCtaUrl, NavManager.Uri)" target="_blank" rel="noopener" class="bf-btn-wallet">
+                            <i class="fas fa-arrow-right"></i> Create Your Wallet
                         </a>
-                        
                     </div>
                 </div>
             </div>
-        </section>
-    </div>
-}
+        }
 
+        @* ══ CREATE INSTANCE ════════════════════════════ *@
+        <div style="padding-bottom:6rem;" id="create-instance">
+            <div class="bf-terminal">
+                <div class="bf-terminal-bar">
+                    <span class="bf-dot bf-dot-r"></span>
+                    <span class="bf-dot bf-dot-y"></span>
+                    <span class="bf-dot bf-dot-g"></span>
+                </div>
+                <div class="bf-terminal-body">
+                    <div style="flex:1;min-width:260px;">
+                        <span class="bf-lbl" style="color:#4ade80;">Deploy your own instance</span>
+                        <h2 class="bf-h2" style="margin-bottom:.5rem;">Create Your Badge System</h2>
+                        <p class="bf-lead" style="margin-bottom:1.2rem;">
+                            Set up a dedicated badge node for your organization and join our decentralized network — full control, custom branding, your domain.
+                        </p>
+                        <div class="bf-prompt">
+                            <span class="g">$</span> git clone <span class="v">https://github.com/tryvocalcat/badgefed</span><br />
+                            <span class="g">$</span> cd badgefed &amp;&amp; docker compose up<br />
+                            <span class="g">&#10003;</span> <span class="c">BadgeFed running on localhost:5000</span>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="https://github.com/tryvocalcat/badgefed" class="bf-btn-terminal">
+                            <i class="fas fa-server"></i> Get Started on GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+}
 @code {
     private List<Actor> Actors { get; set; }
     private List<DiscoveredServer> FollowedServers { get; set; } = new List<DiscoveredServer>();

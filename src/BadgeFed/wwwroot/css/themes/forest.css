@@ -1,3 +1,13 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — Forest Theme
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:      #059669;
+    --bf-accent-alt:  #047857;
+    --bf-highlight:   #10b981;
+    /* light theme — page/card colours keep defaults */
+}
+
 /* Forest Theme - Green and Earth Tones */
 .issuer-header {
     background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);

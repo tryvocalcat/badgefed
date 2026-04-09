@@ -13,6 +13,7 @@
 @inject IConfiguration Configuration
 @inject FollowService FollowService
 @inject CurrentUser CurrentUser
+@inject IBillingService BillingService
 @inject IHttpContextAccessor HttpContextAccessor
 
 @rendermode InteractiveServer
@@ -313,6 +314,13 @@
     }
 </style>
 
+@if (isAtIssuerLimit && string.IsNullOrEmpty(ActorId))
+{
+    <section class="section">
+        <LimitReachedBanner ResourceName="issuer" Max="@OpenRegistrationService.MaxIssuersForLimitedManager" UpgradeUrl="@upgradeUrl" />
+    </section>
+}
+
 <div class="form-section">
     @if (string.IsNullOrEmpty(Model?.Domain))
     {
@@ -347,7 +355,7 @@
             <div class="field">
                 <label class="field-label required" for="name">Full Name<span class="required-asterisk">*</span></label>
                 <div class="control">
-                        <InputText id="name" @bind-Value="Model!.FullName" class="input" placeholder="Enter the issuer's name" required />
+                        <InputText id="name" @bind-Value="Model!.FullName" @bind-Value:after="OnFullNameChanged" class="input" placeholder="e.g. Open Badges Foundation" required />
                     </div>
                     <ValidationMessage For="@(() => Model.FullName)" class="help is-danger" />
                 </div>
@@ -365,8 +373,16 @@
                         }
                         else
                         {
-                            <InputText id="username" @bind-Value="Model!.Username" class="input" placeholder="Choose a unique username" required />
-                            <p class="help-text">This will be the actor's handle (e.g. username@@@Model.Domain)</p>
+                            <InputText id="username" @bind-Value="Model!.Username" @bind-Value:after="OnUsernameChanged" class="input" placeholder="e.g. open-badges-org" required />
+                            <p class="help-text">
+                                Handle: <strong>@(string.IsNullOrEmpty(Model?.Username) ? "username" : Model.Username)@@@(Model?.Domain ?? "yourdomain")</strong>
+                                @if (!usernameManuallyEdited && !string.IsNullOrEmpty(Model?.Username))
+                                {
+                                    <span style="color:#4f46e5; font-size:0.8rem; margin-left:0.5rem;">
+                                        <i class="fas fa-magic" style="font-size:0.7rem;"></i> auto-suggested from name
+                                    </span>
+                                }
+                            </p>
                         }
                     </div>
                     
@@ -378,9 +394,12 @@
                 <div class="field">
                     <label class="field-label required" for="summary">Summary<span class="required-asterisk">*</span></label>
                     <div class="control">
-                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Describe the actor's purpose and role" required />
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" @bind-Value:event="oninput" class="textarea" rows="4" placeholder="Briefly describe this issuer's purpose and the types of badges they issue" required />
                     </div>
-                    <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem;">
+                        <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
+                        <span class="help-text" style="color:@(Model?.Summary?.Length > 450 ? "#e53e3e" : "#9ca3af"); font-size:0.8rem;">@(Model?.Summary?.Length ?? 0) / 500</span>
+                    </div>
                 </div>
             </div>
 
@@ -407,10 +426,12 @@
 
             <div class="column is-6">
                 <div class="field">
-                    <label class="field-label" for="informationUri">Information URI</label>
-                    <div class="control">
-                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" class="input" placeholder="https://example.com/about" />
+                    <label class="field-label required" for="informationUri">Website / Profile URL<span class="required-asterisk">*</span></label>
+                    <div class="control has-icons-left">
+                        <InputText id="informationUri" @bind-Value="Model!.InformationUri" class="input" placeholder="https://yourdomain.com/about" type="url" />
+                        <span class="icon is-left"><i class="fas fa-link"></i></span>
                     </div>
+                    <p class="help-text">Public page linking to more info about this issuer</p>
                     <ValidationMessage For="@(() => Model.InformationUri)" class="help is-danger" />
                 </div>
             </div>
@@ -747,6 +768,8 @@
     private string? imagePreview;
     private string? errorMessage;
     private bool isSubmitting = false;
+    private bool isAtIssuerLimit;
+    private string? upgradeUrl;
     private ElementReference fileInput;
     private List<FollowedIssuer> FollowedIssuers = new();
     private string newIssuerUrl = string.Empty;
@@ -755,6 +778,19 @@
     private bool showAdvancedSettings = false;
     private bool showRegenerateModal = false;
     private List<UserGroup> availableGroups = new();
+    private bool usernameManuallyEdited = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsLimitedManager() && string.IsNullOrEmpty(ActorId))
+        {
+            var actorList = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
+            var hasSubscription = await CurrentUser.HasActiveSubscription();
+            isAtIssuerLimit = !hasSubscription && actorList.Count >= OpenRegistrationService.MaxIssuersForLimitedManager;
+            if (isAtIssuerLimit)
+                upgradeUrl = await BillingService.GetCheckoutUrl(CurrentUser.GetGroupId(), "/admin/actors/create");
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -804,12 +840,63 @@
     private void ClearForm() 
     {
         Model = new();
+        usernameManuallyEdited = false;
         // Initialize socials list for new model
         Model.Socials = new List<SocialUri>();
         while (Model.Socials.Count < 3)
         {
             Model.Socials.Add(new SocialUri());
         }
+    }
+
+    private void OnFullNameChanged()
+    {
+        if (!usernameManuallyEdited && string.IsNullOrEmpty(ActorId))
+        {
+            Model!.Username = NormalizeToUsername(Model!.FullName);
+        }
+    }
+
+    private void OnUsernameChanged()
+    {
+        if (string.IsNullOrEmpty(Model?.Username))
+        {
+            // User cleared the username — re-enable auto-suggestion
+            usernameManuallyEdited = false;
+            Model!.Username = NormalizeToUsername(Model.FullName);
+        }
+        else if (Model!.Username != NormalizeToUsername(Model.FullName))
+        {
+            usernameManuallyEdited = true;
+        }
+    }
+
+    private static string NormalizeToUsername(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+
+        // Strip diacritics
+        var normalized = name.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        var ascii = sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+
+        var lower = ascii.ToLowerInvariant();
+        // Replace whitespace with dots
+        var dotted = System.Text.RegularExpressions.Regex.Replace(lower, @"\s+", ".");
+        // Keep only alphanumeric, dots, hyphens, underscores
+        var clean = System.Text.RegularExpressions.Regex.Replace(dotted, @"[^a-z0-9.\-_]", "");
+        // Collapse consecutive separators
+        clean = System.Text.RegularExpressions.Regex.Replace(clean, @"[.\-_]{2,}", ".");
+        // Trim leading/trailing separators
+        clean = clean.Trim('.', '-', '_');
+        // Cap at 50 chars
+        return clean.Length > 50 ? clean[..50] : clean;
     }
 
     private bool HasKeys()
@@ -876,8 +963,16 @@
         imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
     }
 
+    private bool IsLimitedManager() =>
+        CurrentUser.GetRole().Equals(OpenRegistrationService.LimitedManagerRole, StringComparison.OrdinalIgnoreCase);
+
     private async Task HandleValidSubmit()
     {
+        if (isAtIssuerLimit && string.IsNullOrEmpty(ActorId))
+        {
+            errorMessage = "You have reached your issuer limit. Please upgrade your plan to create more issuers.";
+            return;
+        }
         isSubmitting = true;
         try
         {

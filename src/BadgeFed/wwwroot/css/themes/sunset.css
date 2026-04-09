@@ -1,3 +1,13 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — Sunset Theme
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:      #f97316;
+    --bf-accent-alt:  #dc2626;
+    --bf-highlight:   #9333ea;
+    /* light theme — page/card colours keep defaults */
+}
+
 /* Sunset Theme - Warm Orange and Purple */
 .issuer-header {
     background: linear-gradient(135deg, #f97316 0%, #ea580c 25%, #dc2626 50%, #be123c 75%, #9333ea 100%);

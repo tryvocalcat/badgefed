@@ -24,6 +24,7 @@ public class Actor
 
     public string OwnerId { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Website / Profile URL is required")]
     public string? InformationUri { get; set; }
 
     public Uri? Uri

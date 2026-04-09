@@ -4,369 +4,374 @@
 @layout BadgeFed.Components.Layouts.MainLayout
 @rendermode InteractiveServer
 
-<div class="container-fluid px-4">
-    <div class="hero is-small">
-        <div class="hero-body has-text-centered">
-            <h1 class="title is-2 mb-2">Find Your Badges</h1>
-            <p class="subtitle is-5 has-text-grey">Discover badges across the federation</p>
-        </div>
-    </div>
-    
-    <div class="columns is-centered mb-6">
-        <div class="column is-half-desktop is-three-quarters-tablet">
-            <div class="search-container">
+<style>
+/* ═══════════════════════════════════════════════════
+   Search Grants — BadgeFed Design System
+   ═══════════════════════════════════════════════════ */
+
+.bf { background:#fff; color:#0f172a; font-family:'Inter',system-ui,-apple-system,sans-serif; }
+
+/* ── Page header ──────────────────────────────────── */
+.bf-page-header { padding:3rem 0 0; background:#fff; }
+.bf-page-lbl {
+    display:inline-block; font-size:.68rem; font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase; color:#6366f1; margin-bottom:.5rem;
+}
+.bf-page-title {
+    font-size:clamp(1.9rem,3.5vw,2.6rem); font-weight:900;
+    letter-spacing:-.035em; line-height:1.1; color:#0f172a; margin-bottom:.4rem;
+}
+.bf-page-sub { font-size:.92rem; color:#64748b; line-height:1.7; }
+.bf-grad {
+    background:linear-gradient(95deg,#6366f1 0%,#06b6d4 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+
+/* ── Search box ───────────────────────────────────── */
+.bf-search-wrap {
+    padding:2rem 0 0;
+    max-width:640px;
+    margin-left:auto;
+    margin-right:auto;
+}
+.bf-search-field {
+    display:flex; gap:0; border:1.5px solid #e2e8f0; border-radius:14px;
+    overflow:hidden; background:#fff;
+    box-shadow:0 2px 12px rgba(99,102,241,.08);
+    transition:border-color .15s, box-shadow .15s;
+}
+.bf-search-field:focus-within {
+    border-color:#6366f1;
+    box-shadow:0 0 0 3px rgba(99,102,241,.12), 0 2px 12px rgba(99,102,241,.1);
+}
+.bf-search-input {
+    flex:1; border:none; outline:none; background:transparent;
+    padding:.85rem 1.1rem; font-size:.92rem; color:#0f172a;
+    font-family:inherit;
+}
+.bf-search-input::placeholder { color:#94a3b8; }
+.bf-search-btn {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:linear-gradient(135deg,#6366f1,#7c3aed); color:#fff;
+    border:none; padding:.85rem 1.4rem; cursor:pointer;
+    font-size:.85rem; font-weight:600; font-family:inherit;
+    transition:opacity .15s; white-space:nowrap;
+}
+.bf-search-btn:hover:not(:disabled) { opacity:.88; }
+.bf-search-btn:disabled { opacity:.45; cursor:not-allowed; }
+.bf-search-hint { font-size:.75rem; color:#94a3b8; margin-top:.55rem; }
+.bf-search-hint.error { color:#ef4444; }
+
+/* ── States ───────────────────────────────────────── */
+.bf-s { padding:3rem 0; }
+.bf-state {
+    text-align:center; padding:4rem 2rem; border-radius:18px;
+    border:1px dashed #e2e8f0; color:#94a3b8;
+}
+.bf-state i { font-size:2rem; display:block; margin-bottom:.75rem; color:#c7d2fe; }
+.bf-state-title { font-size:1rem; font-weight:700; color:#475569; margin-bottom:.3rem; }
+.bf-state-sub   { font-size:.83rem; line-height:1.6; }
+.bf-state-sub strong { color:#334155; }
+
+.bf-loading-wrap { text-align:center; padding:4rem 1rem; color:#94a3b8; }
+.bf-loading-wrap i { font-size:1.6rem; display:block; margin-bottom:.7rem; color:#c7d2fe; }
+.bf-loading-title { font-size:.95rem; font-weight:600; color:#475569; margin-bottom:.25rem; }
+.bf-loading-sub   { font-size:.8rem; }
+
+/* ── Results header ───────────────────────────────── */
+.bf-results-header {
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;
+    padding-bottom:1rem; border-bottom:1px solid #f1f5f9;
+}
+.bf-results-count { font-size:.92rem; font-weight:700; color:#0f172a; }
+.bf-results-count span { color:#6366f1; }
+.bf-sort-wrap { display:flex; align-items:center; gap:.5rem; }
+.bf-sort-label { font-size:.75rem; color:#94a3b8; font-weight:500; }
+.bf-sort-select {
+    border:1px solid #e2e8f0; border-radius:8px; background:#fff;
+    padding:.3rem .65rem; font-size:.78rem; color:#475569;
+    font-family:inherit; cursor:pointer; outline:none;
+    transition:border-color .15s;
+}
+.bf-sort-select:focus { border-color:#6366f1; }
+
+/* ── Badge result card ────────────────────────────── */
+.bf-result-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:18px;
+    margin-bottom:1rem; overflow:hidden;
+    transition:border-color .2s, box-shadow .2s, transform .2s;
+}
+.bf-result-card:hover {
+    border-color:#c7d2fe;
+    box-shadow:0 6px 28px rgba(99,102,241,.1);
+    transform:translateY(-1px);
+}
+.bf-result-inner { display:flex; align-items:stretch; gap:0; }
+
+/* badge image column */
+.bf-result-img-col {
+    flex-shrink:0; width:90px;
+    background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:1rem; border-right:1px solid #f1f5f9;
+}
+.bf-result-img {
+    width:56px; height:56px; object-fit:contain; border-radius:10px;
+}
+.bf-result-img-ph {
+    width:56px; height:56px; border-radius:10px;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.16);
+    display:flex; align-items:center; justify-content:center;
+    color:#6366f1; font-size:1.3rem;
+}
+
+/* main content */
+.bf-result-body { flex:1; padding:1.1rem 1.4rem; min-width:0; }
+.bf-result-top {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:.75rem; margin-bottom:.6rem; flex-wrap:wrap;
+}
+.bf-result-title { font-size:.97rem; font-weight:700; color:#0f172a; line-height:1.3; }
+.bf-badge-status {
+    flex-shrink:0; display:inline-flex; align-items:center; gap:.3rem;
+    border-radius:999px; padding:.2rem .65rem;
+    font-size:.67rem; font-weight:600; letter-spacing:.03em;
+}
+.bf-badge-status.external {
+    background:rgba(245,158,11,.1); color:#d97706;
+    border:1px solid rgba(245,158,11,.22);
+}
+.bf-badge-status.local {
+    background:rgba(22,163,74,.1); color:#16a34a;
+    border:1px solid rgba(22,163,74,.22);
+}
+
+.bf-result-issuer { font-size:.78rem; color:#64748b; margin-bottom:.9rem; }
+.bf-result-issuer a { color:#6366f1; font-weight:600; text-decoration:none; }
+.bf-result-issuer a:hover { color:#4f46e5; }
+
+/* meta grid */
+.bf-meta-row {
+    display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:center;
+    padding-top:.75rem; border-top:1px solid #f8fafc;
+}
+.bf-meta-item { display:flex; align-items:center; gap:.35rem; font-size:.75rem; color:#64748b; }
+.bf-meta-item i { font-size:.7rem; color:#94a3b8; }
+.bf-meta-item a { color:#6366f1; text-decoration:none; font-weight:500; }
+.bf-meta-item a:hover { color:#4f46e5; }
+.bf-meta-accepted { color:#16a34a; }
+.bf-meta-pending  { color:#94a3b8; }
+
+/* view button column */
+.bf-result-action-col {
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    padding:1rem 1.2rem; border-left:1px solid #f1f5f9;
+}
+.bf-view-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    background:rgba(99,102,241,.07); border:1px solid rgba(99,102,241,.2);
+    color:#6366f1 !important; border-radius:10px; padding:.5rem .9rem;
+    font-size:.78rem; font-weight:600; text-decoration:none;
+    transition:background .15s; white-space:nowrap;
+}
+.bf-view-btn:hover { background:rgba(99,102,241,.14); }
+.bf-view-btn.disabled {
+    background:#f8fafc; border-color:#e2e8f0; color:#cbd5e1 !important; cursor:default;
+}
+
+@@media (max-width:640px) {
+    .bf-result-inner { flex-direction:column; }
+    .bf-result-img-col { width:100%; border-right:none; border-bottom:1px solid #f1f5f9; padding:.75rem; flex-direction:row; gap:.75rem; justify-content:flex-start; }
+    .bf-result-action-col { border-left:none; border-top:1px solid #f1f5f9; justify-content:flex-start; padding:.75rem 1.4rem; }
+}
+</style>
+
+<div class="bf">
+    <div class="bf-page-header">
+        <div class="container">
+            <span class="bf-page-lbl">Search</span>
+            <h1 class="bf-page-title">Find <span class="bf-grad">Badges</span></h1>
+            <p class="bf-page-sub">Search badge grants across the federation by name or profile</p>
+
+            <div class="bf-search-wrap">
                 <form @onsubmit="SearchBadges" @onsubmit:preventDefault>
-                    <div class="field has-addons">
-                        <div class="control is-expanded">
-                            <input 
-                                class="input is-large" 
-                                type="text" 
-                                placeholder="Search by name, fediverse handle, or profile URL..." 
-                                @bind="searchText"
-                                @bind:event="oninput"
-                                aria-label="Search badges"
-                                required
-                            />
-                        </div>
-                        <div class="control">
-                            <button class="button is-info is-large @(isLoading ? "is-loading" : "")" 
-                                    type="submit" 
-                                    disabled="@(string.IsNullOrWhiteSpace(searchText) || searchText.Length < 3 || isLoading)">
-                                <span class="icon">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <span class="is-hidden-mobile">Search</span>
-                            </button>
-                        </div>
+                    <div class="bf-search-field">
+                        <input
+                            class="bf-search-input"
+                            type="text"
+                            placeholder="Name, fediverse handle, or profile URL..."
+                            @bind="searchText"
+                            @bind:event="oninput"
+                            aria-label="Search badges"
+                            required />
+                        <button class="bf-search-btn @(isLoading ? "is-loading" : "")"
+                                type="submit"
+                                disabled="@(string.IsNullOrWhiteSpace(searchText) || searchText.Length < 3 || isLoading)">
+                            @if (isLoading)
+                            {
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-search"></i>
+                            }
+                            <span>Search</span>
+                        </button>
                     </div>
                     @if (!string.IsNullOrEmpty(searchText) && searchText.Length < 3)
                     {
-                        <p class="help is-danger mt-2">Please enter at least 3 characters to search</p>
+                        <p class="bf-search-hint error">Please enter at least 3 characters</p>
+                    }
+                    else
+                    {
+                        <p class="bf-search-hint">Try searching by name, @@username@@instance, or profile URL</p>
                     }
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="fade-enter fade-enter-active">
-        @if (isLoading)
-        {
-            <div class="has-text-centered py-6">
-                <span class="icon is-large mb-4">
-                    <i class="fas fa-circle-notch fa-spin fa-3x has-text-info"></i>
-                </span>
-                <p class="title is-4">Searching for badges...</p>
-                <p class="subtitle">Please wait while we search the federation</p>
-            </div>
-        }
-        else if (string.IsNullOrEmpty(searchText) && !searchSubmitted)
-        {
-            <div class="empty-state has-text-centered py-6">
-                <span class="icon is-large mb-4">
-                    <i class="fas fa-search fa-3x has-text-grey-light"></i>
-                </span>
-                <p class="title is-4 has-text-grey">Ready to search</p>
-                <p class="subtitle has-text-grey">Enter a name or profile URL above to discover badges</p>
-            </div>
-        }
-        else if (badgeRecords == null || !badgeRecords.Any())
-        {
-            <div class="empty-state has-text-centered py-6">
-                <span class="icon is-large mb-4">
-                    <i class="fas fa-certificate fa-3x has-text-grey-light"></i>
-                </span>
-                <p class="title is-4 has-text-grey">No badges found</p>
-                <p class="subtitle has-text-grey">No badges found for "<strong>@searchText</strong>"</p>
-                <p class="has-text-grey-light">Try searching with a different name or profile URL</p>
-            </div>
-        }
-        else
-        {
-            <div class="mb-4">
-                <div class="level">
-                    <div class="level-left">
-                        <div class="level-item">
-                            <p class="title is-5">
-                                Found @badgeRecords.Count badge@(badgeRecords.Count == 1 ? "" : "s")
-                            </p>
-                        </div>
+    <div class="bf-s">
+        <div class="container">
+
+            @if (isLoading)
+            {
+                <div class="bf-loading-wrap">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <div class="bf-loading-title">Searching the federation…</div>
+                    <div class="bf-loading-sub">This may take a moment</div>
+                </div>
+            }
+            else if (string.IsNullOrEmpty(searchText) && !searchSubmitted)
+            {
+                <div class="bf-state">
+                    <i class="fas fa-search"></i>
+                    <div class="bf-state-title">Ready to search</div>
+                    <div class="bf-state-sub">Enter a name or profile URL above to discover badge grants</div>
+                </div>
+            }
+            else if (badgeRecords == null || !badgeRecords.Any())
+            {
+                <div class="bf-state">
+                    <i class="fas fa-certificate"></i>
+                    <div class="bf-state-title">No badges found</div>
+                    <div class="bf-state-sub">No results for <strong>"@searchText"</strong> — try a different name or handle</div>
+                </div>
+            }
+            else
+            {
+                <div class="bf-results-header">
+                    <div class="bf-results-count">
+                        <span>@badgeRecords.Count</span> badge@(badgeRecords.Count == 1 ? "" : "s") found
                     </div>
-                    <div class="level-right">
-                        <div class="level-item">
-                            <div class="field has-addons">
-                                <div class="control">
-                                    <span class="button is-static is-small">
-                                        <span class="icon">
-                                            <i class="fas fa-sort"></i>
-                                        </span>
-                                        <span>Sort by</span>
-                                    </span>
-                                </div>
-                                <div class="control">
-                                    <div class="select is-small">
-                                        <select @onchange="OnSortChange">
-                                            <option value="newest">Newest First</option>
-                                            <option value="oldest">Oldest First</option>
-                                            <option value="title">Title A-Z</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="bf-sort-wrap">
+                        <span class="bf-sort-label">Sort by</span>
+                        <select class="bf-sort-select" @onchange="OnSortChange">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="title">Title A–Z</option>
+                        </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="badge-results">
-                @foreach (var record in GetSortedBadgeRecords())
-                {
-                    var actor = LocalDbService.GetActorByFilter($"Uri = '{record.IssuedBy}'");
-                    var actorName = actor?.FullName ?? $"{record.IssuedBy.Split('/').Last()}@{new Uri(record.IssuedBy).Host}";
-                    var issuedToName = record.IssuedToName ?? $"{record.IssuedToSubjectUri.Split('/').Last()}@{new Uri(record.IssuedToSubjectUri).Host}";
-                    
-                    <div class="card mb-4 badge-card">
-                        <div class="card-content">
-                            <div class="columns is-vcentered">
-                                <div class="column is-narrow">
-                                    <div class="badge-icon">
-                                        @if (!string.IsNullOrEmpty(record.FullImageUrl))
+                <div>
+                    @foreach (var record in GetSortedBadgeRecords())
+                    {
+                        var actor = LocalDbService.GetActorByFilter($"Uri = '{record.IssuedBy}'");
+                        var actorName = actor?.FullName ?? $"{record.IssuedBy.Split('/').Last()}@{new Uri(record.IssuedBy).Host}";
+                        var issuedToName = record.IssuedToName ?? $"{record.IssuedToSubjectUri.Split('/').Last()}@{new Uri(record.IssuedToSubjectUri).Host}";
+
+                        <div class="bf-result-card">
+                            <div class="bf-result-inner">
+
+                                @* Badge image *@
+                                <div class="bf-result-img-col">
+                                    @if (!string.IsNullOrEmpty(record.FullImageUrl))
+                                    {
+                                        <img src="@record.FullImageUrl" alt="@record.Title" class="bf-result-img" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bf-result-img-ph"><i class="fas fa-certificate"></i></div>
+                                    }
+                                </div>
+
+                                @* Main content *@
+                                <div class="bf-result-body">
+                                    <div class="bf-result-top">
+                                        <div class="bf-result-title">@record.Title</div>
+                                        <span class="bf-badge-status @(record.IsExternal ? "external" : "local")">
+                                            <i class="fas @(record.IsExternal ? "fa-external-link-alt" : "fa-home")"></i>
+                                            @(record.IsExternal ? "External" : "Local")
+                                        </span>
+                                    </div>
+                                    <div class="bf-result-issuer">
+                                        Issued by <a href="@actor?.Uri">@actorName</a>
+                                    </div>
+                                    <div class="bf-meta-row">
+                                        <div class="bf-meta-item">
+                                            <i class="fas fa-user"></i>
+                                            <a href="/recipient/@(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(record.IssuedToSubjectUri)))">
+                                                @issuedToName
+                                            </a>
+                                        </div>
+                                        <div class="bf-meta-item">
+                                            <i class="fas fa-calendar"></i>
+                                            @record.IssuedOn.ToString("MMM dd, yyyy")
+                                        </div>
+                                        @if (record.AcceptedOn.HasValue)
                                         {
-                                            <img src="@record.FullImageUrl" alt="@record.Title badge" class="badge-image" />
+                                            <div class="bf-meta-item bf-meta-accepted">
+                                                <i class="fas fa-check-circle"></i>
+                                                Accepted @record.AcceptedOn.Value.ToString("MMM dd, yyyy")
+                                            </div>
                                         }
                                         else
                                         {
-                                            <span class="icon is-large has-text-info">
-                                                <i class="fas fa-certificate fa-2x"></i>
-                                            </span>
+                                            <div class="bf-meta-item bf-meta-pending">
+                                                <i class="fas fa-clock"></i>
+                                                Pending acceptance
+                                            </div>
                                         }
                                     </div>
                                 </div>
-                                
-                                <div class="column">
-                                    <div class="content">
-                                        <div class="level is-mobile">
-                                            <div class="level-left">
-                                                <div class="level-item">
-                                                    <div>
-                                                        <p class="title is-5 mb-2">@record.Title</p>
-                                                        <p class="subtitle is-6 has-text-grey mb-3">
-                                                            Issued by 
-                                                            <a href="@actor?.Uri" class="has-text-info has-text-weight-semibold">
-                                                                @actorName
-                                                            </a>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="level-right">
-                                                <div class="level-item">
-                                                    <span class="tag @(record.IsExternal ? "is-warning" : "is-success") is-medium">
-                                                        @(record.IsExternal ? "External" : "Local")
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="columns is-mobile is-variable is-2">
-                                            <div class="column">
-                                                <div class="field">
-                                                    <label class="label is-small has-text-grey">Recipient</label>
-                                                    <p class="is-size-6">
-                                                        <a href="/recipient/@(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(record.IssuedToSubjectUri)))" 
-                                                           class="has-text-info">
-                                                            <span class="icon is-small">
-                                                                <i class="fas fa-user"></i>
-                                                            </span>
-                                                            @issuedToName
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="column">
-                                                <div class="field">
-                                                    <label class="label is-small has-text-grey">Issued On</label>
-                                                    <p class="is-size-6">
-                                                        <span class="icon is-small has-text-grey">
-                                                            <i class="fas fa-calendar"></i>
-                                                        </span>
-                                                        @record.IssuedOn.ToString("MMM dd, yyyy")
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="column">
-                                                <div class="field">
-                                                    <label class="label is-small has-text-grey">Accepted On</label>
-                                                    <p class="is-size-6">
-                                                        @if (record.AcceptedOn.HasValue)
-                                                        {
-                                                            <span>
-                                                                <span class="icon is-small has-text-success">
-                                                                    <i class="fas fa-check"></i>
-                                                                </span>
-                                                                @record.AcceptedOn.Value.ToString("MMM dd, yyyy")
-                                                            </span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="has-text-grey">
-                                                                <span class="icon is-small">
-                                                                    <i class="fas fa-clock"></i>
-                                                                </span>
-                                                                Pending
-                                                            </span>
-                                                        }
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="column is-narrow">
-                                                @if (!string.IsNullOrEmpty(record.NoteId))
-                                                {
-                                                    @if (record.IsExternal)
-                                                    {
-                                                        var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
-                                                        <a class="button is-info is-outlined" href="/view/grant/@noteIdParam">
-                                                            <span class="icon">
-                                                                <i class="fas fa-eye"></i>
-                                                            </span>
-                                                            <span>View Badge</span>
-                                                        </a>
-                                                    }
-                                                    else
-                                                    {
-                                                        <a class="button is-info is-outlined" href="@record.NoteId">
-                                                            <span class="icon">
-                                                                <i class="fas fa-eye"></i>
-                                                            </span>
-                                                            <span>View Badge</span>
-                                                        </a>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <button class="button is-static" disabled>
-                                                        <span class="icon">
-                                                            <i class="fas fa-eye-slash"></i>
-                                                        </span>
-                                                        <span>No View</span>
-                                                    </button>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
+
+                                @* View action *@
+                                <div class="bf-result-action-col">
+                                    @if (!string.IsNullOrEmpty(record.NoteId))
+                                    {
+                                        @if (record.IsExternal)
+                                        {
+                                            var noteIdParam = record.NoteId.Substring(record.NoteId.LastIndexOf('/') + 1);
+                                            <a class="bf-view-btn" href="/view/grant/@noteIdParam">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a class="bf-view-btn" href="@record.NoteId">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="bf-view-btn disabled">
+                                            <i class="fas fa-eye-slash"></i> None
+                                        </span>
+                                    }
                                 </div>
+
                             </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
+                    }
+                </div>
+            }
+
+        </div>
     </div>
 </div>
-
-<style>
-    .container-fluid {
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    
-    .badge-card {
-        border: 1px solid #e8e8e8;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .badge-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-color: #3273dc;
-    }
-    
-    .badge-icon {
-        padding: 0.5rem;
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border-radius: 12px;
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-        overflow: hidden;
-    }
-    
-    .badge-image {
-        padding: 3px;
-        object-fit: cover;
-        border-radius: 2px;
-    }
-    
-    @@media (max-width: 1024px) {
-        .badge-image {
-            padding: 4px;
-        }
-    }
-    
-    @@media (max-width: 768px) {
-        .badge-image {
-            padding: 5px;
-        }
-    }
-    
-    .empty-state {
-        padding: 4rem 2rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-radius: 12px;
-        margin: 2rem 0;
-    }
-    
-    .fade-enter {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    
-    .fade-enter-active {
-        opacity: 1;
-        transform: translateY(0);
-        transition: all 0.3s ease-in-out;
-    }
-
-    .subtitle {
-        padding-top: 20px;
-    }
-    
-    .search-container .input {
-        border-radius: 8px 0 0 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .search-container .button {
-        border-radius: 0 8px 8px 0;
-    }
-    
-    @@media (max-width: 768px) {
-        .badge-card .columns {
-            display: block !important;
-        }
-        
-        .badge-card .column.is-narrow {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        
-        .badge-card .columns.is-mobile.is-variable {
-            display: block !important;
-        }
-        
-        .badge-card .column {
-            padding: 0.25rem !important;
-            margin-bottom: 0.5rem;
-        }
-    }
-</style>
 
 @code {
     private string searchText = string.Empty;

@@ -20,10 +20,11 @@ namespace BadgeFed.Services
         public MastodonRegistrationService(HttpClient httpClient, string clientName, string website, string[] redirectUris, string[] scopes = null)
         {
             _httpClient = httpClient;
-            _clientName = clientName;
+            _clientName = string.IsNullOrEmpty(clientName) ? "badgefed" : clientName;
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", _clientName);
             _website = website;
             _redirectUris = redirectUris ?? throw new ArgumentNullException(nameof(redirectUris));
-            _scopes = scopes ?? new[] { "profile", "read", "read:accounts", "read:statuses" };
+            _scopes = scopes ?? new[] { "profile", "read" };
         }
 
         public async Task<JsonDocument> RegisterApplicationAsync(string instanceUrl)

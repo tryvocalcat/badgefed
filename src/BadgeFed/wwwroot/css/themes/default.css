@@ -1,3 +1,15 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — Default Theme
+   These variables skin the bf- component system.
+   Keep this block at the top of every theme file.
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:      #6366f1;
+    --bf-accent-alt:  #4f46e5;
+    --bf-highlight:   #06b6d4;
+    /* light theme — page/card colours are the defaults, no overrides needed */
+}
+
 /* Default Theme - Modern Gradient */
 .issuer-header {
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);

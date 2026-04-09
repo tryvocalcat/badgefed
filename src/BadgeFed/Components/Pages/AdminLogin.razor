@@ -13,468 +13,140 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-@layout BadgeFed.Components.Layouts.MinimalLayout
-
-
-<section class="section login-section">
-    <div class="container">
-        <div class="columns is-centered">
-            <div class="column is-4">
-                <div class="box login-box">
-                    <h2 class="title is-4 has-text-centered">Welcome to BadgeFed Admin</h2>
-                    
-                    @if (User.Identity.Name != null)
-                    {
-                        <p class="has-text-centered">Loading...</p>
+@layout BadgeFed.Components.Layouts.AdminAuthLayout
+<section class="admin-auth-shell">
+    <div class="admin-auth-card">
+        <div class="admin-auth-brand">
+            <img src="/logo.default.png" alt="BadgeFed logo" />
+            <div class="admin-auth-brand-text">
+                <span class="admin-auth-brand-kicker">DIGITAL CREDENTIALS</span>
+                
+                     @if (IsOpenRegistrationEnabled)
+                     { 
+                        <h1 class="admin-auth-title">Login or Sign Up</h1>
+                    } else {
+                        <h1 class="admin-auth-title">Admin Login</h1>
                     }
-                    else
-                    {
-                        <p class="has-text-centered mb-4">Login with your accounts</p>
-
-                        @if (IsOpenRegistrationEnabled)
-                        {
-                            <div class="notification is-info is-light mb-4">
-                                Open registration is enabled. New accounts are created automatically when users sign in with Mastodon or LinkedIn.
-                            </div>
-                        }
-                        
-                        @if (IsMastodonConfigured)
-                        {
-                            <div class="field mb-3">
-                                <div class="mastodon-login-container">
-                                    @if (!showMastodonDropdown)
-                                    {
-                                        <div class="control">
-                                            <button class="button is-fullwidth is-primary has-background-purple"
-                                                    @onclick="ToggleMastodonDropdown">
-                                                <span class="icon">
-                                                    <i class="fab fa-mastodon"></i>
-                                                </span>
-                                                <span>Sign In with Mastodon</span>
-                                                <span class="icon is-small ml-2">
-                                                    <i class="fas fa-chevron-down"></i>
-                                                </span>
-                                            </button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="mastodon-dropdown-card">
-                                            <div class="dropdown-header">
-                                                <h5 class="title is-6 mb-3">
-                                                    <span class="icon">
-                                                        <i class="fab fa-mastodon"></i>
-                                                    </span>
-                                                    Choose your Mastodon server
-                                                </h5>
-                                                <button class="delete is-small" @onclick="CloseMastodonDropdown"></button>
-                                            </div>
-                                            
-                                            <div class="field">
-                                                <div class="control has-icons-left">
-                                                    <input class="input" type="text" placeholder="Search or enter server (e.g., mastodon.social)"
-                                                           @bind="selectedMastodonServer" @oninput="OnMastodonServerInput" @ref="mastodonInputRef" />
-                                                    <span class="icon is-small is-left">
-                                                        <i class="fas fa-search"></i>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            
-                                            @if (filteredMastodonServers.Any())
-                                            {
-                                                <div class="server-suggestions">
-                                                    @foreach (var server in filteredMastodonServers.Take(5))
-                                                    {
-                                                        <div class="server-suggestion" @onclick="() => SelectMastodonServer(server.Domain)">
-                                                            <div class="server-info">
-                                                                <strong>@server.Domain</strong>
-                                                                <small class="has-text-grey">@server.Description</small>
-                                                            </div>
-                                                            <span class="tag is-light">-</span>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                            
-                                            <div class="field mt-4">
-                                                <div class="control">
-                                                    <button class="button is-fullwidth has-background-purple" 
-                                                            @onclick="SignInWithSelectedMastodonServer"
-                                                            disabled="@(string.IsNullOrWhiteSpace(selectedMastodonServer))">
-                                                        <span class="icon">
-                                                            <i class="fab fa-mastodon"></i>
-                                                        </span>
-                                                        <span>Continue with @(string.IsNullOrWhiteSpace(selectedMastodonServer) ? "..." : selectedMastodonServer)</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-
-                        @if (IsGotoSocialConfigured)
-                        {
-                            <div class="field mb-3">
-                                <div class="control">
-                                    <button class="button is-fullwidth is-primary has-background-orange"
-                                            @onclick="SignInWithGotoSocial">
-                                        <span class="icon">
-                                            <i class="fab fa-gotosocial"></i>
-                                        </span>
-                                        <span>Sign In with GoToSocial</span>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-
-                        @if (IsLinkedInConfigured)
-                        {
-                            <div class="field mb-3">
-                                <div class="control">
-                                    <button class="button is-fullwidth is-info"
-                                            @onclick="SignInWithLinkedIn">
-                                        <span class="icon">
-                                            <i class="fab fa-linkedin"></i>
-                                        </span>
-                                        <span>Sign In with LinkedIn</span>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                        @if (IsGoogleConfigured)
-                        {
-                            <div class="field">
-                                <div class="control">
-                                    <button class="button is-fullwidth is-danger"
-                                            @onclick="SignInWithGoogle">
-                                        <span class="icon">
-                                            <i class="fab fa-google"></i>
-                                        </span>
-                                        <span>Sign In with Google</span>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                    }
-                </div>
             </div>
         </div>
+
+        @if (User.Identity?.Name != null)
+        {
+            <p class="admin-auth-status">Finishing your sign-in and opening the admin console.</p>
+        }
+        else
+        {
+            <p class="admin-auth-subtitle">Sign in with an account you already have.</p>
+
+            <p class="admin-auth-section-title">Choose a sign-in method</p>
+
+            <div class="admin-auth-provider-list">
+                @if (IsMastodonConfigured)
+                {
+                    <div class="admin-auth-provider-block">
+                        @if (!showMastodonDropdown)
+                        {
+                            <button class="admin-auth-button admin-auth-button-primary"
+                                    @onclick="ToggleMastodonDropdown">
+                                <span class="admin-auth-button-icon">
+                                    <i class="fab fa-mastodon"></i>
+                                </span>
+                                <span class="admin-auth-button-meta">Sign in with Mastodon</span>
+                                <span class="admin-auth-button-chevron">
+                                    <i class="fas fa-chevron-down"></i>
+                                </span>
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="admin-auth-picker">
+                                <div class="admin-auth-picker-header">
+                                    <div>
+                                        <h2 class="admin-auth-picker-title">Choose your Mastodon server</h2>
+                                        <p class="admin-auth-picker-copy">Search a known instance or type your own domain.</p>
+                                    </div>
+                                    <button type="button" class="admin-auth-close" aria-label="Close Mastodon server chooser" @onclick="CloseMastodonDropdown">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div class="admin-auth-field">
+                                    <label class="admin-auth-label" for="mastodon-server">Server</label>
+                                    <div class="admin-auth-input-wrap">
+                                        <span class="admin-auth-input-icon">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <input id="mastodon-server"
+                                               class="admin-auth-input"
+                                               type="text"
+                                               placeholder="mastodon.social"
+                                               @bind="selectedMastodonServer"
+                                               @oninput="OnMastodonServerInput"
+                                               @ref="mastodonInputRef" />
+                                    </div>
+                                </div>
+
+                                @if (filteredMastodonServers.Any())
+                                {
+                                    <div class="admin-auth-suggestions">
+                                        @foreach (var server in filteredMastodonServers.Take(5))
+                                        {
+                                            <button type="button" class="admin-auth-suggestion" @onclick="() => SelectMastodonServer(server.Domain)">
+                                                <span class="admin-auth-suggestion-main">
+                                                    <span class="admin-auth-suggestion-domain">@server.Domain</span>
+                                                    <span class="admin-auth-suggestion-description">@server.Description</span>
+                                                </span>
+                                                <span class="admin-auth-suggestion-badge">Pick</span>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+
+                                <button class="admin-auth-button admin-auth-button-primary"
+                                        @onclick="SignInWithSelectedMastodonServer"
+                                        disabled="@(string.IsNullOrWhiteSpace(selectedMastodonServer))">
+                                    <span class="admin-auth-button-icon">
+                                        <i class="fab fa-mastodon"></i>
+                                    </span>
+                                    <span class="admin-auth-button-meta">Continue with @(string.IsNullOrWhiteSpace(selectedMastodonServer) ? "your server" : selectedMastodonServer)</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (IsLinkedInConfigured || IsGoogleConfigured)
+                {
+                    <div class="admin-auth-divider">More options</div>
+                }
+
+                @if (IsLinkedInConfigured)
+                {
+                    <button class="admin-auth-button admin-auth-button-linkedin"
+                            @onclick="SignInWithLinkedIn">
+                        <span class="admin-auth-button-icon">
+                            <i class="fab fa-linkedin"></i>
+                        </span>
+                        <span class="admin-auth-button-meta">Sign in with LinkedIn</span>
+                    </button>
+                }
+
+                @if (IsGoogleConfigured)
+                {
+                    <button class="admin-auth-button admin-auth-button-google"
+                            @onclick="SignInWithGoogle">
+                        <span class="admin-auth-button-icon">
+                            <i class="fab fa-google"></i>
+                        </span>
+                        <span class="admin-auth-button-meta">Sign in with Google</span>
+                    </button>
+                }
+            </div>
+
+            <p class="admin-auth-footnote">This platform never stores your password. We use your existing account to verify who you are — nothing more.</p>
+        }
     </div>
 </section>
-
-<style>
-    /* Modern Login Page Styles */
-    .login-section {
-        min-height: calc(100vh - 8rem);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 1rem;
-    }
-
-    .login-box {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 3rem 2.5rem;
-        box-shadow: 
-            0 25px 50px -12px rgba(0, 0, 0, 0.25),
-            0 0 0 1px rgba(255, 255, 255, 0.1);
-        animation: slideUp 0.5s ease-out;
-    }
-
-    .login-box .title {
-        color: #1a1a2e;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-
-    .login-box p.has-text-centered {
-        color: #6b7280;
-        font-size: 0.95rem;
-    }
-
-    /* Button Styles */
-    .login-box .button {
-        border-radius: 12px;
-        font-weight: 600;
-        padding: 1.25rem 1.5rem;
-        height: auto;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
-    }
-
-    .login-box .button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .login-box .button:active {
-        transform: translateY(0);
-    }
-
-    .has-background-purple {
-        background: linear-gradient(135deg, #6d00b6 0%, #9b30ff 100%) !important;
-        color: white !important;
-    }
-    .has-background-purple:hover {
-        background: linear-gradient(135deg, #5b009a 0%, #8a2be2 100%) !important;
-    }
-
-    .has-background-orange {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffb347 100%) !important;
-        color: white !important;
-    }
-
-    .has-background-orange:hover {
-        background: linear-gradient(135deg, #e07b00 0%, #ff9f1c 100%) !important;
-    }
-
-    .login-box .button.is-info {
-        background: linear-gradient(135deg, #0077b5 0%, #00a0dc 100%) !important;
-    }
-
-    .login-box .button.is-info:hover {
-        background: linear-gradient(135deg, #006699 0%, #0088bf 100%) !important;
-    }
-
-    .login-box .button.is-danger {
-        background: linear-gradient(135deg, #ea4335 0%, #ff6b6b 100%) !important;
-    }
-
-    .login-box .button.is-danger:hover {
-        background: linear-gradient(135deg, #d33426 0%, #ee5a5a 100%) !important;
-    }
-
-    .login-box .button .icon {
-        font-size: 1.25rem;
-    }
-
-    /* Mastodon Dropdown */
-    .mastodon-login-container {
-        position: relative;
-    }
-
-    .mastodon-dropdown-card {
-        background: #fafbfc;
-        border: 1px solid #e1e4e8;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 
-            0 10px 40px rgba(0, 0, 0, 0.08),
-            0 2px 8px rgba(0, 0, 0, 0.04);
-        animation: fadeInScale 0.25s ease-out;
-    }
-
-    .dropdown-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
-    }
-
-    .dropdown-header .title {
-        color: #6d00b6;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .mastodon-dropdown-card .input {
-        border-radius: 10px;
-        border: 2px solid #e1e4e8;
-        padding: 0.75rem 1rem 0.75rem 2.5rem;
-        transition: all 0.2s ease;
-    }
-
-    .mastodon-dropdown-card .input:focus {
-        border-color: #6d00b6;
-        box-shadow: 0 0 0 3px rgba(109, 0, 182, 0.1);
-    }
-
-    .server-suggestions {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #e1e4e8;
-        border-radius: 12px;
-        margin-top: 0.75rem;
-        background: white;
-    }
-
-    .server-suggestion {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.875rem 1rem;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .server-suggestion:last-child {
-        border-bottom: none;
-    }
-
-    .server-suggestion:hover {
-        background: linear-gradient(135deg, rgba(109, 0, 182, 0.05) 0%, rgba(155, 48, 255, 0.05) 100%);
-    }
-
-    .server-info {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-    }
-
-    .server-info strong {
-        color: #1a1a2e;
-    }
-
-    .server-info small {
-        margin-top: 0.25rem;
-        font-size: 0.75rem;
-        color: #6b7280;
-    }
-
-    /* Animations */
-    @@keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @@keyframes fadeInScale {
-        from {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    @@keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* GoToSocial sloth */
-    .fab.fa-gotosocial::before {
-        content: "";
-        display: inline-block;
-        width: 1em;
-        height: 1em;
-        background: currentColor;
-        vertical-align: -0.125em;
-
-        /* Stylized sloth icon (Font-Awesome-like) encoded as a data URI.
-           White areas are visible; black areas create small cutouts (eyes/mouth). */
-        --gts-sloth: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="%23ffffff" d="M32 6c-7 0-12 4-16 9-6 7-6 16-4 22 2 6 7 11 13 14 6 3 27 6 31-1 4-7 1-18-3-24-4-6-9-12-21-20z"/><circle fill="%23000000" cx="23" cy="28" r="3"/><circle fill="%23000000" cx="41" cy="28" r="3"/><path fill="%23000000" d="M32 35c-3 0-6 3-6 4 0 1 3 2 6 2s6-1 6-2c0-1-3-4-6-4z"/></svg>');
-
-        -webkit-mask-image: var(--gts-sloth);
-        mask-image: var(--gts-sloth);
-        -webkit-mask-repeat: no-repeat;
-        mask-repeat: no-repeat;
-        -webkit-mask-position: center;
-        mask-position: center;
-        -webkit-mask-size: contain;
-        mask-size: contain;
-
-    }
-</style>
-
-<style>
-    .btn-facebook {
-        background-color: #4267B2;
-        color: white;
-    }
-
-    .logged-in-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-    }
-
-    .avatar-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 1rem;
-        width: 100%;
-    }
-
-    .user-avatar, .avatar-placeholder {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        margin: 0 auto;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-    }
-
-    .avatar-placeholder {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        font-weight: bold;
-        text-transform: uppercase;
-    }
-
-    .user-info {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        width: 100%;
-        text-align: center;
-    }
-
-    .logout-form {
-        margin-top: 0.5rem;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-    }
-
-    .btn-logout {
-        background: linear-gradient(135deg, #ff4d4d 0%, #ff6b6b 100%);
-        color: white;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        min-width: 120px;
-        border-radius: 10px;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .btn-logout:hover {
-        background: linear-gradient(135deg, #e60000 0%, #ff4d4d 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 77, 77, 0.4);
-    }
-</style>
 
 @code {
     private ClaimsPrincipal User;

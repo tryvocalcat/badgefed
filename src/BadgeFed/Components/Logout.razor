@@ -7,53 +7,17 @@
 
 @if (CurrentUser == null || !CurrentUser.IsAuthenticated)
 {
-    <p class="text-danger">User is not authenticated.</p>
+    <p class="has-text-danger is-size-7">User is not authenticated.</p>
 }
 else
 {
     <div class="user-logout-container">
         <span class="user-greeting">
-            <i class="bi bi-person-circle"></i>
+            <i class="fas fa-user-circle"></i>
             @CurrentUser.Name
         </span>
         <a href="/admin/logout" class="logout-link">
-            <i class="bi bi-box-arrow-right"></i> Logout
+            <i class="fas fa-arrow-right-from-bracket"></i> Logout
         </a>
     </div>
 }
-
-<style>
-    .user-logout-container {
-        display: flex;
-        align-items: center;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 6px 12px;
-        transition: background-color 0.2s;
-    }
-    
-    .user-logout-container:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-    }
-    
-    .user-greeting {
-        color: #f0f0f0;
-        margin-right: 10px;
-        font-weight: 500;
-    }
-    
-    .logout-link {
-        color: #e0e0e0;
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: color 0.2s;
-    }
-    
-    .logout-link:hover {
-        color: #ffffff;
-    }
-    
-    .bi-person-circle {
-        margin-right: 5px;
-    }
-</style>

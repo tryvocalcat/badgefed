@@ -1,3 +1,19 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — Night Theme
+   Dark theme: overrides page/card colours too.
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:       #818cf8;
+    --bf-accent-alt:   #a78bfa;
+    --bf-highlight:    #38bdf8;
+    --bf-page-bg:      #0d0f1a;
+    --bf-page-fg:      #e2e8f0;
+    --bf-card-bg:      #111827;
+    --bf-card-border:  rgba(255,255,255,.1);
+    --bf-muted:        #94a3b8;
+    --bf-subtle:       #64748b;
+}
+
 /* Night Theme - Dark Blue and Deep Purple */
 .issuer-header {
     background: linear-gradient(135deg, rgb(10, 10, 10) 0%, #1f1b66 100%);

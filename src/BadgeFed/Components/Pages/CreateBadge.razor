@@ -8,6 +8,7 @@
 @inject IConfiguration Configuration
 
 @inject CurrentUser CurrentUser
+@inject IBillingService BillingService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -21,6 +22,14 @@
     <h1>Edit Badge @BadgeId - @Model.Title </h1>
 }
 
+@if (isAtBadgeLimit && string.IsNullOrEmpty(BadgeId))
+{
+    <section class="section pt-0">
+        <LimitReachedBanner ResourceName="badge" Max="@OpenRegistrationService.MaxBadgesForLimitedManager" UpgradeUrl="@upgradeUrl" />
+    </section>
+}
+else
+{
 <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="badgeForm">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -195,6 +204,7 @@
         </div>
     </div>
 </EditForm>
+}
 
 @code {
 
@@ -207,6 +217,8 @@
     private string? imagePreview;
     private string? errorMessage;
     private bool isSubmitting = false;
+    private bool isAtBadgeLimit;
+    private string? upgradeUrl;
 
     private List<Actor> actors;
 
@@ -219,6 +231,21 @@
             Model = LocalDbService.GetBadgeById(id);
         }
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsLimitedManager() && string.IsNullOrEmpty(BadgeId))
+        {
+            var badgeList = LocalDbService.GetAllBadgeDefinitions(true, $"a.OwnerId = '{CurrentUser.GetGroupId()}'");
+            var hasSubscription = await CurrentUser.HasActiveSubscription();
+            isAtBadgeLimit = !hasSubscription && badgeList.Count >= OpenRegistrationService.MaxBadgesForLimitedManager;
+            if (isAtBadgeLimit)
+                upgradeUrl = await BillingService.GetCheckoutUrl(CurrentUser.GetGroupId(), "/admin/badges/create");
+        }
+    }
+
+    private bool IsLimitedManager() =>
+        CurrentUser.GetRole().Equals(OpenRegistrationService.LimitedManagerRole, StringComparison.OrdinalIgnoreCase);
 
     private void FetchActors()
     {
@@ -258,6 +285,11 @@
 
     private async Task HandleValidSubmit()
     {
+        if (isAtBadgeLimit && string.IsNullOrEmpty(BadgeId))
+        {
+            errorMessage = "You have reached your badge limit. Please upgrade your plan to create more badges.";
+            return;
+        }
         isSubmitting = true;
         try
         {

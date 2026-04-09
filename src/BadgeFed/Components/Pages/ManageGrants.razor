@@ -15,48 +15,36 @@
 @attribute [Authorize(Roles = "admin, manager, manager-limited")]
 
 <style>
-    .table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .table thead th {
-        background: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-size: 0.8rem;
+    /* ── Table ─── */
+    .grants-table thead th {
+        background: rgba(109, 91, 208, 0.06);
+        border-bottom: 2px solid rgba(94, 77, 173, 0.14);
+        font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6c757d;
-        padding: 0.75rem 0.75rem;
+        letter-spacing: 0.08em;
+        color: var(--admin-ink-muted);
+        padding: 0.7rem 0.85rem;
         white-space: nowrap;
+        font-weight: 700;
     }
 
-    .table tbody tr {
-        transition: background-color 0.15s ease;
+    .grants-table tbody tr {
+        transition: background 120ms ease;
     }
 
-    .table tbody tr:hover {
-        background-color: #f1f3f5 !important;
+    .grants-table tbody tr:hover {
+        background: rgba(109, 91, 208, 0.04);
     }
 
-    .table tbody td {
+    .grants-table tbody td {
         vertical-align: middle;
-        padding: 0.6rem 0.75rem;
-        border-bottom: 1px solid #f0f0f0;
+        padding: 0.65rem 0.85rem;
+        border-bottom: 1px solid rgba(94, 77, 173, 0.08);
+        color: var(--admin-ink);
+        font-size: 0.9rem;
     }
 
-    .actions-cell {
-        min-width: 260px;
-    }
-
-    .actions-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        flex-wrap: wrap;
-    }
-
+    /* ── Recipient column ─── */
     .issued-to-column {
         max-width: 200px;
         overflow: hidden;
@@ -70,191 +58,152 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: #3273dc;
+        color: var(--admin-accent);
+        font-weight: 600;
     }
 
-    .issued-to-column a:hover {
-        overflow: visible;
-        white-space: normal;
-        word-break: break-all;
-        position: relative;
-        z-index: 10;
-        background: white;
-        padding: 0.25rem;
-        border-radius: 0.25rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    .action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.3rem 0.65rem;
-        border-radius: 0.375rem;
-        font-size: 0.8rem;
-        font-weight: 500;
-        line-height: 1.25;
-        transition: all 0.15s ease-in-out;
-        text-decoration: none;
-        cursor: pointer;
-        border: 1.5px solid transparent;
-    }
-
-    .action-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-    }
-
-    .action-btn:active {
-        transform: translateY(0);
-    }
-
-    .action-btn .icon {
-        font-size: 0.8rem;
-    }
-
-    .action-btn.is-outlined {
-        background: transparent;
-    }
-
-    .action-btn.is-danger.is-outlined {
-        color: #f14668;
-        border-color: #f14668;
-        background: transparent;
-    }
-
-    .action-btn.is-danger.is-outlined:hover {
-        background: #f14668;
-        color: white;
-    }
-
-    .action-btn.is-warning.is-outlined {
-        color: #946c00;
-        border-color: #ffe08a;
-        background: transparent;
-    }
-
-    .action-btn.is-warning.is-outlined:hover {
-        background: #ffe08a;
-        color: #946c00;
-    }
-
-    .status-badge {
+    /* ── Status pills ─── */
+    .status-pill {
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
         white-space: nowrap;
     }
 
-    .status-badge.pending {
-        background: #fff3cd;
-        color: #856404;
-    }
+    .status-pill.pending  { background: rgba(244, 211, 124, 0.22); color: #7a5800; }
+    .status-pill.accepted { background: rgba(43, 110, 210, 0.12);  color: #1a56a0; }
+    .status-pill.processed{ background: var(--admin-success-soft);  color: var(--admin-success); }
+    .status-pill.external { background: rgba(94, 77, 173, 0.1);    color: var(--admin-accent); }
 
-    .status-badge.accepted {
-        background: #d1ecf1;
-        color: #0c5460;
-    }
-
-    .status-badge.processed {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .status-badge.external {
-        background: #e2e3e5;
-        color: #383d41;
-    }
-
-    .status-badge .icon {
-        font-size: 0.65rem;
-    }
-
-    .auto-badge {
+    .auto-pill {
         display: inline-flex;
         align-items: center;
         gap: 0.2rem;
-        padding: 0.15rem 0.5rem;
-        border-radius: 1rem;
-        font-size: 0.7rem;
-        background: #e8f4fd;
-        color: #1a73e8;
-        font-weight: 500;
-    }
-
-    .auto-badge .icon {
-        font-size: 0.6rem;
-    }
-
-    .action-separator {
-        width: 1px;
-        height: 1.2rem;
-        background: #dee2e6;
-        margin: 0 0.125rem;
-    }
-
-    .status-tabs {
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #dbdbdb;
-    }
-
-    .status-tabs .tabs {
-        margin-bottom: -1px;
-    }
-
-    .status-tabs .tabs ul {
-        border-bottom: none;
-    }
-
-    .status-tabs .tabs li.is-active a {
-        border-bottom-color: #3273dc;
-        color: #3273dc;
+        padding: 0.18rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
         font-weight: 600;
+        background: rgba(109, 91, 208, 0.08);
+        color: var(--admin-accent);
+        margin-top: 0.3rem;
     }
 
-    .status-tab-content {
-        min-height: 400px;
-    }
+    /* ── Actions ─── */
+    .actions-cell { min-width: 220px; }
 
-    .records-summary {
+    .actions-wrapper {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 0.5rem 0.75rem;
-        background: #f8f9fa;
-        border-radius: 0.375rem;
-        margin-bottom: 1rem;
-        font-size: 0.875rem;
-        color: #6c757d;
+        gap: 0.35rem;
+        flex-wrap: wrap;
     }
 
+    .action-sep {
+        width: 1px;
+        height: 1.1rem;
+        background: rgba(94, 77, 173, 0.15);
+        margin: 0 0.1rem;
+    }
+
+    /* ── Tabs ─── */
+    .grant-tabs {
+        display: flex;
+        gap: 0.25rem;
+        border-bottom: 2px solid rgba(94, 77, 173, 0.12);
+        margin-bottom: 1.25rem;
+    }
+
+    .grant-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.6rem 1rem;
+        border-radius: 10px 10px 0 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--admin-ink-muted);
+        cursor: pointer;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: color 120ms ease, background 120ms ease;
+    }
+
+    .grant-tab:hover {
+        color: var(--admin-ink);
+        background: rgba(109, 91, 208, 0.05);
+    }
+
+    .grant-tab.is-active {
+        color: var(--admin-accent);
+        border-bottom-color: var(--admin-accent);
+        background: rgba(109, 91, 208, 0.06);
+    }
+
+    .grant-tab .tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.4rem;
+        height: 1.4rem;
+        padding: 0 0.35rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(109, 91, 208, 0.1);
+        color: var(--admin-accent);
+    }
+
+    .grant-tab.is-active .tab-count {
+        background: var(--admin-accent);
+        color: #fff;
+    }
+
+    /* ── Records summary bar ─── */
+    .records-bar {
+        display: flex;
+        align-items: center;
+        padding: 0.55rem 0.85rem;
+        background: rgba(109, 91, 208, 0.05);
+        border-radius: var(--admin-radius-sm);
+        margin-bottom: 1rem;
+        font-size: 0.84rem;
+        color: var(--admin-ink-muted);
+        border: 1px solid rgba(94, 77, 173, 0.1);
+    }
+
+    /* ── Copy toast ─── */
     .copy-toast {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
-        background: #363636;
-        color: white;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.5rem;
+        background: var(--admin-ink);
+        color: #fff;
+        padding: 0.7rem 1.15rem;
+        border-radius: var(--admin-radius-sm);
         font-size: 0.875rem;
         z-index: 1000;
-        animation: fadeInUp 0.2s ease, fadeOut 0.3s ease 1.7s;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 8px 24px rgba(30, 17, 64, 0.22);
+        animation: fadeInUp 0.2s ease, fadeOut 0.3s ease 1.7s forwards;
     }
 
     @@keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
 
     @@keyframes fadeOut {
         from { opacity: 1; }
-        to { opacity: 0; }
+        to   { opacity: 0; }
     }
 </style>
 <h1>Manage Badge Grant Records</h1>
@@ -312,35 +261,27 @@
     </div>
 </div>
 
-<div class="status-tabs">
-    <div class="tabs is-boxed">
-        <ul>
-            <li class="@(activeTab == "pending" ? "is-active" : "")">
-                <a @onclick='() => SetActiveTab("pending")'>
-                    <span class="icon is-small"><i class="fas fa-clock"></i></span>
-                    <span>Pending (@GetStatusCount("pending"))</span>
-                </a>
-            </li>
-            <li class="@(activeTab == "accepted" ? "is-active" : "")">
-                <a @onclick='() => SetActiveTab("accepted")'>
-                    <span class="icon is-small"><i class="fas fa-check"></i></span>
-                    <span>Accepted (@GetStatusCount("accepted"))</span>
-                </a>
-            </li>
-            <li class="@(activeTab == "processed" ? "is-active" : "")">
-                <a @onclick='() => SetActiveTab("processed")'>
-                    <span class="icon is-small"><i class="fas fa-cogs"></i></span>
-                    <span>Processed (@GetStatusCount("processed"))</span>
-                </a>
-            </li>
-            <li class="@(activeTab == "external" ? "is-active" : "")">
-                <a @onclick='() => SetActiveTab("external")'>
-                    <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
-                    <span>External (@GetStatusCount("external"))</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+<div class="grant-tabs">
+    <button class="grant-tab @(activeTab == "pending" ? "is-active" : "")" @onclick='() => SetActiveTab("pending")'>
+        <span class="icon is-small"><i class="fas fa-clock"></i></span>
+        <span>Pending</span>
+        <span class="tab-count">@GetStatusCount("pending")</span>
+    </button>
+    <button class="grant-tab @(activeTab == "accepted" ? "is-active" : "")" @onclick='() => SetActiveTab("accepted")'>
+        <span class="icon is-small"><i class="fas fa-check"></i></span>
+        <span>Accepted</span>
+        <span class="tab-count">@GetStatusCount("accepted")</span>
+    </button>
+    <button class="grant-tab @(activeTab == "processed" ? "is-active" : "")" @onclick='() => SetActiveTab("processed")'>
+        <span class="icon is-small"><i class="fas fa-cogs"></i></span>
+        <span>Processed</span>
+        <span class="tab-count">@GetStatusCount("processed")</span>
+    </button>
+    <button class="grant-tab @(activeTab == "external" ? "is-active" : "")" @onclick='() => SetActiveTab("external")'>
+        <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+        <span>External</span>
+        <span class="tab-count">@GetStatusCount("external")</span>
+    </button>
 </div>
 
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -358,7 +299,7 @@
 else
 {
     <div class="status-tab-content">
-        <div class="records-summary">
+        <div class="records-bar">
             @if (filteredRecords.Count > 0)
             {
                 <span>Showing <strong>@((currentPage - 1) * PageSize + 1)–@(Math.Min(currentPage * PageSize, filteredRecords.Count))</strong> of <strong>@filteredRecords.Count</strong> records</span>
@@ -368,7 +309,7 @@ else
                 <span>No records found</span>
             }
         </div>
-        <table class="table is-hoverable is-fullwidth">
+        <table class="table grants-table is-fullwidth">
         <thead>
             <tr>
                 <th>ID</th>
@@ -414,33 +355,34 @@ else
                         @switch (status)
                         {
                             case "pending":
-                                <span class="status-badge pending">
-                                    <span class="icon"><i class="fas fa-clock"></i></span> Pending
+                                <span class="status-pill pending">
+                                    <i class="fas fa-clock"></i> Pending
                                 </span>
                                 @if (!record.NotifiedOfGrant)
                                 {
-                                    <span class="auto-badge mt-1" title="Notification will be sent automatically by the job queue">
-                                        <span class="icon"><i class="fas fa-robot"></i></span> Auto-notify queued
+                                    <br/>
+                                    <span class="auto-pill" title="Notification will be sent automatically by the job queue">
+                                        <i class="fas fa-robot"></i> Auto-notify queued
                                     </span>
                                 }
                                 break;
                             case "accepted":
-                                <span class="status-badge accepted">
-                                    <span class="icon"><i class="fas fa-check"></i></span> Accepted
+                                <span class="status-pill accepted">
+                                    <i class="fas fa-check"></i> Accepted
                                 </span>
                                 <br/>
-                                <span class="auto-badge mt-1" title="Processing will happen automatically via the job queue">
-                                    <span class="icon"><i class="fas fa-robot"></i></span> Auto-process queued
+                                <span class="auto-pill" title="Processing will happen automatically via the job queue">
+                                    <i class="fas fa-robot"></i> Auto-process queued
                                 </span>
                                 break;
                             case "processed":
-                                <span class="status-badge processed">
-                                    <span class="icon"><i class="fas fa-check-double"></i></span> Processed
+                                <span class="status-pill processed">
+                                    <i class="fas fa-check-double"></i> Processed
                                 </span>
                                 break;
                             case "external":
-                                <span class="status-badge external">
-                                    <span class="icon"><i class="fas fa-globe"></i></span> External
+                                <span class="status-pill external">
+                                    <i class="fas fa-globe"></i> External
                                 </span>
                                 break;
                         }
@@ -449,7 +391,7 @@ else
                         <div class="actions-wrapper">
                         @if (record.IsExternal) 
                         {
-                            <a href="@record.NoteId" target="_blank" class="action-btn button is-small is-info is-light" title="View on original server">
+                            <a href="@record.NoteId" target="_blank" class="button is-small is-info is-light" title="View on original server">
                                 <span class="icon"><i class="fas fa-external-link-alt"></i></span>
                                 <span>View</span>
                             </a>
@@ -458,14 +400,14 @@ else
                         {
                             if (string.IsNullOrEmpty(record.FingerPrint)) 
                             {
-                                <a href="/admin/grant/@record.Id/process" class="action-btn button is-small is-primary" title="Process this grant now">
+                                <a href="/admin/grant/@record.Id/process" class="button is-small is-primary" title="Process this grant now">
                                     <span class="icon"><i class="fas fa-play"></i></span>
                                     <span>Process Now</span>
                                 </a>
                             } 
                             else 
                             {
-                                <a href="@record.NoteId" target="_blank" class="action-btn button is-small is-info is-light" title="View badge post">
+                                <a href="@record.NoteId" target="_blank" class="button is-small is-info is-light" title="View badge post">
                                     <span class="icon"><i class="fas fa-eye"></i></span>
                                     <span>View</span>
                                 </a>
@@ -473,11 +415,11 @@ else
                         } 
                         else 
                         {
-                            <button class="action-btn button is-small is-link is-light" title="Copy acceptance link to clipboard" @onclick="() => CopyAcceptLink(record)">
+                            <button class="button is-small is-link is-light" title="Copy acceptance link to clipboard" @onclick="() => CopyAcceptLink(record)">
                                 <span class="icon"><i class="fas fa-copy"></i></span>
                                 <span>Copy Link</span>
                             </button>
-                            <a href="/accept/grant/@record.Id/@record.AcceptKey" target="_blank" class="action-btn button is-small is-link is-outlined" title="Open acceptance page">
+                            <a href="/accept/grant/@record.Id/@record.AcceptKey" target="_blank" class="button is-small is-link is-outlined" title="Open acceptance page">
                                 <span class="icon"><i class="fas fa-external-link-alt"></i></span>
                             </a>
                         }
@@ -486,18 +428,18 @@ else
                             bool canDelete = (!record.AcceptedOn.HasValue && string.IsNullOrEmpty(record.FingerPrint)) || record.IsExternal;
                         }
 
-                        <span class="action-separator"></span>
+                        <span class="action-sep"></span>
 
                         @if (canDelete) 
                         {
-                            <button class="action-btn button is-small is-danger is-outlined" @onclick="() => ShowDeleteConfirmation(record)" title="@(record.IsExternal ? "Delete local copy" : "Permanently delete this grant")">
+                            <button class="button is-small is-danger is-outlined" @onclick="() => ShowDeleteConfirmation(record)" title="@(record.IsExternal ? "Delete local copy" : "Permanently delete this grant")">
                                 <span class="icon"><i class="fas fa-trash-alt"></i></span>
                                 <span>@(record.IsExternal ? "Delete Local" : "Delete")</span>
                             </button>
                         } 
                         else 
                         {
-                            <button class="action-btn button is-small is-warning is-outlined" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
+                            <button class="button is-small is-warning is-outlined" @onclick="() => ShowRevokeConfirmation(record)" title="Revoke this badge grant">
                                 <span class="icon"><i class="fas fa-ban"></i></span>
                                 <span>Revoke</span>
                             </button>

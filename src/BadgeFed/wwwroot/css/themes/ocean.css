@@ -1,3 +1,13 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — Ocean Theme
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:      #0ea5e9;
+    --bf-accent-alt:  #06b6d4;
+    --bf-highlight:   #14b8a6;
+    /* light theme — page/card colours keep defaults */
+}
+
 /* Ocean Theme - Blue and Teal Gradient */
 .issuer-header {
     background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #14b8a6 100%);

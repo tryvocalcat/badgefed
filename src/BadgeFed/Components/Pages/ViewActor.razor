@@ -13,310 +13,379 @@
 {
     <link rel="stylesheet" href="@GetThemeCssPath()" />
 }
-else
-{
 
 <style>
-    .issuer-header {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        color: white;
-        padding: 3rem 0;
-        margin-bottom: 2rem;
-        border-radius: 12px;
-    }
-    .issuer-avatar {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        border: 4px solid white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        object-fit: cover;
-    }
-    .issuer-stats {
-        display: flex;
-        gap: 2rem;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
-    .stat-card {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 1rem 2rem;
-        border-radius: 8px;
-        text-align: center;
-    }
-    .stat-number {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    .badge-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 2rem;
-        margin-top: 2rem;
-    }
-    
-    @@media (min-width: 768px) {
-        .badge-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        }
-    }
-    .badge-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-        max-width: 100%;
-    }
-    .badge-card:hover {
-        transform: translateY(-5px);
-    }
-    .badge-image {
-        width: 100%;
-        height: 200px;
-        object-fit: contain;
-        background: #f8f9fa;
-        padding: 1rem;
-    }
-    .badge-content {
-        padding: 1.5rem;
-    }
-    .follower-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        border: 1px solid #f0f0f0;
-    }
-    .follower-card:hover {
-        transform: translateX(5px);
-    }
-    .social-links {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-    .social-link {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.3s ease;
-    }
-    .social-link:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-</style>
+/* ═══════════════════════════════════════════════════
+   ViewActor — BadgeFed Design System (token-driven)
+   Theme files override --bf-* variables.
+   ═══════════════════════════════════════════════════ */
+
+.bf {
+    --bf-accent:      #6366f1;
+    --bf-accent-alt:  #7c3aed;
+    --bf-highlight:   #06b6d4;
+    --bf-page-bg:     #fff;
+    --bf-page-fg:     #0f172a;
+    --bf-card-bg:     #fff;
+    --bf-card-border: #e2e8f0;
+    --bf-muted:       #64748b;
+    --bf-subtle:      #94a3b8;
+
+    background: var(--bf-page-bg);
+    color: var(--bf-page-fg);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-@if (isLoading)
-{
-    <div class="section">
-        <div class="container has-text-centered">
-            <div class="loader is-loading"></div>
-            <p class="is-size-5 mt-3">Loading community details...</p>
-        </div>
-    </div>
+/* ── Loading / Error ──────────────────────────────── */
+.bf-loading-wrap { text-align:center; padding:5rem 1rem; color:var(--bf-subtle); }
+.bf-loading-wrap i { font-size:1.6rem; display:block; margin-bottom:.7rem; color:var(--bf-accent); opacity:.4; }
+.bf-loading-title { font-size:.95rem; font-weight:600; color:var(--bf-muted); margin-bottom:.25rem; }
+.bf-not-found {
+    margin:3rem auto; max-width:480px; text-align:center; padding:3rem 2rem;
+    border:1px dashed #fcd34d; border-radius:18px; color:#92400e; background:#fffbeb;
 }
-else if (actor == null)
-{
-    <div class="section">
-        <div class="container">
-            <div class="notification is-warning">
-                <p class="has-text-centered">Community not found.</p>
-            </div>
-        </div>
-    </div>
+.bf-not-found i { font-size:1.8rem; color:#f59e0b; display:block; margin-bottom:.75rem; }
+
+/* ── Actor hero banner ────────────────────────────── */
+.bf-actor-hero {
+    background: linear-gradient(135deg, var(--bf-accent) 0%, var(--bf-accent-alt) 100%);
+    color: #fff;
+    padding: 3rem 0 2.5rem;
+    position: relative;
+    overflow: hidden;
 }
-else
-{
-    <div class="issuer-header">
-        <div class="container">
-            <div class="columns is-vcentered">
-                <div class="column is-narrow">
+.bf-actor-hero::before {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse 70% 120% at 100% 50%, rgba(255,255,255,.08) 0%, transparent 60%);
+    pointer-events:none;
+}
+.bf-hero-inner {
+    display:flex; align-items:flex-start; gap:2rem; flex-wrap:wrap;
+    position:relative; z-index:1;
+}
+
+/* avatar */
+.bf-actor-avatar {
+    flex-shrink:0; width:110px; height:110px; border-radius:50%;
+    object-fit:cover; border:4px solid rgba(255,255,255,.8);
+    box-shadow:0 6px 24px rgba(0,0,0,.18);
+}
+.bf-actor-avatar-ph {
+    flex-shrink:0; width:110px; height:110px; border-radius:50%;
+    background:rgba(255,255,255,.15); border:4px solid rgba(255,255,255,.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.5rem; color:rgba(255,255,255,.85);
+}
+
+/* name / summary */
+.bf-hero-info { flex:1; min-width:0; padding-top:.35rem; }
+.bf-actor-name { font-size:clamp(1.5rem,3vw,2rem); font-weight:900; letter-spacing:-.03em; line-height:1.15; margin-bottom:.35rem; }
+.bf-actor-summary { font-size:.88rem; opacity:.88; line-height:1.65; margin-bottom:1.25rem; max-width:560px; }
+
+/* stats strip */
+.bf-hero-stats { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+.bf-hero-stat {
+    background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2);
+    border-radius:12px; padding:.6rem 1.1rem; text-align:center; min-width:80px;
+    backdrop-filter:blur(8px);
+}
+.bf-hero-stat-num { font-size:1.25rem; font-weight:800; line-height:1; }
+.bf-hero-stat-lbl { font-size:.62rem; opacity:.8; text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
+
+/* social links */
+.bf-social-links { display:flex; gap:.5rem; flex-wrap:wrap; }
+.bf-social-btn {
+    width:36px; height:36px; border-radius:50%;
+    background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; text-decoration:none; font-size:.85rem;
+    transition:background .15s;
+}
+.bf-social-btn:hover { background:rgba(255,255,255,.28); }
+
+/* ── Main body ────────────────────────────────────── */
+.bf-body { padding:2.5rem 0 3rem; }
+
+/* ── Section header ───────────────────────────────── */
+.bf-section-hd {
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    gap:.75rem; margin-bottom:1.5rem;
+}
+.bf-section-title { font-size:1.05rem; font-weight:800; color:var(--bf-page-fg); }
+.bf-section-title span { color:var(--bf-accent); }
+.bf-outline-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    background:color-mix(in srgb, var(--bf-accent) 7%, transparent);
+    border:1px solid color-mix(in srgb, var(--bf-accent) 22%, transparent);
+    color:var(--bf-accent); border-radius:10px;
+    padding:.4rem .9rem; font-size:.78rem; font-weight:600; text-decoration:none;
+    transition:background .15s;
+}
+.bf-outline-btn:hover { background:color-mix(in srgb, var(--bf-accent) 14%, transparent); }
+
+/* ── Badge grid ───────────────────────────────────── */
+.bf-badge-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:1.1rem;
+    margin-bottom:2.5rem;
+}
+.bf-badge-card {
+    background:var(--bf-card-bg); border:1px solid var(--bf-card-border); border-radius:18px;
+    overflow:hidden; display:flex; flex-direction:column;
+    transition:border-color .2s, box-shadow .2s, transform .2s;
+}
+.bf-badge-card:hover {
+    border-color:color-mix(in srgb, var(--bf-accent) 40%, var(--bf-card-border));
+    box-shadow:0 6px 28px color-mix(in srgb, var(--bf-accent) 10%, transparent);
+    transform:translateY(-2px);
+}
+.bf-badge-img-zone {
+    height:160px; background:color-mix(in srgb, var(--bf-accent) 5%, var(--bf-card-bg));
+    display:flex; align-items:center; justify-content:center; padding:1.25rem;
+    border-bottom:1px solid var(--bf-card-border);
+}
+.bf-badge-img { max-height:100%; max-width:100%; object-fit:contain; border-radius:8px; }
+.bf-badge-img-ph { font-size:2.5rem; color:var(--bf-accent); opacity:.35; }
+.bf-badge-body { padding:1rem 1.1rem 1.1rem; display:flex; flex-direction:column; flex:1; }
+.bf-badge-title { font-size:.9rem; font-weight:700; color:var(--bf-page-fg); margin-bottom:.3rem; line-height:1.3; }
+.bf-badge-desc  { font-size:.77rem; color:var(--bf-muted); line-height:1.55; flex:1; margin-bottom:.8rem; }
+.bf-badge-footer { display:flex; align-items:center; justify-content:space-between; }
+.bf-type-pill {
+    display:inline-flex; align-items:center; border-radius:999px; padding:.18rem .6rem;
+    font-size:.65rem; font-weight:600;
+    background:color-mix(in srgb, var(--bf-accent) 10%, transparent);
+    color:var(--bf-accent);
+    border:1px solid color-mix(in srgb, var(--bf-accent) 20%, transparent);
+}
+.bf-recipients-btn {
+    display:inline-flex; align-items:center; gap:.3rem;
+    background:#f8fafc; border:1px solid var(--bf-card-border);
+    color:var(--bf-muted); border-radius:8px; padding:.28rem .7rem;
+    font-size:.7rem; font-weight:600; text-decoration:none;
+    transition:background .15s, border-color .15s, color .15s;
+}
+.bf-recipients-btn:hover {
+    background:color-mix(in srgb, var(--bf-accent) 8%, transparent);
+    border-color:color-mix(in srgb, var(--bf-accent) 20%, transparent);
+    color:var(--bf-accent);
+}
+
+/* ── Followers ────────────────────────────────────── */
+.bf-followers-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+    gap:1rem;
+}
+.bf-follower-card {
+    background:var(--bf-card-bg); border:1px solid var(--bf-card-border);
+    border-radius:16px; padding:1rem 1.1rem;
+    display:flex; align-items:center; gap:.85rem;
+    transition:border-color .18s, transform .18s;
+}
+.bf-follower-card:hover {
+    border-color:color-mix(in srgb, var(--bf-accent) 35%, var(--bf-card-border));
+    transform:translateX(3px);
+}
+.bf-follower-avatar {
+    flex-shrink:0; width:44px; height:44px; border-radius:50%;
+    object-fit:cover; border:2px solid var(--bf-card-border);
+}
+.bf-follower-avatar-ph {
+    flex-shrink:0; width:44px; height:44px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.78rem; font-weight:700; color:#fff;
+}
+.bf-follower-name { font-size:.85rem; font-weight:700; color:var(--bf-page-fg); line-height:1.3; }
+.bf-follower-handle {
+    display:inline-flex; align-items:center; gap:.2rem; margin-top:.15rem;
+    font-size:.7rem; color:var(--bf-subtle); text-decoration:none;
+}
+.bf-follower-handle:hover { color:var(--bf-accent); }
+
+/* ── Divider between sections ─────────────────────── */
+.bf-divider { height:1px; background:var(--bf-card-border); margin:2rem 0; }
+
+@@media (max-width:640px) {
+    .bf-hero-inner { gap:1.25rem; }
+    .bf-actor-avatar, .bf-actor-avatar-ph { width:80px; height:80px; }
+    .bf-actor-avatar-ph { font-size:1.8rem; }
+}
+</style>
+
+<div class="bf">
+    @if (isLoading)
+    {
+        <div class="bf-loading-wrap">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <div class="bf-loading-title">Loading profile…</div>
+        </div>
+    }
+    else if (actor == null)
+    {
+        <div class="bf-not-found">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div style="font-weight:700;font-size:.95rem;margin-bottom:.3rem;">Profile not found</div>
+            <div style="font-size:.8rem;">This issuer may have been removed or the URL is incorrect.</div>
+        </div>
+    }
+    else
+    {
+        @* ── Hero banner ──────────────────────────────── *@
+        <div class="bf-actor-hero">
+            <div class="container">
+                <div class="bf-hero-inner">
+
                     @if (!string.IsNullOrEmpty(actor.AvatarPath))
                     {
-                        <img class="issuer-avatar" src="@actor.AvatarPath" alt="@actor.FullName" />
+                        <img class="bf-actor-avatar" src="@actor.AvatarPath" alt="@actor.FullName" />
                     }
                     else
                     {
-                        <div class="issuer-avatar has-background-grey-lighter" style="display: flex; align-items: center; justify-content: center;">
-                            <span class="icon is-large"><i class="fas fa-users fa-3x"></i></span>
-                        </div>
+                        <div class="bf-actor-avatar-ph"><i class="fas fa-users"></i></div>
                     }
-                </div>
-                <div class="column">
-                    <h1 class="title is-2 has-text-white">@actor.FullName</h1>
-                    <p class="subtitle is-5 has-text-white-bis">@actor.Summary</p>
-                    
-                    <div class="issuer-stats">
-                     <div class="stat-card">
-                            <div class="stat-number">@stats.BadgeCount</div>
-                            <div class="stat-label">Badges</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number">@stats.IssuedCount</div>
-                            <div class="stat-label">Badges Issued</div>
-                        </div>
-                        @if (actor.ShowFollowers)
-                        {
-                            <div class="stat-card">
-                                <div class="stat-number">@followers.Count</div>
-                                <div class="stat-label">Followers</div>
-                            </div>
-                        }
-                        <div class="stat-card">
-                            <div class="stat-number">@stats.MembersCount</div>
-                            <div class="stat-label">Awardees</div>
-                        </div>
-                    </div>
 
-                    <div class="social-links">
-                        @if (!string.IsNullOrEmpty(actor.InformationUri))
+                    <div class="bf-hero-info">
+                        <div class="bf-actor-name">@actor.FullName</div>
+                        @if (!string.IsNullOrEmpty(actor.Summary))
                         {
-                            <a href="@actor.InformationUri" target="_blank" class="social-link" title="Website">
-                                <span class="icon"><i class="fas fa-globe"></i></span>
-                            </a>
+                            <div class="bf-actor-summary">@actor.Summary</div>
                         }
-                        
-                        @if (actor.Socials != null)
-                        {
-                            @foreach (var social in actor.Socials.Where(s => !string.IsNullOrWhiteSpace(s.Type) && !string.IsNullOrWhiteSpace(s.Uri)))
+
+                        <div class="bf-hero-stats">
+                            <div class="bf-hero-stat">
+                                <div class="bf-hero-stat-num">@stats.BadgeCount</div>
+                                <div class="bf-hero-stat-lbl">Badges</div>
+                            </div>
+                            <div class="bf-hero-stat">
+                                <div class="bf-hero-stat-num">@stats.IssuedCount</div>
+                                <div class="bf-hero-stat-lbl">Issued</div>
+                            </div>
+                            <div class="bf-hero-stat">
+                                <div class="bf-hero-stat-num">@stats.MembersCount</div>
+                                <div class="bf-hero-stat-lbl">Awardees</div>
+                            </div>
+                            @if (actor.ShowFollowers)
                             {
-                                <a href="@GetSocialUrl(social)" target="_blank" class="social-link" title="@GetSocialTitle(social.Type)">
-                                    <span class="icon"><i class="@GetSocialIcon(social.Type)"></i></span>
+                                <div class="bf-hero-stat">
+                                    <div class="bf-hero-stat-num">@followers.Count</div>
+                                    <div class="bf-hero-stat-lbl">Followers</div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="bf-social-links">
+                            @if (!string.IsNullOrEmpty(actor.InformationUri))
+                            {
+                                <a href="@actor.InformationUri" target="_blank" class="bf-social-btn" title="Website">
+                                    <i class="fas fa-globe"></i>
                                 </a>
                             }
-                        }
+                            @if (actor.Socials != null)
+                            {
+                                @foreach (var social in actor.Socials.Where(s => !string.IsNullOrWhiteSpace(s.Type) && !string.IsNullOrWhiteSpace(s.Uri)))
+                                {
+                                    <a href="@GetSocialUrl(social)" target="_blank" class="bf-social-btn" title="@GetSocialTitle(social.Type)">
+                                        <i class="@GetSocialIcon(social.Type)"></i>
+                                    </a>
+                                }
+                            }
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="container">
-        <div class="section">
-            <div class="level mb-5">
-                <div class="level-left">
-                    <div class="level-item">
-                        <h2 class="title is-3 mb-0">Featured Badges</h2>
-                    </div>
-                </div>
-                <div class="level-right">
-                    <div class="level-item">
-                        <div class="field has-addons">
-                            <div class="control">
-                                <a href="/view/actor/@Domain/@Username" class="button is-primary is-outlined">
-                                    <span class="icon">
-                                        <i class="fas fa-certificate"></i>
-                                    </span>
-                                    <span>All Badges</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="badge-grid">
-                @foreach (var badge in featuredBadges)
-                {
-                    <div class="badge-card">
-                        <img src="@badge.Image" alt="@badge.ImageAltText" class="badge-image">
-                        <div class="badge-content">
-                            <h3 class="title is-5">@badge.Title</h3>
-                            <p class="subtitle is-6">@badge.Description</p>
-                            <div class="level">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <span class="tag is-info">@badge.BadgeType</span>
-                                    </div>
-                                </div>
-                                <div class="level-right">
-                                    <div class="level-item">
-                                        <a href="/view/badge/@badge.Id/grants" class="button is-small is-outlined">
-                                            <span class="icon">
-                                                <i class="fas fa-users"></i>
-                                            </span>
-                                            <span>@(badgeStats.ContainsKey(badge.Id) ? badgeStats[badge.Id].IssuedCount.ToString() : string.Empty) Recipients</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
+        @* ── Body ─────────────────────────────────────── *@
+        <div class="bf-body">
+            <div class="container">
 
-        @if (actor.ShowFollowers)
-        {
-            <div class="section">
-                <h2 class="title is-3 mb-5">Followers</h2>
-                <div class="columns is-multiline">
-                    @foreach (var follower in followers)
+                @* Featured badges *@
+                <div class="bf-section-hd">
+                    <div class="bf-section-title">
+                        Featured Badges <span>(@featuredBadges.Count)</span>
+                    </div>
+                    <a href="/view/actor/@Domain/@Username" class="bf-outline-btn">
+                        <i class="fas fa-certificate"></i> All Badges
+                    </a>
+                </div>
+
+                <div class="bf-badge-grid">
+                    @foreach (var badge in featuredBadges)
                     {
-                        var username = follower.FollowerUri.TrimEnd('/').Split('/').LastOrDefault();
-                        var displayName = string.IsNullOrEmpty(follower.DisplayName) ? username : follower.DisplayName;
-
-                        var image = string.IsNullOrEmpty(follower.AvatarUri) ? null : follower.AvatarUri;
-                        var initials = string.Join("", displayName.Split(' ').Select(word => word[0])).ToUpper();
-                        var random = new Random();
-                        var randomColor = $"#{random.Next(0x1000000):X6}";
-                        var r = Convert.ToInt32(randomColor.Substring(1, 2), 16);
-                        var g = Convert.ToInt32(randomColor.Substring(3, 2), 16);
-                        var b = Convert.ToInt32(randomColor.Substring(5, 2), 16);
-
-                        // Ensure the color is dark enough for white text to contrast
-                        if ((r * 0.299 + g * 0.587 + b * 0.114) > 186) // Luminance threshold
-                        {
-                            r = (int)(r * 0.5);
-                            g = (int)(g * 0.5);
-                            b = (int)(b * 0.5);
-                        }
-
-                        randomColor = $"#{r:X2}{g:X2}{b:X2}";
-
-                        <div class="column is-4">
-                            <div class="follower-card">
-                                <div class="content">
-                                    <div class="media">
-                                        <div class="media-left">
-                                            @if (string.IsNullOrEmpty(image))
-                                            {
-                                                <div class="is-rounded" style="width: 48px; height: 48px; background-color: @randomColor; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">
-                                                    @initials
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <figure class="image is-48x48">
-                                                    <img class="is-rounded" src="@image" alt="@displayName" style="margin: 0px;">
-                                                </figure>
-                                            }
-                                        </div>
-                                        <div class="media-content" style="margin-left: 12px;">
-                                            <p class="title is-5">@displayName</p>
-                                            <p class="subtitle is-6"><a href="@follower.FollowerUri"><span class="tag is-light is-small">@(username)@@@(follower.Domain)</span></a></p>
-                                        </div>
-                                    </div>
-                               </div>
+                        <div class="bf-badge-card">
+                            <div class="bf-badge-img-zone">
+                                @if (!string.IsNullOrEmpty(badge.Image))
+                                {
+                                    <img src="@badge.Image" alt="@badge.ImageAltText" class="bf-badge-img" />
+                                }
+                                else
+                                {
+                                    <i class="fas fa-certificate bf-badge-img-ph"></i>
+                                }
+                            </div>
+                            <div class="bf-badge-body">
+                                <div class="bf-badge-title">@badge.Title</div>
+                                <div class="bf-badge-desc">@badge.Description</div>
+                                <div class="bf-badge-footer">
+                                    <span class="bf-type-pill">@badge.BadgeType</span>
+                                    <a href="/view/badge/@badge.Id/grants" class="bf-recipients-btn">
+                                        <i class="fas fa-users"></i>
+                                        @(badgeStats.ContainsKey(badge.Id) ? badgeStats[badge.Id].IssuedCount.ToString() : "0") Recipients
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     }
                 </div>
+
+                @* Followers *@
+                @if (actor.ShowFollowers && followers.Any())
+                {
+                    <div class="bf-divider"></div>
+                    <div class="bf-section-hd">
+                        <div class="bf-section-title">
+                            Followers <span>(@followers.Count)</span>
+                        </div>
+                    </div>
+                    <div class="bf-followers-grid">
+                        @foreach (var follower in followers)
+                        {
+                            var username = follower.FollowerUri.TrimEnd('/').Split('/').LastOrDefault();
+                            var displayName = string.IsNullOrEmpty(follower.DisplayName) ? username : follower.DisplayName;
+                            var image = string.IsNullOrEmpty(follower.AvatarUri) ? null : follower.AvatarUri;
+                            var initials = string.Join("", (displayName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0])).ToUpper();
+
+                            // Deterministic hue from display name for the avatar background
+                            var hue = Math.Abs(string.IsNullOrEmpty(displayName) ? 0 : displayName.Aggregate(0, (h, c) => h * 31 + c)) % 360;
+                            var avatarBg = $"hsl({hue},55%,38%)";
+
+                            <div class="bf-follower-card">
+                                @if (!string.IsNullOrEmpty(image))
+                                {
+                                    <img class="bf-follower-avatar" src="@image" alt="@displayName" />
+                                }
+                                else
+                                {
+                                    <div class="bf-follower-avatar-ph" style="background:@avatarBg">@initials</div>
+                                }
+                                <div>
+                                    <div class="bf-follower-name">@displayName</div>
+                                    <a href="@follower.FollowerUri" class="bf-follower-handle">
+                                        @@@(username)@@@(follower.Domain)
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
             </div>
-        }
-    </div>
-}
+        </div>
+    }
+</div>
 
 @code {
     [Parameter] public string? Domain { get; set; }

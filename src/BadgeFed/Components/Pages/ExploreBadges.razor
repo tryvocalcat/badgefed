@@ -3,259 +3,554 @@
 @inject LocalScopedDb LocalDbService
 
 <style>
-    .badge-card {
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-    .badge-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .badge-image {
-        width: 100%;
-        height: 200px;
-        object-fit: contain;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 12px 12px 0 0;
-    }
-    .badge-content {
-        padding: 1.5rem;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-    }
-    .badge-type {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-    }
-    .search-box {
-        border-radius: 50px;
-        padding: 1rem 1.5rem;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-    .search-box:focus {
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-    .filter-tag {
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .filter-tag:hover {
-        transform: scale(1.05);
-    }
-    .filter-tag.active {
-        background: #4f46e5;
-        color: white;
-    }
-    .issuer-info {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: auto;
-        padding-top: 1rem;
-        border-top: 1px solid #e9ecef;
-    }
-    .issuer-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        background: #f8f9fa;
-        border-radius: 12px;
-    }
-    .empty-state-icon {
-        font-size: 4rem;
-        color: #adb5bd;
-        margin-bottom: 1rem;
-    }
+/* ═══════════════════════════════════════════════════
+   ExploreBadges — BadgeFed Design System
+   ═══════════════════════════════════════════════════ */
+
+.bf { background:#fff; color:#0f172a; font-family:'Inter',system-ui,-apple-system,sans-serif; }
+
+/* ── Page header ──────────────────────────────────── */
+.bf-page-header {
+    padding:3rem 0 0;
+    background:#fff;
+}
+.bf-page-header-dots { display:none; }
+.bf-page-lbl {
+    display:inline-block; font-size:.68rem; font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase; color:#6366f1; margin-bottom:.5rem;
+}
+.bf-page-title {
+    font-size:clamp(1.9rem,3.5vw,2.8rem); font-weight:900;
+    letter-spacing:-.035em; line-height:1.1; color:#0f172a; margin-bottom:.45rem;
+}
+.bf-page-sub { font-size:.95rem; color:#64748b; line-height:1.7; }
+
+/* ── Filter bar ───────────────────────────────────── */
+.bf-filterbar {
+    background:#fff; border-bottom:1px solid #e2e8f0;
+    padding:.85rem 0; position:sticky; top:0; z-index:10;
+}
+.bf-filters { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; }
+.bf-filter {
+    display:inline-flex; align-items:center; gap:.28rem;
+    background:#f8fafc; border:1px solid #e2e8f0;
+    border-radius:999px; padding:.28rem .85rem;
+    font-size:.75rem; font-weight:600; color:#64748b;
+    cursor:pointer; transition:background .15s, border-color .15s, color .15s;
+    user-select:none;
+}
+.bf-filter:hover { background:#eef2ff; border-color:#c7d2fe; color:#4f46e5; }
+.bf-filter.active {
+    background:linear-gradient(135deg,#6366f1,#7c3aed);
+    border-color:transparent; color:#fff;
+}
+
+/* ── Layout ───────────────────────────────────────── */
+.bf-s  { padding:4rem 0; }
+.bf-ss { padding:2.5rem 0; }
+.bf-lbl {
+    display:inline-block; font-size:.68rem; font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase; color:#6366f1; margin-bottom:.65rem;
+}
+.bf-h2 {
+    font-size:clamp(1.5rem,2.4vw,2rem); font-weight:800;
+    letter-spacing:-.025em; color:#0f172a; line-height:1.18; margin-bottom:.4rem;
+}
+.bf-lead { color:#64748b; font-size:.9rem; line-height:1.72; }
+.bf-mb { margin-bottom:2rem; }
+.bf-grad {
+    background:linear-gradient(95deg,#6366f1 0%,#06b6d4 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+
+/* ── Badge card ───────────────────────────────────── */
+.bf-badge-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:18px;
+    overflow:hidden; height:100%; display:flex; flex-direction:column;
+    transition:border-color .2s, transform .2s, box-shadow .2s;
+    position:relative;
+}
+.bf-badge-card:hover {
+    border-color:#c7d2fe; transform:translateY(-3px);
+    box-shadow:0 8px 32px rgba(99,102,241,.1);
+}
+.bf-badge-img-wrap {
+    background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);
+    height:180px; display:flex; align-items:center; justify-content:center;
+    padding:1.5rem; border-bottom:1px solid #f1f5f9;
+}
+.bf-badge-img {
+    max-width:100%; max-height:140px; object-fit:contain;
+}
+.bf-badge-type-pill {
+    position:absolute; top:.85rem; right:.85rem;
+    background:rgba(15,23,42,.75); backdrop-filter:blur(6px);
+    color:#fff; border-radius:999px; padding:.22rem .7rem;
+    font-size:.67rem; font-weight:600; letter-spacing:.04em;
+}
+.bf-badge-body { padding:1.4rem; flex:1; display:flex; flex-direction:column; }
+.bf-badge-title { font-size:.97rem; font-weight:700; color:#0f172a; margin-bottom:.4rem; line-height:1.3; }
+.bf-badge-desc  { font-size:.8rem; color:#64748b; line-height:1.6; margin-bottom:auto; padding-bottom:.9rem; }
+
+/* recipients button */
+.bf-recipients-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    background:rgba(99,102,241,.07); border:1px solid rgba(99,102,241,.18);
+    color:#6366f1 !important; border-radius:8px; padding:.32rem .75rem;
+    font-size:.75rem; font-weight:600; text-decoration:none;
+    transition:background .15s;
+}
+.bf-recipients-btn:hover { background:rgba(99,102,241,.14); }
+
+.bf-badge-meta {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:.5rem; padding-top:.85rem; margin-top:.85rem;
+    border-top:1px solid #f1f5f9; flex-wrap:wrap;
+}
+.bf-issuer-row { display:flex; align-items:center; gap:.5rem; }
+.bf-issuer-av {
+    width:28px; height:28px; border-radius:8px; object-fit:cover;
+    border:1px solid #e2e8f0; flex-shrink:0;
+}
+.bf-issuer-av-ph {
+    width:28px; height:28px; border-radius:8px; flex-shrink:0;
+    background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.16);
+    display:flex; align-items:center; justify-content:center;
+    color:#6366f1; font-size:.7rem;
+}
+.bf-issuer-by   { font-size:.67rem; color:#94a3b8; }
+.bf-issuer-name { font-size:.78rem; font-weight:600; color:#6366f1 !important; text-decoration:none; }
+.bf-issuer-name:hover { color:#4f46e5 !important; }
+
+/* earning criteria tooltip */
+.bf-criteria {
+    display:inline-flex; align-items:center; gap:.28rem;
+    font-size:.72rem; color:#94a3b8; cursor:help;
+}
+.bf-criteria i { color:#c7d2fe; }
+
+/* ── Issuers card ─────────────────────────────────── */
+.bf-issuer-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:18px;
+    padding:1.5rem; height:100%;
+    transition:border-color .2s, transform .2s, box-shadow .2s;
+    display:flex; flex-direction:column; gap:.6rem;
+}
+.bf-issuer-card:hover {
+    border-color:#c7d2fe; transform:translateY(-2px);
+    box-shadow:0 6px 24px rgba(99,102,241,.1);
+}
+.bf-issuer-card-name {
+    font-size:.97rem; font-weight:700; color:#6366f1; text-decoration:none; line-height:1.3;
+}
+.bf-issuer-card-name:hover { color:#4f46e5; }
+.bf-issuer-card-domain { font-size:.78rem; color:#94a3b8; font-family:'JetBrains Mono','Fira Code',monospace; }
+.bf-issuer-card-stat {
+    font-size:.78rem; color:#64748b; margin-top:auto;
+    padding-top:.75rem; border-top:1px solid #f1f5f9;
+}
+.bf-issuer-card-stat strong { color:#0f172a; }
+
+/* ── Loading / empty ──────────────────────────────── */
+.bf-loading { text-align:center; padding:4rem 1rem; color:#94a3b8; }
+.bf-loading i { font-size:1.4rem; display:block; margin-bottom:.6rem; color:#c7d2fe; }
+.bf-empty {
+    text-align:center; padding:3.5rem 2rem; border-radius:18px;
+    border:1px dashed #e2e8f0; color:#94a3b8;
+}
+.bf-empty i { font-size:2.2rem; display:block; margin-bottom:.75rem; color:#e2e8f0; }
+.bf-empty-title { font-size:1rem; font-weight:700; color:#475569; margin-bottom:.3rem; }
+.bf-empty-sub   { font-size:.83rem; }
+
+/* ── Activity ticker ─────────────────────────────── */
+.bf-ticker {
+    background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+    padding:.75rem 0; overflow:hidden;
+    border-bottom:1px solid rgba(99,102,241,.25);
+}
+.bf-ticker-track { display:flex; gap:0; width:max-content; }
+@@keyframes bfticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.bf-ticker-track { animation:bfticker 50s linear infinite; }
+.bf-ticker-track:hover { animation-play-state:paused; }
+.bf-ticker-item {
+    display:inline-flex; align-items:center; gap:.45rem; padding:0 2rem;
+    font-size:.72rem; font-weight:500; color:#e0e7ff; white-space:nowrap;
+}
+.bf-ticker-item strong { color:#a5b4fc; font-weight:700; }
+.bf-ticker-item i { color:#818cf8; font-size:.65rem; }
+.bf-ticker-sep { color:rgba(165,180,252,.35); padding:0 .3rem; }
+
+/* ── Recent grants band ──────────────────────────── */
+.bf-recent-band {
+    background:linear-gradient(135deg,#f0f4ff 0%,#fafbff 100%);
+    border-top:1px solid #e8edf8; border-bottom:1px solid #e8edf8;
+    padding:3.5rem 0;
+}
+.bf-recent-hdr {
+    background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+    border-radius:18px; padding:1.8rem 2.5rem;
+    display:flex; align-items:center; justify-content:space-between; gap:1.5rem;
+    position:relative; overflow:hidden; margin-bottom:2rem;
+}
+.bf-recent-hdr::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 50% 200% at 100% 50%,rgba(99,102,241,.25) 0%,transparent 55%);
+}
+.bf-recent-hdr-texts { position:relative; z-index:1; }
+.bf-recent-hdr-title { font-size:1.25rem; font-weight:800; color:#fff; margin-bottom:.15rem; }
+.bf-recent-hdr-sub   { font-size:.83rem; color:#a5b4fc; }
+.bf-live-pill {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:rgba(74,222,128,.12); border:1px solid rgba(74,222,128,.3);
+    border-radius:999px; padding:.28rem .8rem;
+    font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:#4ade80; position:relative; z-index:1; white-space:nowrap;
+}
+@@keyframes bflivepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.6)} }
+.bf-live-dot { width:7px; height:7px; border-radius:50%; background:#4ade80; animation:bflivepulse 2s ease-in-out infinite; }
+
+/* ── Grant card ──────────────────────────────────── */
+.bf-grant-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:16px;
+    overflow:hidden; display:flex; flex-direction:column; height:100%;
+    transition:border-color .2s, transform .2s, box-shadow .2s;
+}
+.bf-grant-card:hover {
+    border-color:#c7d2fe; transform:translateY(-3px);
+    box-shadow:0 8px 32px rgba(99,102,241,.1);
+}
+.bf-grant-img-wrap {
+    background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);
+    height:110px; display:flex; align-items:center; justify-content:center;
+    padding:1rem; border-bottom:1px solid #f1f5f9; flex-shrink:0;
+}
+.bf-grant-img { max-width:100%; max-height:80px; object-fit:contain; }
+.bf-grant-body { padding:1.1rem; flex:1; display:flex; flex-direction:column; gap:.35rem; }
+.bf-grant-type { font-size:.64rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6366f1; }
+.bf-grant-title { font-size:.88rem; font-weight:700; color:#0f172a; line-height:1.3; }
+.bf-grant-recipient {
+    display:flex; align-items:center; gap:.3rem;
+    font-size:.75rem; color:#475569; margin-top:auto; padding-top:.5rem;
+}
+.bf-grant-recipient i { color:#818cf8; font-size:.65rem; }
+.bf-grant-footer {
+    padding:.6rem 1.1rem; border-top:1px solid #f1f5f9;
+    display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+}
+.bf-grant-date { font-size:.68rem; color:#94a3b8; display:flex; align-items:center; gap:.28rem; }
+.bf-grant-date i { color:#c4b5fd; font-size:.6rem; }
+.bf-grant-view {
+    display:inline-flex; align-items:center; gap:.3rem;
+    font-size:.72rem; font-weight:600; color:#6366f1 !important;
+    text-decoration:none; transition:color .15s;
+}
+.bf-grant-view:hover { color:#4f46e5 !important; }
+.bf-grant-view-all {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
+    color:#fff !important; border-radius:9px; padding:.42rem 1.1rem;
+    font-size:.78rem; font-weight:600; text-decoration:none;
+    transition:background .15s; position:relative; z-index:1;
+}
+.bf-grant-view-all:hover { background:rgba(255,255,255,.18); }
+
+@@media (max-width:580px) {
+    .bf-recent-hdr { padding:1.4rem 1.5rem; flex-direction:column; align-items:flex-start; gap:.75rem; }
+    .bf-ticker-track { animation-duration:35s; }
+}
+
+/* ── Section divider band ─────────────────────────── */
+.bf-divider-band {
+    background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+    border-radius:18px; padding:2.5rem 3rem;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:2rem; flex-wrap:wrap; position:relative; overflow:hidden;
+    margin-bottom:3rem;
+}
+.bf-divider-band::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 50% 200% at 100% 50%, rgba(99,102,241,.25) 0%, transparent 55%);
+}
+.bf-divider-title { font-size:1.3rem; font-weight:800; color:#fff; margin-bottom:.2rem; }
+.bf-divider-sub   { font-size:.85rem; color:#a5b4fc; }
 </style>
 
-<div class="section">
-    <div class="container">
-        <div class="columns is-vcentered mb-6">
-            <div class="column">
-                <h1 class="title is-2">Explore Badges</h1>
-                <p class="subtitle is-5">Discover and celebrate achievements across our community</p>
-            </div>
-            <div class="column is-5" style="display: none;">
-                <div class="field">
-                    <div class="control has-icons-left">
-                        <input class="input search-box" type="text" placeholder="Search badges..." @bind="searchQuery" @bind:event="oninput">
-                        <span class="icon is-left">
-                            <i class="fas fa-search"></i>
-                        </span>
-                    </div>
-                </div>
+<div class="bf">
+
+    @* ── Page header ─────────────────────────────── *@
+    <div class="bf-page-header">
+        <div class="bf-page-header-dots"></div>
+        <div class="container">
+            <span class="bf-page-lbl">Discovery</span>
+            <h1 class="bf-page-title">Explore <span class="bf-grad">Badges</span></h1>
+            <p class="bf-page-sub">Discover and celebrate achievements across our community</p>
+        </div>
+    </div>
+
+    @* ── Activity ticker ──────────────────────────── *@
+    @if (recentGrants != null && recentGrants.Any())
+    {
+        <div class="bf-ticker">
+            <div class="bf-ticker-track">
+                @{
+                    var tickerItems = recentGrants.Concat(recentGrants).ToList();
+                }
+                @foreach (var g in tickerItems)
+                {
+                    var recipientDisplay = !string.IsNullOrEmpty(g.IssuedToName)
+                        ? g.IssuedToName
+                        : (!string.IsNullOrEmpty(g.IssuedToSubjectUri) ? g.IssuedToSubjectUri.Split('/').Last() : "Someone");
+                    <span class="bf-ticker-item">
+                        <i class="fas fa-award"></i>
+                        <strong>@recipientDisplay</strong>&nbsp;earned&nbsp;<strong>@g.Title</strong>
+                    </span>
+                    <span class="bf-ticker-sep">·</span>
+                }
             </div>
         </div>
+    }
 
-        <div class="mb-5" >
-            <div class="tags">
-                <span class="tag filter-tag @(selectedType == null ? "active" : "")" @onclick="() => FilterByType(null)">
-                    All
+    @* ── Filter bar ───────────────────────────────── *@
+    <div class="bf-filterbar" style="display: none;">
+        <div class="container">
+            <div class="bf-filters">
+                <span class="bf-filter @(selectedType == null ? "active" : "")" @onclick="() => FilterByType(null)">
+                    <i class="fas fa-th-large"></i> All
                 </span>
                 @foreach (var type in Badge.BadgeTypes)
                 {
-                    <span class="tag filter-tag @(selectedType == type ? "active" : "")" @onclick="() => FilterByType(type)">
+                    <span class="bf-filter @(selectedType == type ? "active" : "")" @onclick="() => FilterByType(type)">
                         @type
                     </span>
                 }
             </div>
         </div>
+    </div>
 
-        @if (filteredBadges == null)
-        {
-            <div class="has-text-centered">
-                <div class="loader is-loading"></div>
-                <p>Loading badges...</p>
-            </div>
-        }
-        else if (!filteredBadges.Any())
-        {
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-award"></i>
+    @* ── Badge grid ───────────────────────────────── *@
+    <div class="bf-s">
+        <div class="container">
+
+            @if (filteredBadges == null)
+            {
+                <div class="bf-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading badges...
                 </div>
-                <h3 class="title is-4">No badges found</h3>
-                <p class="subtitle is-6">Try adjusting your search or filters</p>
-            </div>
-        }
-        else
-        {
-            <div class="columns is-multiline">
-                @foreach (var badge in filteredBadges)
-                {
-                    <div class="column is-4">
-                        <div class="badge-card box">
-                            <span class="badge-type">@badge.BadgeType</span>
-                            <img src="@badge.Image" alt="@badge.ImageAltText" class="badge-image">
-                            <div class="badge-content">
-                                <h3 class="title is-4 mb-2" style="padding-bottom: 1em;">@badge.Title</h3>
-                                <p class="subtitle is-6 mb-3">@badge.Description</p>
-                                
-                                <div class="level is-mobile mb-3">
-                                    <div class="level-left">
-                                        <span class="has-tooltip-arrow" data-tooltip="@badge.EarningCriteria">Earning Criteria</span>
-                                    </div>
-                                    <div class="level-right">
-                                        <a href="/view/badge/@badge.Id/grants" class="button is-small is-outlined is-primary">
-                                            <span class="icon is-small">
-                                                <i class="fas fa-users"></i>
-                                            </span>
-                                            <span>@(badgeStats.ContainsKey(badge.Id) ? badgeStats[badge.Id].IssuedCount.ToString() : string.Empty) Recipients</span>
+            }
+            else if (!filteredBadges.Any())
+            {
+                <div class="bf-empty">
+                    <i class="fas fa-award"></i>
+                    <div class="bf-empty-title">No badges found</div>
+                    <div class="bf-empty-sub">Try adjusting your filters</div>
+                </div>
+            }
+            else
+            {
+                <div class="columns is-multiline">
+                    @foreach (var badge in filteredBadges)
+                    {
+                        <div class="column is-4">
+                            <div class="bf-badge-card">
+                                <span class="bf-badge-type-pill">@badge.BadgeType</span>
+                                <div class="bf-badge-img-wrap">
+                                    <img src="@badge.Image" alt="@badge.ImageAltText" class="bf-badge-img" />
+                                </div>
+                                <div class="bf-badge-body">
+                                    <div class="bf-badge-title">@badge.Title</div>
+                                    <div class="bf-badge-desc">@badge.Description</div>
+
+                                    <div class="bf-badge-meta">
+                                        <span class="bf-criteria" title="@badge.EarningCriteria">
+                                            <i class="fas fa-info-circle"></i> Earning Criteria
+                                        </span>
+                                        <a href="/view/badge/@badge.Id/grants" class="bf-recipients-btn">
+                                            <i class="fas fa-users"></i>
+                                            @(badgeStats.ContainsKey(badge.Id) ? badgeStats[badge.Id].IssuedCount.ToString() : "0") Recipients
                                         </a>
                                     </div>
-                                </div>
 
-                                @{
-                                    var issuer = badge.Issuer;
-
-                                    if (issuer != null && issuer.Uri != null)
-                                    {
-                                        issuer = LocalDbService.GetActorByFilter($"Uri = '{issuer.Uri}'");
+                                    @{
+                                        var issuer = badge.Issuer;
+                                        if (issuer != null && issuer.Uri != null)
+                                        {
+                                            issuer = LocalDbService.GetActorByFilter($"Uri = '{issuer.Uri}'");
+                                        }
                                     }
-                                }
-                                @if (issuer != null)
-                                {
-                                    <div class="issuer-info">
-                                        @if (!string.IsNullOrEmpty(issuer.AvatarPath))
-                                        {
-                                            <img src="@issuer.AvatarPath" alt="@issuer.FullName" class="issuer-avatar">
-                                        }
-                                        else
-                                        {
-                                            <div class="issuer-avatar has-background-grey-lighter">
-                                                <span class="icon"><i class="fas fa-user"></i></span>
+                                    @if (issuer != null)
+                                    {
+                                        <div class="bf-issuer-row" style="margin-top:.75rem;">
+                                            @if (!string.IsNullOrEmpty(issuer.AvatarPath))
+                                            {
+                                                <img src="@issuer.AvatarPath" alt="@issuer.FullName" class="bf-issuer-av" />
+                                            }
+                                            else
+                                            {
+                                                <div class="bf-issuer-av-ph"><i class="fas fa-user"></i></div>
+                                            }
+                                            <div>
+                                                <div class="bf-issuer-by">Issued by</div>
+                                                <a href="/view/actor/@issuer.Domain/@issuer.Username" class="bf-issuer-name">@issuer.FullName</a>
                                             </div>
-                                        }
-                                        <div>
-                                            <p class="is-size-7 has-text-weight-medium">Issued by</p>
-                                            <a href="/view/actor/@issuer.Domain/@issuer.Username" class="is-size-6 has-text-primary">
-                                                @issuer.FullName
-                                            </a>
                                         </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ── Recently issued section ─────────────────── *@
+    <div class="bf-recent-band">
+        <div class="container">
+
+            <div class="bf-recent-hdr">
+                <div class="bf-recent-hdr-texts">
+                    <div class="bf-recent-hdr-title">Recently Issued Badges</div>
+                    <div class="bf-recent-hdr-sub">The latest publicly processed badge grants on this instance</div>
+                </div>
+                <div class="bf-live-pill">
+                    <span class="bf-live-dot"></span> Live
+                </div>
+            </div>
+
+            @if (recentGrants == null || !recentGrants.Any())
+            {
+                <div class="bf-empty">
+                    <i class="fas fa-inbox"></i>
+                    <div class="bf-empty-title">No issued badges yet</div>
+                    <div class="bf-empty-sub">Accepted badge grants will appear here.</div>
+                </div>
+            }
+            else
+            {
+                <div class="columns is-multiline">
+                    @foreach (var grant in recentGrants)
+                    {
+                        var badgeImg = grant.Badge?.Image ?? grant.Image;
+                        var badgeAlt = grant.Badge?.ImageAltText ?? grant.ImageAltText ?? grant.Title;
+                        var badgeType = grant.Badge?.BadgeType;
+                        var recipientName = !string.IsNullOrEmpty(grant.IssuedToName)
+                            ? grant.IssuedToName
+                            : (!string.IsNullOrEmpty(grant.IssuedToSubjectUri)
+                                ? grant.IssuedToSubjectUri.Split('/').Last()
+                                : "Badge Recipient");
+                        var grantUrl = !string.IsNullOrEmpty(grant.NoteId) ? grant.NoteId : $"/explore";
+                        var issuedDate = grant.AcceptedOn ?? grant.IssuedOn;
+
+                        <div class="column is-4-desktop is-6-tablet">
+                            <div class="bf-grant-card">
+                                @if (!string.IsNullOrEmpty(badgeImg))
+                                {
+                                    <div class="bf-grant-img-wrap">
+                                        <img src="@badgeImg" alt="@badgeAlt" class="bf-grant-img" />
                                     </div>
                                 }
+                                <div class="bf-grant-body">
+                                    @if (!string.IsNullOrEmpty(badgeType))
+                                    {
+                                        <div class="bf-grant-type">@badgeType</div>
+                                    }
+                                    <div class="bf-grant-title">@grant.Title</div>
+                                    <div class="bf-grant-recipient">
+                                        <i class="fas fa-user-check"></i>
+                                        @recipientName
+                                    </div>
+                                </div>
+                                <div class="bf-grant-footer">
+                                    <div class="bf-grant-date">
+                                        <i class="fas fa-clock"></i>
+                                        @TimeAgo(issuedDate)
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(grant.NoteId))
+                                    {
+                                        <a href="@grantUrl" class="bf-grant-view">
+                                            <i class="fas fa-arrow-right"></i> View
+                                        </a>
+                                    }
+                                </div>
                             </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</div>
-
-
-<div class="section">
-    <div class="container">
-        <div class="columns is-vcentered mb-6">
-            <div class="column">
-                <h1 class="title is-2">Other Issuers</h1>
-                <p class="subtitle is-5">Discover other badge issuers in the BadgeFed network.</p>
-            </div>
-        </div>
-
-        @if (otherIssuers == null)
-        {
-            <div class="has-text-centered">
-                <div class="loader is-loading"></div>
-                <p>Loading issuers...</p>
-            </div>
-        }
-        else if (!otherIssuers.Any())
-        {
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-award"></i>
+                    }
                 </div>
-                <h3 class="title is-4">No other issuers found</h3>
-                <p class="subtitle is-6">There are no other issuers in the database, or the instance is not federated.</p>
+            }
+
+        </div>
+    </div>
+
+    @* ── Other issuers section ────────────────────── *@
+    <div class="bf-s" style="padding-top:0;">
+        <div class="container">
+
+            <div class="bf-divider-band">
+                <div style="position:relative;z-index:1;">
+                    <div class="bf-divider-title">Badge Issuers</div>
+                    <div class="bf-divider-sub">Other servers that have issued badges on this network</div>
+                </div>
             </div>
-        }
-        else
-        {
-            <div class="columns is-multiline">
-                @foreach (var item in otherIssuers)
-                {
-                    <div class="column is-4">
-                        <div class="badge-card box">
-                            <div class="badge-content">
-                                <h3 class="title is-4 mb-2" style="padding-bottom: 1em;"><a href="@item.Url">@item.Name</a></h3>
-                                <p class="subtitle is-6 mb-3">@(new Uri(item.Url).Host)</p>
-                                <p class="is-size-7">Total Badges Received: <span class="has-text-weight-bold">@item.TotalIssued</span></p>
+
+            @if (otherIssuers == null)
+            {
+                <div class="bf-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading issuers...
+                </div>
+            }
+            else if (!otherIssuers.Any())
+            {
+                <div class="bf-empty">
+                    <i class="fas fa-satellite-dish"></i>
+                    <div class="bf-empty-title">No issuers found</div>
+                    <div class="bf-empty-sub">No federated servers have issued badges on this network yet.</div>
+                </div>
+            }
+            else
+            {
+                <div class="columns is-multiline">
+                    @foreach (var item in otherIssuers)
+                    {
+                        <div class="column is-4">
+                            <div class="bf-issuer-card">
+                                <a href="@item.Url" class="bf-issuer-card-name">@item.Name</a>
+                                <div class="bf-issuer-card-domain">@(new Uri(item.Url).Host)</div>
+                                <div class="bf-issuer-card-stat">
+                                    Total Badges Received: <strong>@item.TotalIssued</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
+                    }
+                </div>
+            }
+
+        </div>
     </div>
+
 </div>
 
 @code {
     private List<Badge>? badges;
     private List<Badge>? filteredBadges;
     private List<FollowedIssuer>? otherIssuers = null;
+    private List<BadgeRecord>? recentGrants;
     private string? searchQuery;
     private string? selectedType;
 
     private Dictionary<long, BadgeStats> badgeStats = new();
+
+    private static string TimeAgo(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt.ToUniversalTime();
+        if (diff.TotalMinutes < 2)  return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)   return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 30)    return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalDays < 365)   return $"{(int)(diff.TotalDays / 30)}mo ago";
+        return $"{(int)(diff.TotalDays / 365)}y ago";
+    }
 
     protected override void OnInitialized()
     {
@@ -268,7 +563,13 @@
             badgeStats[badge.Id] = stats;
         }
 
-        otherIssuers = LocalDbService.GetAllFollowedIssuers(true);
+        otherIssuers = LocalDbService.GetAllFollowedIssuers(true)
+            ?.Where(i => i.TotalIssued > 0)
+            .ToList();
+
+        recentGrants = LocalDbService.GetBadgeRecords(
+            "br.AcceptedOn IS NOT NULL ORDER BY br.AcceptedOn DESC LIMIT 8",
+            true);
     }
 
     private void FilterByType(string? type)

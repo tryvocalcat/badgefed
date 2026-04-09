@@ -1,3 +1,19 @@
+/* ══════════════════════════════════════════════
+   BadgeFed design-system tokens — SOMOS.tech
+   Cyberpunk dark theme.
+   ══════════════════════════════════════════════ */
+.bf {
+    --bf-accent:       #00FF91;
+    --bf-accent-alt:   #00cc73;
+    --bf-highlight:    #00e5ff;
+    --bf-page-bg:      #0a0a0a;
+    --bf-page-fg:      #00FF91;
+    --bf-card-bg:      #0d0d0d;
+    --bf-card-border:  rgba(0,255,145,.2);
+    --bf-muted:        #4ade80;
+    --bf-subtle:       #22c55e;
+}
+
 /* SOMOS.tech Cyberpunk Theme - Hacker Aesthetic with Neon Green */
 
 /* Global dark background */

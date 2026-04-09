@@ -7,6 +7,8 @@
 @inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
 @inject BadgeGrantService BadgeGrantService
+@inject CurrentUser CurrentUser
+@inject IBillingService BillingService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -26,6 +28,12 @@
     <div class="container">
         <h1 class="title">Grant Badge</h1>
 
+        @if (isAtGrantLimit)
+        {
+            <LimitReachedBanner ResourceName="grant" Max="@OpenRegistrationService.MaxGrantsForLimitedManager" UpgradeUrl="@upgradeUrl" />
+        }
+        else
+        {
         @if(!string.IsNullOrEmpty(errorMessage))
         {
             <div class="notification is-danger mb-4">
@@ -100,6 +108,7 @@
             </div>
            
         </form>
+        }
     </div>
 </section>
 
@@ -121,8 +130,23 @@
 
     private Badge badge;
 
+    private bool isAtGrantLimit;
+    private string? upgradeUrl;
+
     protected override async Task OnInitializedAsync()
     {
+        if (IsLimitedManager())
+        {
+            var hasSubscription = await CurrentUser.HasActiveSubscription();
+            if (!hasSubscription)
+            {
+                var grantCount = GetOwnedGrantCount(CurrentUser.GetGroupId());
+                isAtGrantLimit = grantCount >= OpenRegistrationService.MaxGrantsForLimitedManager;
+                if (isAtGrantLimit)
+                    upgradeUrl = await BillingService.GetCheckoutUrl(CurrentUser.GetGroupId(), $"/admin/grant/{BadgeId}");
+            }
+        }
+
         if (long.TryParse(BadgeId, out long badgeIdValue))
         {
             Model.BadgeId = badgeIdValue;
@@ -155,8 +179,31 @@
         public string Evidence { get; set; } = "";
     }
 
+    private bool IsLimitedManager() =>
+        CurrentUser.GetRole().Equals(OpenRegistrationService.LimitedManagerRole, StringComparison.OrdinalIgnoreCase);
+
+    private int GetOwnedGrantCount(string ownerGroupId)
+    {
+        using var connection = LocalDbService.GetConnection();
+        connection.Open();
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT COUNT(*)
+            FROM BadgeRecord AS br
+            INNER JOIN Badge AS b ON br.BadgeId = b.Id
+            WHERE b.OwnerId = @OwnerId;
+        ";
+        command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     private void HandleValidSubmit()
     {
+        if (isAtGrantLimit)
+        {
+            errorMessage = "You have reached your grant limit. Please upgrade your plan to issue more badges.";
+            return;
+        }
         errorMessage = string.Empty;
         notificationMessage = string.Empty;
 

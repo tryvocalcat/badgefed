@@ -65,8 +65,8 @@ public class CurrentUser
     }
 
     /// <summary>
-    /// Returns true if the current user's group has an active subscription.
-    /// Always returns true when no billing plugin is installed.
+    /// Returns true if the current user's group has an active (paid) subscription.
+    /// Without a billing plugin this is always false, so manager-limited caps always apply.
     /// </summary>
     public Task<bool> HasActiveSubscription() =>
         _billingService.HasActiveSubscription(GetGroupId());

@@ -16,7 +16,11 @@ public interface IBillingService
     bool IsEnabled { get; }
 
     /// <summary>
-    /// Returns true if the given user group has an active subscription (or if billing is not configured).
+    /// Returns true if the given user group has an active (paid) subscription.
+    /// When no billing plugin is installed the default returns false, so
+    /// manager-limited users are always subject to the free-tier caps.
+    /// The admin can lift limits by manually upgrading the user's role to
+    /// "manager". A billing plugin can instead grant access programmatically.
     /// </summary>
     Task<bool> HasActiveSubscription(string userGroupId);
 
@@ -39,12 +43,14 @@ public interface IBillingService
 
 /// <summary>
 /// Default no-op implementation used when no billing plugin is installed.
-/// All access is allowed and no Stripe URLs are generated.
+/// HasActiveSubscription returns false so manager-limited users always hit
+/// the free-tier caps. The admin upgrades accounts manually by changing the
+/// user role from manager-limited to manager in the Users admin panel.
 /// </summary>
 public class NullBillingService : IBillingService
 {
     public bool IsEnabled => false;
-    public Task<bool> HasActiveSubscription(string userGroupId) => Task.FromResult(true);
+    public Task<bool> HasActiveSubscription(string userGroupId) => Task.FromResult(false);
     public Task<string?> GetCheckoutUrl(string userGroupId, string returnUrl) => Task.FromResult<string?>(null);
     public Task<string?> GetPortalUrl(string userGroupId, string returnUrl) => Task.FromResult<string?>(null);
     public Task<string?> GetSubscriptionStatus(string userGroupId) => Task.FromResult<string?>(null);

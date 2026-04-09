@@ -1,4 +1,4 @@
-@page "/view/grant/{noteIdParam}"
+﻿@page "/view/grant/{noteIdParam}"
 @using ActivityPubDotNet.Core
 @using System.Text.Json
 @using Markdig
@@ -22,1813 +22,837 @@
 </HeadContent>
 
 <style>
-    a {
-        position: relative;
-        z-index: 10;
-    }
-    .tag {
-        margin: 0.5rem;
-    }
-    
-    .badge-image-info {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 5;
-    }
+/* ═══════════════════════════════════════════════════
+   VerifyRecord — BadgeFed Design System
+   MinimalLayout (no .container wrapper from layout)
+   ═══════════════════════════════════════════════════ */
 
-    .badge-metadata-indicator {
-        background: rgba(16, 185, 129, 0.9);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
+.vr-shell {
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:#fff; color:#0f172a;
+    min-height:100vh;
+}
 
-    .badge-image-container {
-        position: relative;
-    }
-    
-    .badge-container {
-        max-width: 1000px;
-        margin: 2rem auto;
-        background: white;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    .verification-header {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        color: white;
-        padding: 2rem;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-    .verification-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-        opacity: 0.1;
-    }
+/* ── Not-found banner ─────────────────────────────── */
+.vr-not-found {
+    max-width:600px; margin:3rem auto; padding:2rem 2.5rem;
+    border:1px dashed #fcd34d; border-radius:18px;
+    background:#fffbeb; color:#92400e; text-align:center;
+}
+.vr-not-found i { font-size:1.8rem; color:#f59e0b; display:block; margin-bottom:.75rem; }
+.vr-not-found a { color:#d97706; font-weight:600; }
 
-    .trust-factor-icon {
-        padding: 8px;
-    }
+/* ── Main two-column layout ───────────────────────── */
+.vr-layout {
+    max-width:960px; margin:0 auto; padding:2rem 1.25rem 4rem;
+}
 
+/* ── Grant header card ────────────────────────────── */
+.vr-header {
+    background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+    border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.5rem;
+    position:relative; overflow:hidden; color:#fff;
+}
+.vr-header::before {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 70% 80% at 100% 0%, rgba(99,102,241,.22) 0%, transparent 60%);
+}
+.vr-header-inner { position:relative; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:1.25rem; }
+.vr-verified-pill {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.3);
+    color:#34d399; border-radius:999px; padding:.3rem .9rem;
+    font-size:.72rem; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; margin-bottom:.75rem;
+    cursor:pointer; transition:background .15s, border-color .15s;
+}
+.vr-verified-pill:hover { background:rgba(16,185,129,.28); border-color:rgba(16,185,129,.55); }
+.vr-header-title { font-size:clamp(1.3rem,3vw,1.8rem); font-weight:900; letter-spacing:-.03em; line-height:1.15; margin-bottom:.35rem; }
+.vr-header-sub { font-size:.85rem; opacity:.8; }
+.vr-header-sub a { color:#a5b4fc; }
+.vr-cert-btn {
+    flex-shrink:0; display:inline-flex; align-items:center; gap:.4rem;
+    background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.25);
+    color:#fff; border-radius:10px; padding:.55rem 1.1rem;
+    font-size:.8rem; font-weight:600; cursor:pointer; text-decoration:none;
+    transition:background .15s; white-space:nowrap;
+    font-family:inherit;
+}
+.vr-cert-btn:hover { background:rgba(255,255,255,.22); }
 
-    .verification-header-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 2rem;
-        position: relative;
-        z-index: 2;
-    }
-    .verification-header-main {
-        flex: 1;
-    }
-    .verification-header-actions {
-        flex-shrink: 0;
-        display: flex;
-        align-items: flex-start;
-        margin-top: 0.5rem;
-    }
-    .certificate-button-header {
-        background: rgba(255, 255, 255, 0.15);
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 0.75rem 1.25rem;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        backdrop-filter: blur(10px);
-        font-size: 0.9rem;
-        min-width: auto;
-        white-space: nowrap;
-    }
-    .certificate-button-header:hover {
-        background: rgba(255, 255, 255, 0.25);
-        border-color: rgba(255, 255, 255, 0.5);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        color: white;
-    }
-    @@media (max-width: 768px) {
-        .verification-header-content {
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .verification-header-actions {
-            align-self: flex-end;
-            margin-top: 0;
-        }
-        .certificate-button-header {
-            font-size: 0.85rem;
-            padding: 0.6rem 1rem;
-        }
-    }
-    .verification-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-        padding: 0.75rem 1.5rem;
-        border-radius: 30px;
-        font-size: 1rem;
-        font-weight: 500;
-        margin-bottom: 1rem;
-        border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    .badge-content {
-        padding: 3rem;
-    }
-    .badge-image-container {
-        background: #f8f9fa;
-        padding: 2rem;
-        border-radius: 16px;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .badge-image {
-        max-height: 300px;
-        margin: 0 auto;
-    }
-    .badge-title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        color: #1a1a2e;
-    }
-    .badge-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    .meta-item {
-        background: #f3f4f6;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .meta-item i {
-        color: #6b7280;
-    }
-    .badge-description {
-        font-size: 1.1rem;
-        line-height: 1.6;
-        color: #4b5563;
-        margin-bottom: 2rem;
-        margin-top: 2rem;
-    }
-    .badge-criteria {
-        background: #f3f4f6;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-    }
-    .criteria-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        color: #1a1a2e;
-    }
-    .security-info {
-        background: #f3f4f6;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-top: 2rem;
-    }
-    .security-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        color: #1a1a2e;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .fingerprint {
-        font-family: monospace;
-        background: #1a1a2e;
-        color: #10b981;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-top: 1rem;
-        word-break: break-all;
-    }
+/* ── Badge image card ─────────────────────────────── */
+.vr-badge-img-card {
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:18px;
+    padding:2rem; text-align:center; margin-bottom:1.5rem; position:relative;
+    margin: auto;
+}
+.vr-badge-img { max-height:260px; max-width:100%; object-fit:contain; border-radius:10px; display:block; margin:0 auto; }
+.vr-verifiable-pill {
+    display:inline-flex; align-items:center; gap:.3rem;
+    position:absolute; top:1rem; right:1rem;
+    background:rgba(16,185,129,.9); color:#fff;
+    border-radius:999px; padding:.25rem .65rem;
+    font-size:.67rem; font-weight:700;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+    cursor:pointer; transition:background .15s, box-shadow .15s;
+}
+.vr-verifiable-pill:hover { background:rgba(5,150,105,1); box-shadow:0 4px 14px rgba(0,0,0,.25); }
 
-    
-    .verify-button {
-        background: #10b981;
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-    .verify-button:hover {
-        background: #059669;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-    
-    /* Verification Modal Styles */
-    .verification-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        backdrop-filter: blur(4px);
-    }
-    .verification-modal.show {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.3s ease;
-    }
-    .verification-modal-content {
-        background: white;
-        border-radius: 16px;
-        width: 90%;
-        max-width: 700px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: slideUp 0.3s ease;
-    }
-    .verification-modal-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 16px 16px 0 0;
-        text-align: center;
-        position: relative;
-    }
-    .verification-modal-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    .verification-modal-body {
-        padding: 2rem;
-    }
-    .verification-close {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: none;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        transition: background 0.3s ease;
-    }
-    .verification-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-    .trust-factor {
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 1.5rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    .trust-factor:hover {
-        border-color: #10b981;
-        background: rgba(16, 185, 129, 0.02);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    .trust-factor-check {
-        flex-shrink: 0;
-        width: 32px;
-        height: 32px;
-        background: #10b981;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1rem;
-        margin-top: 0.2rem;
-    }
-    .trust-factor-content {
-        flex: 1;
-    }
-    .trust-factor-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0 0 0.5rem 0;
-        color: #1f2937;
-    }
-    .trust-factor-description {
-        color: #6b7280;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        margin: 0;
-    }
-    .trust-factor-value {
-        background: #f3f4f6;
-        padding: 0.75rem;
-        border-radius: 8px;
-        font-family: monospace;
-        font-size: 0.85rem;
-        color: #1f2937;
-        margin-top: 0.75rem;
-        word-break: break-all;
-        border-left: 3px solid #10b981;
-    }
-    .trust-factor-help {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 24px;
-        height: 24px;
-        background: #e5e7eb;
-        color: #6b7280;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8rem;
-        cursor: help;
-        transition: all 0.3s ease;
-        line-height: 1;
-    }
-    .trust-factor-help:hover {
-        background: #10b981;
-        color: white;
-    }
-    .tooltip {
-        position: relative;
-        display: inline-block;
-    }
-    .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 300px;
-        background-color: #1f2937;
-        color: white;
-        text-align: left;
-        border-radius: 8px;
-        padding: 0.75rem;
-        position: absolute;
-        z-index: 10001;
-        bottom: 125%;
-        right: 0;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    .tooltip .tooltiptext::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        right: 20px;
-        border-width: 8px;
-        border-style: solid;
-        border-color: #1f2937 transparent transparent transparent;
-    }
-    .tooltip:hover .tooltiptext {
-        visibility: visible;
-        opacity: 1;
-    }
-    
-    @@keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @@keyframes slideUp {
-        from { 
-            opacity: 0; 
-            transform: translateY(30px) scale(0.95); 
-        }
-        to { 
-            opacity: 1; 
-            transform: translateY(0) scale(1); 
-        }
-    }
-    
-    @@media (max-width: 768px) {
-        .verification-modal-content {
-            width: 95%;
-            margin: 1rem;
-        }
-        .verification-modal-body {
-            padding: 1.5rem;
-        }
-        .trust-factor {
-            padding: 1rem;
-        }
-        .tooltip .tooltiptext {
-            width: 250px;
-            right: -50px;
-        }
-    }
-    
-    .metadata-info-section {
-        margin: 2rem 0;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .metadata-info-section::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-    
-    .metadata-info-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1a1a2e;
-    }
-    
-    .metadata-info-title .icon {
-        color: #10b981;
-    }
-    
-    .metadata-info-section p {
-        margin-bottom: 1rem;
-        color: #4a5568;
-        line-height: 1.6;
-    }
-    
-    .metadata-actions {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-    
-    .metadata-action-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.25rem;
-        border: none;
-        border-radius: 8px;
-        background: #10b981;
-        color: white;
-        text-decoration: none;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-    }
-    
-    .metadata-action-button:hover {
-        background: #059669;
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-    }
-    
-    .metadata-action-button.secondary {
-        background: #6b7280;
-        box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
-    }
-    
-    .metadata-action-button.secondary:hover {
-        background: #4b5563;
-        box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
-    }
-    
-    .owner-actions-section {
-        margin-top: 2rem;
-        border-top: 2px solid #f3f4f6;
-        padding-top: 2rem;
-    }
-    .owner-actions-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .owner-actions-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #1a1a2e;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .owner-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        background: rgba(16, 185, 129, 0.1);
-        color: #059669;
-        font-size: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 16px;
-        font-weight: 500;
-        border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    .owner-actions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-    .owner-button.mastodon {
-        border-color: #6364ff;
-        color: #6364ff;
-    }
-    .owner-button.mastodon:hover {
-        background: #6364ff;
-        color: white;
-    }
-    .owner-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        text-align: center;
-        min-height: 48px;
-        border: 2px solid;
-        background: white;
-    }
-    .owner-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    .owner-button.linkedin {
-        border-color: #0077b5;
-        color: #0077b5;
-    }
-    .owner-button.linkedin:hover {
-        background: #0077b5;
-        color: white;
-    }
-    .owner-button.openbadge {
-        border-color: #f59e0b;
-        color: #f59e0b;
-    }
-    .owner-button.openbadge:hover {
-        background: #f59e0b;
-        color: white;
-    }
-    .owner-button.copy {
-        border-color: #6366f1;
-        color: #6366f1;
-    }
-    .owner-button.copy:hover {
-        background: #6366f1;
-        color: white;
-    }
-    .owner-button.settings {
-        border-color: #6b7280;
-        color: #6b7280;
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    .owner-button.settings:hover {
-        transform: none;
-        box-shadow: none;
-    }
+/* ── Meta chips ───────────────────────────────────── */
+.vr-meta-row { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.25rem; }
+.vr-chip {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:#f1f5f9; border:1px solid #e2e8f0; border-radius:10px;
+    padding:.45rem .85rem; font-size:.78rem; color:#475569;
+}
+.vr-chip i { color:#94a3b8; font-size:.7rem; }
+.vr-chip a { color:#6366f1; font-weight:600; text-decoration:none; }
+.vr-chip.external { background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.25); color:#b45309; }
 
-    .comments-section {
-        margin-top: 3rem;
-        padding: 2rem;
-    }
-    .comments-section .title {
-        margin-bottom: 0.5rem;
-    }
-    .comments-intro {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-        margin-bottom: 1.5rem;
-        color: #6b7280;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .comments-intro p {
-        margin: 0;
-        flex: 1;
-        min-width: 200px;
-    }
-    .comments-empty {
-        text-align: center;
-        padding: 2rem 1rem;
-        color: #9ca3af;
-    }
-    .comments-empty i {
-        font-size: 2rem;
-        margin-bottom: 0.75rem;
-        display: block;
-        color: #d1d5db;
-    }
-    .comments-empty p {
-        margin: 0;
-        font-size: 0.95rem;
-    }
-    .comment-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 0.75rem;
-        border: 1px solid #f3f4f6;
-        transition: border-color 0.2s ease;
-    }
-    .comment-card:hover {
-        border-color: #e5e7eb;
-    }
-    .comment-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 0.75rem;
-    }
-    .comment-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: #e5e7eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-    .comment-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 50%;
-    }
-    .comment-author {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #1a1a2e;
-    }
-    .comment-date {
-        font-size: 0.8rem;
-        color: #9ca3af;
-    }
-    .comment-content {
-        color: #4b5563;
-        font-size: 0.95rem;
-        line-height: 1.6;
-    }
-    
-    @@media (max-width: 768px) {
-        .badge-meta {
-            flex-direction: column;
-        }
-    }
+/* ── Hashtags ─────────────────────────────────────── */
+.vr-tags { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:1.25rem; }
+.vr-tag {
+    display:inline-flex; align-items:center; border-radius:999px; padding:.18rem .6rem;
+    font-size:.67rem; font-weight:600;
+}
 
-    /* Certificate/Diploma Styles */
-    .certificate-container {
-        max-width: 1200px;
-        margin: 2rem auto;
-        background: url('/img/certificate-background.png') center center / contain;
-        background-color: #f8f9ff;
-        border: 8px solid #1a1a2e;
-        border-radius: 0;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        position: relative;
-        overflow: hidden;
-    }
-    .certificate-container::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(248, 249, 255, 0.85);
-        pointer-events: none;
-        z-index: 1;
-    }
-    .certificate-container::after {
-        content: '';
-        position: absolute;
-        top: 30px;
-        left: 30px;
-        right: 30px;
-        bottom: 30px;
-        border: 1px solid #1a1a2e;
-        pointer-events: none;
-        z-index: 2;
-    }
-    .certificate-header {
-        text-align: center;
-        padding: 3rem 4rem 2rem;
-        position: relative;
-        z-index: 2;
-        font-size: 2rem;
-         font-family: 'Times New Roman', serif;
-    }
-    .certificate-header text {
-        fill: #FF9800;
-    }
-    .certificate-header path {
-        fill: transparent;
-    }
-    .certificate-title {
-        font-family: 'Times New Roman', serif;
-        font-size: 4rem;
-        font-weight: normal;
-        color: #1a1a2e;
-        margin-bottom: 0.2rem;
-        margin-top: 0.5rem;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        position: relative;
-        display: inline-block;
-        letter-spacing: 0.1em;
-        transform-style: preserve-3d;
-    }
- 
-    .certificate-subtitle {
-        font-family: 'Times New Roman', serif;
-        font-size: 1.5rem;
-        color: #4a5568;
-        margin-bottom: 0.5rem;
-        font-style: italic;
-    }
-    .certificate-content {
-        text-align: center;
-        padding: 0.5rem 2rem;
-        position: relative;
-        z-index: 2;
-    }
-    .certificate-recipient {
-        font-family: 'Times New Roman', serif;
-        font-size: 1.3rem;
-        color: #2d3748;
-        margin-bottom: 0.2rem;
-    }
-    .certificate-recipient-name {
-        font-family: 'Times New Roman', serif;
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1a1a2e;
-        margin: 0.3rem 0 0.5rem;
-        text-decoration: underline;
-        text-decoration-thickness: 2px;
-        text-underline-offset: 8px;
-    }
-    .certificate-achievement {
-        font-family: 'Times New Roman', serif;
-        font-size: 1.3rem;
-        color: #2d3748;
-        margin-bottom: 0.3rem;
-        line-height: 1.6;
-    }
-    .certificate-badge-title {
-        font-family: 'Times New Roman', serif;
-        font-size: 2rem;
-        font-weight: bold;
-        color: #1a1a2e;
-        margin: 0.5rem 0;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    }
-    .certificate-description {
-        font-family: 'Times New Roman', serif;
-        font-size: 1.1rem;
-        color: #4a5568;
-        margin: 1rem auto;
-        max-width: 820px;
-        line-height: 1.6;
-    }
-    .certificate-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: end;
-        padding: 1rem 4rem;
-        margin-top: 0.1rem;
-        position: relative;
-        z-index: 2;
-    }
-    .certificate-issuer {
-        text-align: left;
-        flex: 1;
-    }
-    .certificate-date {
-        text-align: right;
-        flex: 1;
-    }
-    .certificate-seal {
-        text-align: center;
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .certificate-issuer-name,
-    .certificate-date-value {
-        font-family: 'Times New Roman', serif;
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1a1a2e;
-        margin-bottom: 0.3rem;
-        border-bottom: 2px solid #1a1a2e;
-        padding-bottom: 5px;
-        display: inline-block;
-    }
-    .certificate-issuer-title,
-    .certificate-date-label {
-        font-family: 'Times New Roman', serif;
-        font-size: 0.9rem;
-        color: #4a5568;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .certificate-seal-image {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 3px solid #1a1a2e;
-        object-fit: cover;
-        background: white;
-        padding: 10px;
-        display: block;
-        margin: 0 auto;
-    }
-    .certificate-ornament {
-        position: absolute;
-        font-size: 2rem;
-        color: #1a1a2e;
-        opacity: 0.4;
-    }
-    .certificate-ornament.top-left {
-        top: 50px;
-        left: 50px;
-    }
-    .certificate-ornament.top-right {
-        top: 50px;
-        right: 50px;
-    }
-    .certificate-ornament.bottom-left {
-        bottom: 50px;
-        left: 50px;
-    }
-    .certificate-ornament.bottom-right {
-        bottom: 50px;
-        right: 50px;
-    }
-    .certificate-verification {
-        background: #f8f9fa;
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 0.4rem 1.5rem;
-        margin: 3rem 6rem;
-        text-align: center;
-        position: relative;
-        z-index: 2;
-    }
-    .certificate-verification-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1a1a2e;
-        margin-bottom: 0.3rem;
-    }
-    .certificate-verification-text {
-        font-size: 0.9rem;
-        color: #6c757d;
-        margin-bottom: 0.3rem;
-    }
-    .certificate-fingerprint {
-        font-family: monospace;
-        font-size: 0.8rem;
-        background: #1a1a2e;
-        color: #10b981;
-        padding: 0.5rem;
-        border-radius: 4px;
-        word-break: break-all;
-    }
-    .certificate-qr-section {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 2rem;
-    }
-    .certificate-qr-code {
-        text-align: center;
-        flex-shrink: 0;
-    }
-    .certificate-qr-image {
-        width: 80px;
-        height: 80px;
-        border: 2px solid #1a1a2e;
-        border-radius: 4px;
-        background: white;
-        padding: 4px;
-    }
-    .certificate-qr-label {
-        font-size: 0.7rem;
-        color: #6c757d;
-        margin-top: 0.25rem;
-        font-family: 'Times New Roman', serif;
-    }
-    .certificate-fingerprint-section {
-        flex: 1;
-    }
-    
-    @@media (max-width: 768px) {
-        .certificate-container {
-            margin: 1rem;
-            border-width: 4px;
-        }
-        .certificate-header,
-        .certificate-content,
-        .certificate-footer {
-            padding: 2rem;
-        }
-        .certificate-title {
-            font-size: 2.5rem;
-        }
-        .certificate-title-arced {
-            height: 80px;
-            margin: 0.5rem 0 1.5rem 0;
-        }
-        .certificate-recipient-name {
-            font-size: 2rem;
-        }
-        .certificate-badge-title {
-            font-size: 1.5rem;
-        }
-        .certificate-footer {
-            flex-direction: column;
-            gap: 2rem;
-            text-align: center;
-        }
-        .certificate-verification {
-            margin: 2rem 1rem;
-        }
-        .certificate-qr-section {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-        }
-        .certificate-qr-code {
-            order: -1;
-        }
-    }
+/* ── Description + Criteria ──────────────────────── */
+.vr-desc { font-size:.9rem; line-height:1.7; color:#475569; margin-bottom:1.5rem; }
+.vr-criteria {
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px;
+    padding:1.4rem 1.6rem; margin-bottom:1.5rem;
+}
+.vr-criteria-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:.75rem; display:flex; align-items:center; gap:.4rem; }
+.vr-criteria-body { font-size:.85rem; line-height:1.7; color:#475569; }
+.vr-criteria-body p { margin-bottom:.5rem; }
+.vr-learn-btn {
+    display:inline-flex; align-items:center; gap:.35rem; margin-top:.75rem;
+    background:rgba(6,182,212,.08); border:1px solid rgba(6,182,212,.22);
+    color:#0891b2; border-radius:8px; padding:.35rem .85rem;
+    font-size:.75rem; font-weight:600; text-decoration:none; transition:background .15s;
+}
+.vr-learn-btn:hover { background:rgba(6,182,212,.15); }
 
-    /* Modal Styles */
-    .certificate-modal {
-        display: none;
-        position: fixed;
-        z-index: 10000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        overflow: auto;
-    }
-    .certificate-modal.show {
-        display: block;
-    }
-    .modal-content {
-        position: relative;
-        background-color: white;
-        margin: 2% auto;
-        padding: 0;
-        width: 95%;
-        max-width: 1200px;
-        border-radius: 8px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-height: 95vh;
-        overflow-y: auto;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 2rem;
-        background: #1a1a2e;
-        color: white;
-        border-radius: 8px 8px 0 0;
-    }
-    .modal-title {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .modal-actions {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-    .modal-button {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-    }
-    .print-button {
-        background: #10b981;
-        color: white;
-    }
-    .print-button:hover {
-        background: #059669;
-        color: white;
-    }
-    .close-button {
-        background: transparent;
-        color: white;
-        border: 2px solid white;
-    }
-    .close-button:hover {
-        background: white;
-        color: #1a1a2e;
-    }
-    .modal-body {
-        padding: 0;
-    }
-    
-    /* Print-specific styles */
-    @@media print {
-        body * {
-            visibility: hidden;
-        }
-        .certificate-modal, .certificate-modal * {
-            visibility: visible;
-        }
-        .certificate-modal {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: white !important;
-            display: block !important;
-        }
-        .modal-content {
-            margin: 0;
-            width: 100%;
-            max-width: none;
-            box-shadow: none;
-            border-radius: 0;
-            max-height: none;
-            overflow: visible;
-        }
-        .modal-header {
-            display: none !important;
-        }
-        .modal-body {
-            padding: 0;
-        }
-        .certificate-container {
-            margin: 0;
-            box-shadow: none;
-            max-width: none;
-            page-break-inside: avoid;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-        }
-        .certificate-qr-image {
-            width: 60px;
-            height: 60px;
-        }
-    }
+/* ── Security / actions card ──────────────────────── */
+.vr-security {
+    background:#fff; border:1px solid #e2e8f0; border-radius:16px;
+    padding:1.4rem 1.6rem; margin-bottom:1.5rem;
+}
+.vr-security-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:1rem; display:flex; align-items:center; gap:.4rem; }
+.vr-action-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:.85rem; }
+.vr-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    border-radius:10px; padding:.5rem 1rem; font-size:.78rem; font-weight:600;
+    cursor:pointer; text-decoration:none; transition:background .15s, opacity .15s;
+    border:none; font-family:inherit; white-space:nowrap;
+}
+.vr-btn.verify { background:linear-gradient(135deg,#10b981,#059669); color:#fff; }
+.vr-btn.verify:hover { opacity:.88; }
+.vr-btn.download { background:rgba(99,102,241,.08); border:1px solid rgba(99,102,241,.22); color:#6366f1; }
+.vr-btn.download:hover { background:rgba(99,102,241,.15); }
+.vr-btn.secondary { background:#f8fafc; border:1px solid #e2e8f0; color:#475569; }
+.vr-btn.secondary:hover { background:#f1f5f9; }
+.vr-hint { font-size:.75rem; color:#94a3b8; line-height:1.6; }
+.vr-hint a { color:#6366f1; }
+
+/* ── Owner actions card ───────────────────────────── */
+.vr-owner {
+    background:#fff; border:1px solid #e2e8f0; border-radius:16px;
+    padding:1.4rem 1.6rem; margin-bottom:1.5rem;
+}
+.vr-owner-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:1rem; display:flex; align-items:center; gap:.4rem; }
+.vr-owner-grid { display:flex; flex-wrap:wrap; gap:.6rem; }
+.vr-share-btn {
+    display:inline-flex; align-items:center; gap:.4rem;
+    border-radius:10px; padding:.5rem 1rem; font-size:.78rem; font-weight:600;
+    cursor:pointer; text-decoration:none; border:1.5px solid; background:#fff;
+    transition:background .15s, color .15s; white-space:nowrap;
+}
+.vr-share-btn.mastodon  { border-color:#6364ff; color:#6364ff; }
+.vr-share-btn.mastodon:hover  { background:#6364ff; color:#fff; }
+.vr-share-btn.linkedin  { border-color:#0a66c2; color:#0a66c2; }
+.vr-share-btn.linkedin:hover  { background:#0a66c2; color:#fff; }
+
+/* ── External warning ─────────────────────────────── */
+.vr-external-warn {
+    background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.25);
+    border-radius:14px; padding:1rem 1.25rem; margin-bottom:1.5rem;
+    font-size:.83rem; color:#92400e; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+}
+.vr-external-warn i { color:#f59e0b; font-size:1rem; flex-shrink:0; }
+.vr-external-warn a { color:#6366f1; font-weight:600; }
+
+/* ── Comments card ────────────────────────────────── */
+.vr-comments { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:1.4rem 1.6rem; margin-bottom:1.5rem; }
+.vr-comments-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:.6rem; display:flex; align-items:center; gap:.4rem; }
+.vr-comments-intro { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; margin-bottom:1.1rem; }
+.vr-comments-intro p { font-size:.82rem; color:#64748b; margin:0; }
+.vr-copy-btn {
+    display:inline-flex; align-items:center; gap:.3rem;
+    background:#f8fafc; border:1px solid #e2e8f0; color:#64748b;
+    border-radius:8px; padding:.3rem .75rem; font-size:.73rem; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:background .15s;
+}
+.vr-copy-btn:hover { background:#f1f5f9; }
+.vr-comments-empty { text-align:center; padding:2rem; color:#94a3b8; }
+.vr-comments-empty i { font-size:1.5rem; display:block; margin-bottom:.5rem; color:#e2e8f0; }
+.vr-comments-empty p { font-size:.83rem; }
+.comment-card { background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:1rem 1.1rem; margin-bottom:.6rem; }
+.comment-header { display:flex; align-items:center; gap:.65rem; margin-bottom:.6rem; }
+.comment-avatar { width:34px; height:34px; border-radius:50%; overflow:hidden; background:#e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.comment-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.comment-author { font-size:.82rem; font-weight:700; color:#0f172a; }
+.comment-date   { font-size:.72rem; color:#94a3b8; }
+.comment-content { font-size:.83rem; color:#475569; line-height:1.6; }
+
+/* ── Fingerprint block ────────────────────────────── */
+.vr-fingerprint {
+    font-family:'Inconsolata','Courier New',monospace;
+    background:#0f172a; color:#10b981; border-radius:10px;
+    padding:.85rem 1rem; font-size:.78rem; word-break:break-all; margin-top:.5rem;
+}
+
+/* ── Verification modal ───────────────────────────── */
+.verification-modal {
+    display:none; position:fixed; inset:0; z-index:10000;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
+}
+.verification-modal.show {
+    display:flex; align-items:center; justify-content:center;
+    animation:vr-fadein .25s ease;
+}
+.verification-modal-content {
+    background:#fff; border-radius:20px; width:90%; max-width:680px;
+    max-height:90vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.25);
+    animation:vr-slideup .25s ease;
+}
+.verification-modal-header {
+    background:linear-gradient(135deg,#10b981,#059669);
+    color:#fff; padding:1.75rem 2rem; border-radius:20px 20px 0 0;
+    display:flex; align-items:center; justify-content:space-between; position:relative;
+}
+.verification-modal-title { font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:.5rem; margin:0; }
+.verification-close {
+    background:rgba(255,255,255,.2); border:none; color:#fff;
+    width:36px; height:36px; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:1rem;
+    transition:background .15s; font-family:inherit;
+}
+.verification-close:hover { background:rgba(255,255,255,.32); }
+.verification-modal-body { padding:1.75rem 2rem; }
+.verification-modal-body>p { text-align:center; font-size:.83rem; color:#64748b; margin-bottom:1.5rem; }
+
+/* trust factor rows */
+.trust-factor {
+    display:flex; align-items:flex-start; gap:.85rem;
+    padding:1.1rem 1.25rem 1.1rem 1rem;
+    border:1.5px solid #e2e8f0; border-radius:14px; margin-bottom:.75rem;
+    position:relative; transition:border-color .15s, box-shadow .15s;
+}
+.trust-factor:hover { border-color:#a7f3d0; box-shadow:0 3px 12px rgba(16,185,129,.08); }
+.trust-factor-check {
+    flex-shrink:0; width:30px; height:30px; border-radius:50%;
+    background:linear-gradient(135deg,#10b981,#059669);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:.85rem;
+}
+.trust-factor-content { flex:1; min-width:0; }
+.trust-factor-title { font-size:.88rem; font-weight:700; color:#0f172a; margin:0 0 .3rem; }
+.trust-factor-description { font-size:.78rem; color:#64748b; line-height:1.5; margin:0; }
+.trust-factor-description small { color:#94a3b8; font-style:italic; display:block; margin-top:.2rem; }
+.trust-factor-value {
+    background:#f8fafc; border-left:3px solid #10b981; border-radius:6px;
+    padding:.5rem .65rem; margin-top:.5rem;
+    font-family:'Inconsolata','Courier New',monospace; font-size:.76rem; color:#334155; word-break:break-all;
+}
+.trust-factor-value a { color:#10b981; text-decoration:none; }
+
+/* tooltip */
+.trust-factor-help { position:absolute; top:.85rem; right:.85rem; }
+.tooltip { position:relative; display:inline-block; }
+.tooltip .tooltiptext {
+    visibility:hidden; width:280px; background:#1e293b; color:#e2e8f0;
+    border-radius:10px; padding:.65rem .85rem; position:absolute; z-index:10001;
+    bottom:130%; right:0; font-size:.75rem; line-height:1.45; box-shadow:0 4px 16px rgba(0,0,0,.25);
+    opacity:0; transition:opacity .2s; pointer-events:none;
+}
+.tooltip .tooltiptext::after { content:''; position:absolute; top:100%; right:16px; border:7px solid transparent; border-top-color:#1e293b; }
+.tooltip:hover .tooltiptext { visibility:visible; opacity:1; }
+
+/* modal footer */
+.vr-modal-footer { margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid #f1f5f9; text-align:center; font-size:.78rem; color:#94a3b8; }
+.vr-modal-footer i { color:#10b981; }
+
+/* ── Certificate modal ────────────────────────────── */
+.certificate-modal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.8); overflow:auto; }
+.certificate-modal.show { display:block; }
+.modal-content { position:relative; background:#fff; margin:2% auto; width:95%; max-width:1100px; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.3); max-height:95vh; overflow-y:auto; }
+.modal-header { display:flex; justify-content:space-between; align-items:center; padding:.85rem 1.5rem; background:#1e1b4b; color:#fff; border-radius:12px 12px 0 0; gap:1rem; }
+.modal-title { margin:0; font-size:1rem; font-weight:700; }
+.modal-actions { display:flex; gap:.6rem; align-items:center; }
+.modal-button { display:flex; align-items:center; gap:.35rem; padding:.4rem .85rem; border:none; border-radius:8px; cursor:pointer; font-size:.77rem; font-weight:600; text-decoration:none; transition:opacity .15s; font-family:inherit; }
+.print-button { background:#10b981; color:#fff; }
+.print-button:hover { opacity:.88; }
+.close-button { background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.4); }
+.close-button:hover { background:rgba(255,255,255,.1); }
+.modal-body { padding:0; }
+
+/* Certificate layout */
+.certificate-container { max-width:1100px; margin:0 auto; background:#f8f9ff; border:6px solid #1e1b4b; position:relative; overflow:hidden; }
+.certificate-container::after { content:''; position:absolute; inset:24px; border:1px solid #1e1b4b; pointer-events:none; z-index:2; }
+.certificate-header { text-align:center; padding:2.5rem 3rem 1.5rem; position:relative; z-index:3; }
+.certificate-title { font-family:'Times New Roman',serif; font-size:3rem; font-weight:normal; color:#1e1b4b; letter-spacing:.08em; text-shadow:1px 1px 3px rgba(0,0,0,.15); }
+.certificate-subtitle { font-family:'Times New Roman',serif; font-size:1.2rem; color:#553c9a; font-style:italic; margin-top:.25rem; }
+.certificate-content { text-align:center; padding:.5rem 2.5rem 1rem; position:relative; z-index:3; }
+.certificate-recipient { font-family:'Times New Roman',serif; font-size:1.1rem; color:#2d3748; }
+.certificate-recipient-name { font-family:'Times New Roman',serif; font-size:2.2rem; font-weight:bold; color:#1e1b4b; border-bottom:2px solid #1e1b4b; display:inline-block; padding-bottom:4px; margin:.25rem 0 .5rem; }
+.certificate-achievement { font-family:'Times New Roman',serif; font-size:1.1rem; color:#4a5568; }
+.certificate-badge-title { font-family:'Times New Roman',serif; font-size:1.7rem; font-weight:bold; color:#1e1b4b; text-transform:uppercase; letter-spacing:.12em; margin:.4rem 0; }
+.certificate-description { font-family:'Times New Roman',serif; font-size:1rem; color:#4a5568; max-width:700px; margin:1rem auto; line-height:1.65; }
+.certificate-footer { display:flex; justify-content:space-between; align-items:flex-end; padding:1rem 3rem 1.5rem; position:relative; z-index:3; }
+.certificate-issuer, .certificate-date { flex:1; }
+.certificate-issuer { text-align:left; }
+.certificate-date { text-align:right; }
+.certificate-seal { flex:1; display:flex; align-items:center; justify-content:center; }
+.certificate-issuer-name, .certificate-date-value { font-family:'Times New Roman',serif; font-size:1.1rem; font-weight:bold; color:#1e1b4b; border-bottom:2px solid #1e1b4b; padding-bottom:4px; display:inline-block; }
+.certificate-issuer-title, .certificate-date-label { font-family:'Times New Roman',serif; font-size:.78rem; color:#718096; text-transform:uppercase; letter-spacing:1px; margin-top:.25rem; }
+.certificate-seal-image { width:100px; height:100px; border-radius:50%; border:2px solid #1e1b4b; object-fit:contain; background:#fff; padding:8px; }
+.certificate-ornament { position:absolute; font-size:1.6rem; color:#1e1b4b; opacity:.3; z-index:3; }
+.certificate-ornament.top-left    { top:42px; left:42px; }
+.certificate-ornament.top-right   { top:42px; right:42px; }
+.certificate-ornament.bottom-left { bottom:42px; left:42px; }
+.certificate-ornament.bottom-right{ bottom:42px; right:42px; }
+.certificate-verification { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; padding:.6rem 1.5rem; margin:0 4rem 1.5rem; text-align:center; position:relative; z-index:3; }
+.certificate-verification-title { font-size:.85rem; font-weight:600; color:#1e1b4b; margin-bottom:.2rem; }
+.certificate-verification-text   { font-size:.78rem; color:#64748b; margin-bottom:.3rem; }
+.certificate-qr-section { display:flex; justify-content:space-between; align-items:center; gap:1.5rem; }
+.certificate-fingerprint-section { flex:1; }
+.certificate-fingerprint { font-family:'Inconsolata',monospace; font-size:.72rem; background:#1e1b4b; color:#10b981; padding:.5rem .65rem; border-radius:4px; word-break:break-all; }
+.certificate-qr-code { text-align:center; flex-shrink:0; }
+.certificate-qr-image { width:72px; height:72px; border:2px solid #1e1b4b; border-radius:4px; background:#fff; padding:3px; }
+.certificate-qr-label { font-size:.65rem; color:#64748b; margin-top:.2rem; }
+.verification-badge { display:inline-flex; align-items:center; gap:.4rem; background:rgba(16,185,129,.1); color:#10b981; border:1px solid rgba(16,185,129,.2); border-radius:999px; padding:.3rem .85rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:1rem; }
+
+/* ── Modal action buttons ─────────────────────────── */
+.vr-modal-actions {
+    display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1.25rem;
+}
+.vr-modal-divider {
+    font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:#94a3b8; margin:0 0 1rem; display:flex; align-items:center; gap:.6rem;
+}
+.vr-modal-divider::before, .vr-modal-divider::after {
+    content:''; flex:1; height:1px; background:#e2e8f0;
+}
+
+@@keyframes vr-fadein  { from{opacity:0} to{opacity:1} }
+@@keyframes vr-slideup { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+@@media (max-width:640px) {
+    .vr-header { padding:1.5rem; }
+    .verification-modal-body { padding:1.25rem; }
+    .certificate-footer { flex-direction:column; gap:1.5rem; text-align:center; }
+    .certificate-issuer, .certificate-date { text-align:center; }
+    .certificate-verification { margin:0 1rem 1.5rem; }
+    .certificate-qr-section { flex-direction:column; }
+}
+
+@@media print {
+    body * { visibility:hidden; }
+    .certificate-modal, .certificate-modal * { visibility:visible; }
+    .certificate-modal { position:absolute; inset:0; background:#fff !important; display:block !important; }
+    .modal-content { margin:0; width:100%; max-width:none; box-shadow:none; border-radius:0; max-height:none; overflow:visible; }
+    .modal-header { display:none !important; }
+    .certificate-container { margin:0; box-shadow:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
+}
 </style>
 
-@if(badgeRecord == null)
+@if (badgeRecord == null)
 {
-    <div class="notification is-danger">
-        <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
-        <span>Badge record not found, was revoked, has expired, or went for a vacation.</span>
-        <br />
-        <span>But hey, at least you found this message! That's something, right? 😊
-            Go and <a href="/explore" class="has-text-weight-bold">browse available badges</a> instead.
-        </span>
+    <div class="vr-not-found">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p style="font-weight:700;font-size:.95rem;margin-bottom:.5rem;">Badge record not found</p>
+        <p style="font-size:.83rem;color:#92400e;">This record may have been revoked, expired, or the URL is incorrect.</p>
+        <p style="font-size:.83rem;margin-top:.75rem;">
+            <a href="/explore">Browse available badges</a> instead.
+        </p>
     </div>
 }
 else
 {
-<div class="badge-container">
-    <div class="verification-header">
-        <div class="verification-header-content">
-            <div class="verification-header-main">
-                <div class="verification-badge">
-                    <span class="icon"><i class="fas fa-shield-alt"></i></span>
-                    <span>Verified Badge</span>
+    <div class="vr-shell">
+        <div class="vr-layout">
+
+            @* ── Grant header ──────────────────────────────── *@
+            <div class="vr-header">
+                <div class="vr-header-inner">
+                    <div>
+                        <div class="vr-verified-pill" onclick="openVerificationModal()" role="button" title="View trust factors">
+                            <i class="fas fa-shield-alt"></i> Verified Badge
+                        </div>
+                        <div class="vr-header-title">@badgeRecord.Title</div>
+                        <div class="vr-header-sub">
+                            Issued to <a href="@badgeRecord.IssuedToSubjectUri">@badgeRecord.IssuedToName</a>
+                            &nbsp;·&nbsp; @badgeRecord.IssuedOn.ToString("MMMM d, yyyy")
+                        </div>
+                    </div>
+                    @if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
+                    {
+                        <button class="vr-cert-btn" onclick="openCertificateModal()">
+                            <i class="fas fa-award"></i> View as Certificate
+                        </button>
+                    }
                 </div>
-                <h1 class="title is-3 has-text-white">@badgeRecord.Title</h1>
-                <p class="subtitle is-5 has-text-white-bis">Issued to <a href="@badgeRecord.IssuedToSubjectUri">@badgeRecord.IssuedToName</a> on @badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</p>
             </div>
-            @if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
-            {
-                <div class="verification-header-actions">
-                    <button class="certificate-button-header" onclick="openCertificateModal()">
-                        <span class="icon"><i class="fas fa-award"></i></span>
-                        <span>View as Certificate</span>
-                    </button>
-                </div>
-            }
-        </div>
-    </div>
 
-
-    <div class="badge-content">
-        <div class="badge-image-container">
-            <img src="@GetBadgeImageWithMetadataUrl()" alt="@badgeRecord.ImageAltText" class="badge-image">
-            <div class="badge-image-info">
-                <span class="badge-metadata-indicator" title="This image contains embedded OpenBadge metadata for verification">
+            @* ── Badge image ───────────────────────────────── *@
+            <div class="vr-badge-img-card">
+                <img src="@GetBadgeImageWithMetadataUrl()" alt="@badgeRecord.ImageAltText" class="vr-badge-img" />
+                <div class="vr-verifiable-pill" onclick="openVerificationModal()" role="button" title="View trust factors">
                     <i class="fas fa-certificate"></i> Verifiable Image
-                </span>
-            </div>
-        </div>
-
-        <div class="badge-meta">
-                <div class="meta-item">
-                    <span class="icon"><i class="fas fa-user"></i></span>
-                    <span>Issued by <a href="@actorUri" class="has-text-primary">@actorName</a></span>
                 </div>
-                <div class="meta-item">
-                    <span class="icon"><i class="fas fa-calendar"></i></span>
-                    <span>Accepted on @(badgeRecord.AcceptedOn?.ToString("MMMM d, yyyy") ?? "N/A")</span>
-                </div>
-            
-                @if (badgeRecord.IsExternal)
-                {
-                    <div class="meta-item" style="background-color: #f0ad4e; color: white;">
-                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                        <span>External Issuer</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="meta-item">
-                        <span class="icon"><i class="fas fa-tag"></i></span>
-                        <span>@badge?.BadgeType</span>
-                    </div>
-                }
-        </div>
-        
-        @if (badgeRecord.HashtagsList != null && badgeRecord.HashtagsList.Any())
-        {
-            <div class="hashtags mt-2">
-                @foreach (var hashtag in badgeRecord.HashtagsList)
-                {
-                    <span class="tag is-small @GetRandomTagColor(hashtag)">#@hashtag.Trim()</span>
-                }
-            </div>
-        }
-
-        <div class="badge-description">
-            @badgeRecord.Description
-        </div>
-
-        <div class="badge-criteria">
-            <div class="criteria-title">
-                <i class="fas fa-graduation-cap" style="color: #1a1a2e;"></i>
-                Earning Criteria
-            </div>
-            @((MarkupString)Markdown.ToHtml(badgeRecord.EarningCriteria ?? string.Empty))
-            @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
-            {
-                <div class="mt-3">
-                    <a href="@badgeRecord.Badge.InfoUri" target="_blank" class="button is-small is-outlined is-info">
-                        <span class="icon">
-                            <i class="fas fa-external-link-alt"></i>
-                        </span>
-                        <span>Learn More About This Program</span>
-                    </a>
-                </div>
-            }
-        </div>
-
-        <div class="security-info">
-            <h3 class="security-title">
-                <span class="icon"><i class="fas fa-shield"></i></span>
-                <span>Verification, Trust & Badge Data</span>
-            </h3>
-            <div class="metadata-actions" style="margin-top: 1rem;">
-                <button class="verify-button" onclick="openVerificationModal()">
-                    <span class="icon"><i class="fas fa-check-circle"></i></span>
-                    <span>Verify Badge Trust Factors</span>
-                </button>
                 @if (!badgeRecord.IsExternal)
                 {
-                    <a href="@GetBadgeImageWithMetadataUrl()" download="verified-badge-@(NoteIdParam).png" class="metadata-action-button">
-                        <span class="icon"><i class="fas fa-download"></i></span>
-                        <span>Download Verifiable Image</span>
-                    </a>
-                    <a href="/badge-image/@(NoteIdParam)/metadata" target="_blank" class="metadata-action-button secondary">
-                        <span class="icon"><i class="fas fa-code"></i></span>
-                        <span>View Embedded JSON</span>
-                    </a>
+                    <p class="vr-hint">
+                        This image contains embedded OpenBadge metadata. Right-click above to save a self-contained verifiable badge file.
+                        <a href="/badge-verification-help" target="_blank">Learn more about verification</a>.
+                    </p>
                 }
                 else
                 {
-                    <a href="@badgeRecord.NoteId" target="_blank" class="metadata-action-button secondary">
-                        <span class="icon"><i class="fas fa-external-link-alt"></i></span>
-                        <span>View Original Badge</span>
+                    <p class="vr-hint">This badge was issued by an external issuer. Click "View Original Badge" to see it on the issuer's platform.</p>
+                }
+            </div>
+
+            @* ── Meta chips ────────────────────────────────── *@
+            <div class="vr-meta-row">
+                <div class="vr-chip">
+                    <i class="fas fa-user"></i>
+                    Issued by <a href="@actorUri" style="margin-left:.25rem;">@actorName</a>
+                </div>
+                <div class="vr-chip">
+                    <i class="fas fa-calendar-check"></i>
+                    Accepted @(badgeRecord.AcceptedOn?.ToString("MMM d, yyyy") ?? "N/A")
+                </div>
+                @if (badgeRecord.IsExternal)
+                {
+                    <div class="vr-chip external">
+                        <i class="fas fa-external-link-alt"></i> External Issuer
+                    </div>
+                }
+                else
+                {
+                    <div class="vr-chip">
+                        <i class="fas fa-tag"></i> @badge?.BadgeType
+                    </div>
+                }
+            </div>
+
+            @* ── Hashtags ──────────────────────────────────── *@
+            @if (badgeRecord.HashtagsList != null && badgeRecord.HashtagsList.Any())
+            {
+                <div class="vr-tags">
+                    @foreach (var hashtag in badgeRecord.HashtagsList)
+                    {
+                        <span class="vr-tag @GetRandomTagColor(hashtag)">#@hashtag.Trim()</span>
+                    }
+                </div>
+            }
+
+            @* ── Description ───────────────────────────────── *@
+            <div class="vr-desc">@badgeRecord.Description</div>
+
+            @* ── Earning criteria ──────────────────────────── *@
+            <div class="vr-criteria">
+                <div class="vr-criteria-title">
+                    <i class="fas fa-graduation-cap"></i> Earning Criteria
+                </div>
+                <div class="vr-criteria-body">
+                    @((MarkupString)Markdown.ToHtml(badgeRecord.EarningCriteria ?? string.Empty))
+                </div>
+                @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
+                {
+                    <a href="@badgeRecord.Badge.InfoUri" target="_blank" class="vr-learn-btn">
+                        <i class="fas fa-external-link-alt"></i> Learn more about this program
                     </a>
                 }
             </div>
+
+
+
+            @* ── Owner / share actions ─────────────────────── *@
+            <div class="vr-owner">
+                <div class="vr-owner-title"><i class="fas fa-user-shield"></i> Share This Badge</div>
+                <div class="vr-owner-grid">
+                    @{
+                        var currentUrl = NavManager.Uri;
+                        var mastodonShareLink    = ShareHelper.GetMastodonShareLink(badgeRecord);
+                        var linkedinPostLink     = ShareHelper.GetLinkedInPostShareLink(badgeRecord, currentUrl);
+                        var linkedinProfileLink  = ShareHelper.GetLinkedInProfileLink(badgeRecord);
+                    }
+                    @if (!string.IsNullOrEmpty(mastodonShareLink))
+                    {
+                        <a href="@mastodonShareLink" target="_blank" class="vr-share-btn mastodon">
+                            <i class="fab fa-mastodon"></i> Share on Mastodon
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(linkedinPostLink))
+                    {
+                        <a href="@linkedinPostLink" target="_blank" class="vr-share-btn linkedin">
+                            <i class="fab fa-linkedin"></i> Share on LinkedIn
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(linkedinProfileLink))
+                    {
+                        <a href="@linkedinProfileLink" target="_blank" class="vr-share-btn linkedin">
+                            <i class="fab fa-linkedin"></i> Add to Profile
+                        </a>
+                    }
+                </div>
+            </div>
+
+            @* ── External notice ───────────────────────────── *@
+            @if (badgeRecord.IsExternal)
+            {
+                <div class="vr-external-warn">
+                    <i class="fas fa-info-circle"></i>
+                    <span>This badge was issued externally. <a href="@badgeRecord.NoteId" target="_blank">View the original badge</a> on the issuer's platform.</span>
+                </div>
+            }
+
+            @* ── Comments ──────────────────────────────────── *@
             @if (!badgeRecord.IsExternal)
             {
-                <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #6b7280;">
-                    The badge image contains embedded OpenBadge metadata. You can also right-click the image above to save a self-contained, verifiable badge file.
-                    <a href="/badge-verification-help" target="_blank">Learn more about verification</a>.
-                </p>
-            } else {
-                <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #6b7280;">
-                    This badge was issued by an external issuer and may not contain embedded metadata. Click "View Original Badge" to see the badge on the issuer's platform.
-                </p>
-            }
-        </div>
-
-        <!-- Owner Actions Section -->
-        <div class="owner-actions-section">
-            <div class="owner-actions-header">
-                <div class="owner-actions-title">
-                    <i class="fas fa-user-shield"></i>
-                    Owner Actions
-                </div>
-            </div>
-            
-            <div class="owner-actions-grid">
-                @{
-                    var currentUrl = NavManager.Uri;
-                    var linkedinPostShareLink = ShareHelper.GetLinkedInPostShareLink(badgeRecord, currentUrl);
-                    var linkedinProfileLink = ShareHelper.GetLinkedInProfileLink(badgeRecord);
-                    var badgeId = badgeRecord.NoteId.Split('/').LastOrDefault();
-                }
-
-                @{
-                    var mastodonShareLink = ShareHelper.GetMastodonShareLink(badgeRecord);
-                }
-
-                @if(!string.IsNullOrEmpty(mastodonShareLink))
-                {
-                    <a href="@mastodonShareLink" 
-                       class="owner-button mastodon"
-                       target="_blank">
-                        <span class="icon"><i class="fab fa-mastodon"></i></span>
-                        <span>Share on Mastodon</span>
-                    </a>
-                }
-
-                @if(!string.IsNullOrEmpty(linkedinPostShareLink))
-                {
-                    <a href="@linkedinPostShareLink" 
-                       class="owner-button linkedin"
-                       target="_blank">
-                        <span class="icon"><i class="fab fa-linkedin"></i></span>
-                        <span>Share on LinkedIn</span>
-                    </a>
-                }
-
-                @if(!string.IsNullOrEmpty(linkedinProfileLink))
-                {
-                    <a href="@linkedinProfileLink" 
-                       class="owner-button linkedin"
-                       target="_blank">
-                        <span class="icon"><i class="fab fa-linkedin"></i></span>
-                        <span>Add to Profile</span>
-                    </a>
-                }
-
-            </div>
-        </div>
-
-        <script>
-            function copyBadgeUrl() {
-                navigator.clipboard.writeText(window.location.href).then(function() {
-                    // Create a simple toast notification
-                    const toast = document.createElement('div');
-                    toast.textContent = 'Badge URL copied to clipboard!';
-                    toast.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: #10b981;
-                        color: white;
-                        padding: 12px 20px;
-                        border-radius: 8px;
-                        font-weight: 500;
-                        z-index: 10000;
-                        animation: slideInRight 0.3s ease-out;
-                    `;
-                    document.body.appendChild(toast);
-                    setTimeout(() => {
-                        toast.remove();
-                    }, 3000);
-                }).catch(function() {
-                    alert('Failed to copy URL to clipboard');
-                });
-            }
-
-            function openCertificateModal() {
-                document.getElementById('certificateModal').classList.add('show');
-                document.body.style.overflow = 'hidden';
-            }
-
-            function closeCertificateModal() {
-                document.getElementById('certificateModal').classList.remove('show');
-                document.body.style.overflow = 'auto';
-            }
-
-            function printCertificate() {
-                window.print();
-            }
-
-            function openVerificationModal() {
-                document.getElementById('verificationModal').classList.add('show');
-                document.body.style.overflow = 'hidden';
-            }
-
-            function closeVerificationModal() {
-                document.getElementById('verificationModal').classList.remove('show');
-                document.body.style.overflow = 'auto';
-            }
-
-            // Close modal when clicking outside of it
-            window.onclick = function(event) {
-                const certificateModal = document.getElementById('certificateModal');
-                const verificationModal = document.getElementById('verificationModal');
-                
-                if (event.target === certificateModal) {
-                    closeCertificateModal();
-                }
-                
-                if (event.target === verificationModal) {
-                    closeVerificationModal();
-                }
-            }
-
-            // Close modal with escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeCertificateModal();
-                    closeVerificationModal();
-                }
-            });
-        </script>
-    </div>
-</div>
-
-<!-- Certificate Modal -->
-@if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
-{
-    <div id="certificateModal" class="certificate-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Certificate View</h3>
-                <div class="modal-actions">
-                    <button class="modal-button print-button" onclick="printCertificate()">
-                        <i class="fas fa-print"></i>
-                        <span>Print Certificate</span>
-                    </button>
-                    <button class="modal-button close-button" onclick="closeCertificateModal()">
-                        <i class="fas fa-times"></i>
-                        <span>Close</span>
-                    </button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <!-- Certificate Content -->
-                <div class="certificate-container">
-                    <!-- Decorative ornaments -->
-                    <div class="certificate-ornament top-left">❦</div>
-                    <div class="certificate-ornament top-right">❦</div>
-                    <div class="certificate-ornament bottom-left">❦</div>
-                    <div class="certificate-ornament bottom-right">❦</div>
-                    
-                    <div class="certificate-header">
-                        <div class="verification-badge" style="display: inline-flex; margin-bottom: 2rem;">
-                            <span class="icon"><i class="fas fa-shield-alt"></i></span>
-                            <span>Verified Certificate</span>
-                        </div>
-                        <div class="certificate-title-arced">
-                            <h1 class="certificate-title" data-text="Certificate of Achievement">Certificate of Achievement</h1>
-                        </div>
+                <div class="vr-comments">
+                    <div class="vr-comments-title"><i class="fas fa-comments"></i> Comments</div>
+                    <div class="vr-comments-intro">
+                        <p>Reply to this badge from your Fediverse account to leave a comment.</p>
+                        <button class="vr-copy-btn" onclick="copyBadgeUrl()">
+                            <i class="fas fa-copy"></i> Copy Badge URL
+                        </button>
                     </div>
-
-                    <div class="certificate-content">
-                        <div class="certificate-recipient">
-                            <p class="certificate-recipient">Presented to:</p>
-                            <h2 class="certificate-recipient-name">@badgeRecord.IssuedToName</h2>
+                    @if (comments == null || !comments.Any())
+                    {
+                        <div class="vr-comments-empty">
+                            <i class="far fa-comment-dots"></i>
+                            <p>No comments yet. Be the first to comment from the Fediverse!</p>
                         </div>
+                    }
+                    else
+                    {
+                        <script>
+                            var comments = @((MarkupString)@JsonSerializer.Serialize(comments));
                         
-                        <p class="certificate-achievement">for successfully completing the requirements and earning the</p>
-                        
-                        <h3 class="certificate-badge-title">@badgeRecord.Title</h3>
-                        
-                        <div class="certificate-description">
-                            @badgeRecord.Description
-                        </div>
-                        
-                     </div>
-
-                    <div class="certificate-footer">
-                        <div class="certificate-issuer">
-                            <div class="certificate-issuer-name">@actorName</div>
-                            <div class="certificate-issuer-title">Authorized Issuer</div>
-                        </div>
-                        
-                        <div class="certificate-seal">
-                            @if (!string.IsNullOrEmpty(badgeRecord.FullImageUrl))
-                            {
-                                <img src="@badgeRecord.FullImageUrl" alt="@badgeRecord.ImageAltText" class="certificate-seal-image">
+                            function getStatusUrl(originalUrl) {
+                                let url = new URL(originalUrl);
+                                let host = url.host;
+                                let id = url.pathname.split('/').pop();
+                                return "https://" + host + "/api/v1/statuses/" + id;
                             }
-                        </div>
-                        
-                        <div class="certificate-date">
-                            <div class="certificate-date-value">@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</div>
-                            <div class="certificate-date-label">Date Issued</div>
-                        </div>
-                    </div>
 
-                    <div class="certificate-verification">
-                        <div class="certificate-verification-title">Digital Verification</div>
-                        <div class="certificate-qr-section">
-                            <div class="certificate-fingerprint-section">
-                            <div class="certificate-verification-text">
-                                This certificate has been cryptographically verified and is securely recorded on the decentralized web.
+                            document.addEventListener('DOMContentLoaded', function() {
+                                var commentsWrapper = document.querySelector(".comments-wrapper");
+                                if (comments && comments.length > 0) {
+                                    Promise.all(
+                                        comments.map(replyId => 
+                                            fetch(getStatusUrl(replyId), {
+                                                headers: { 'Content-Type': 'application/activity+json', 'Accept': 'application/activity+json' }
+                                            })
+                                            .then(response => response.ok ? response.json() : null)
+                                            .catch(() => null)
+                                        )
+                                    ).then(responses => {
+                                        const validResponses = responses.filter(r => r);
+                                        validResponses.sort((a, b) => new Date(a.published) - new Date(b.published));
+                                        if (validResponses.length > 0) {
+                                            commentsWrapper.innerHTML = validResponses.map(status => `
+                                                <div class="comment-card">
+                                                    <div class="comment-header">
+                                                        <div class="comment-avatar"><img src="${status.account.avatar}" /></div>
+                                                        <div>
+                                                            <div class="comment-author">${status.account ? status.account.display_name || status.account.acct : 'Anonymous'}</div>
+                                                            <div class="comment-date">${status.created_at}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="comment-content">${status.content || ''}</div>
+                                                </div>
+                                            `).join("");
+                                        }
+                                    });
+                                }
+                            });
+                        </script>
+                        <div class="comments-wrapper">
+                            <div class="comment-card">
+                                <div class="comment-header">
+                                    <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                                    <div><div class="comment-author"></div><div class="comment-date"></div></div>
+                                </div>
+                                <div class="comment-content"></div>
                             </div>
-                           
-                                <div class="certificate-fingerprint">
-                                    @badgeRecord.FingerPrint.ToUpper()
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+    </div>
+
+    @* ── JS (unchanged logic) ──────────────────────── *@
+    <script>
+        function copyBadgeUrl() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                const toast = document.createElement('div');
+                toast.textContent = 'Badge URL copied to clipboard!';
+                toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;z-index:10000;font-family:Inter,sans-serif;font-size:.85rem;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }).catch(function() { alert('Failed to copy URL to clipboard'); });
+        }
+        function openCertificateModal()    { document.getElementById('certificateModal').classList.add('show');    document.body.style.overflow='hidden'; }
+        function closeCertificateModal()   { document.getElementById('certificateModal').classList.remove('show'); document.body.style.overflow='auto'; }
+        function printCertificate()        { window.print(); }
+        function openVerificationModal()   { document.getElementById('verificationModal').classList.add('show');   document.body.style.overflow='hidden'; }
+        function closeVerificationModal()  { document.getElementById('verificationModal').classList.remove('show'); document.body.style.overflow='auto'; }
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('certificateModal'))  closeCertificateModal();
+            if (event.target === document.getElementById('verificationModal')) closeVerificationModal();
+        };
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') { closeCertificateModal(); closeVerificationModal(); }
+        });
+    </script>
+
+    @* ── Certificate modal ────────────────────────── *@
+    @if (badge?.IsCertificate == true && !badgeRecord.IsExternal)
+    {
+        <div id="certificateModal" class="certificate-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title"><i class="fas fa-award"></i> Certificate View</h3>
+                    <div class="modal-actions">
+                        <button class="modal-button print-button" onclick="printCertificate()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button class="modal-button close-button" onclick="closeCertificateModal()">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="certificate-container">
+                        <div class="certificate-ornament top-left">❦</div>
+                        <div class="certificate-ornament top-right">❦</div>
+                        <div class="certificate-ornament bottom-left">❦</div>
+                        <div class="certificate-ornament bottom-right">❦</div>
+                        <div class="certificate-header">
+                            <div class="verification-badge"><i class="fas fa-shield-alt"></i> Verified Certificate</div>
+                            <div class="certificate-title">Certificate of Achievement</div>
+                            <div class="certificate-subtitle">Digitally Verified · Fediverse Anchored</div>
+                        </div>
+                        <div class="certificate-content">
+                            <div class="certificate-recipient">Presented to:</div>
+                            <div class="certificate-recipient-name">@badgeRecord.IssuedToName</div>
+                            <div class="certificate-achievement">for successfully completing the requirements and earning the</div>
+                            <div class="certificate-badge-title">@badgeRecord.Title</div>
+                            <div class="certificate-description">@badgeRecord.Description</div>
+                        </div>
+                        <div class="certificate-footer">
+                            <div class="certificate-issuer">
+                                <div class="certificate-issuer-name">@actorName</div>
+                                <div class="certificate-issuer-title">Authorized Issuer</div>
+                            </div>
+                            <div class="certificate-seal">
+                                @if (!string.IsNullOrEmpty(badgeRecord.FullImageUrl))
+                                {
+                                    <img src="@badgeRecord.FullImageUrl" alt="@badgeRecord.ImageAltText" class="certificate-seal-image" />
+                                }
+                            </div>
+                            <div class="certificate-date">
+                                <div class="certificate-date-value">@badgeRecord.IssuedOn.ToString("MMMM d, yyyy")</div>
+                                <div class="certificate-date-label">Date Issued</div>
+                            </div>
+                        </div>
+                        <div class="certificate-verification">
+                            <div class="certificate-verification-title">Digital Verification</div>
+                            <div class="certificate-qr-section">
+                                <div class="certificate-fingerprint-section">
+                                    <div class="certificate-verification-text">Cryptographically verified and securely recorded on the decentralized web.</div>
+                                    <div class="certificate-fingerprint">@badgeRecord.FingerPrint.ToUpper()</div>
+                                </div>
+                                <div class="certificate-qr-code">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=@Uri.EscapeDataString(NavManager.Uri)"
+                                         alt="QR Code" class="certificate-qr-image" />
+                                    <div class="certificate-qr-label">Scan to verify</div>
                                 </div>
                             </div>
-                            <div class="certificate-qr-code">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=@Uri.EscapeDataString(NavManager.Uri)" 
-                                     alt="QR Code to verify certificate" 
-                                     class="certificate-qr-image">
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-}
+    }
 
-<!-- Verification Modal -->
-<div id="verificationModal" class="verification-modal">
-    <div class="verification-modal-content">
-        <div class="verification-modal-header">
-            <h2 class="verification-modal-title">
-                <i class="fas fa-shield"></i>
-                Badge Trust Factors
-            </h2>
-            <button class="verification-close" onclick="closeVerificationModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="verification-modal-body">
-            <p style="text-align: center; margin-bottom: 2rem; color: #6b7280; font-size: 1rem;">
-                Here are the verifiable trust factors that prove this badge's authenticity and integrity:
-            </p>
-
-            <!-- Cryptographic Signature -->
-            <div class="trust-factor">
-                <div class="trust-factor-check">
-                    <i class="fas fa-signature"></i>
-                </div>
-                <div class="trust-factor-content">
-                    <h4 class="trust-factor-title">Cryptographic Signature</h4>
-                    <p class="trust-factor-description">
-                        Unique cryptographic fingerprint prevents counterfeiting.<br>
-                        <small style="color: #9ca3af; font-style: italic;">Like a unique DNA that can't be faked - so you know this badge is 100% real and hasn't been tampered with.</small>
-                    </p>
-                    <div class="trust-factor-value">@badgeRecord.FingerPrint.ToUpper()</div>
-                </div>
-                <div class="trust-factor-help tooltip">
-                    <i class="fas fa-question trust-factor-icon"></i>
-                    <span class="tooltiptext">
-                        This SHA-256 hash is generated from the badge's content and metadata, creating an unforgeable digital signature. Any alteration to the badge would result in a completely different fingerprint, making it virtually impossible to counterfeit while ensuring complete data integrity and authenticity verification.
-                    </span>
-                </div>
+    @* ── Verification trust factors modal ─────────── *@
+    <div id="verificationModal" class="verification-modal">
+        <div class="verification-modal-content">
+            <div class="verification-modal-header">
+                <h2 class="verification-modal-title"><i class="fas fa-shield"></i> Badge Trust Factors</h2>
+                <button class="verification-close" onclick="closeVerificationModal()"><i class="fas fa-times"></i></button>
             </div>
+            <div class="verification-modal-body">
+                <p>Here are the verifiable trust factors that prove this badge's authenticity and integrity:</p>
 
-            <!-- Issuer Domain Authority -->
-            <div class="trust-factor">
-                <div class="trust-factor-check">
-                    <i class="fas fa-building"></i>
-                </div>
-                <div class="trust-factor-content">
-                    <h4 class="trust-factor-title">Verified Issuer Domain</h4>
-                    <p class="trust-factor-description">
-                        Issuer controls verified domain with institutional accountability.<br>
-                        <small style="color: #9ca3af; font-style: italic;">Like checking that a diploma really came from the school it claims - so you know it's not from a fake organization.</small>
-                    </p>
-                    <div class="trust-factor-value">@actorUri.Host</div>
-                </div>
-                <div class="trust-factor-help tooltip">
-                    <i class="fas fa-question"></i>
-                    <span class="tooltiptext">
-                        Domain verification ensures that only the legitimate organization can issue badges from this domain. The issuer has been registered and issuing badges since their domain registration, providing institutional accountability and preventing impersonation attacks. This establishes organizational trust and credibility.
-                    </span>
-                </div>
-            </div>
-
-            @if (!badgeRecord.IsExternal)
-            {
-                <!-- ActivityPub Federation -->
-                <div class="trust-factor">
-                    <div class="trust-factor-check">
-                        <i class="fas fa-network-wired"></i>
+                @if (!badgeRecord.IsExternal)
+                {
+                    <div class="vr-modal-actions">
+                        <a href="@GetBadgeImageWithMetadataUrl()" download="verified-badge-@(NoteIdParam).png" class="vr-btn download">
+                            <i class="fas fa-download"></i> Download Verifiable Image
+                        </a>
+                        <a href="/badge-image/@(NoteIdParam)/metadata" target="_blank" class="vr-btn secondary">
+                            <i class="fas fa-code"></i> View Embedded JSON
+                        </a>
                     </div>
-                    <div class="trust-factor-content">
-                        <h4 class="trust-factor-title">Decentralized Network Verification</h4>
-                        <p class="trust-factor-description">
-                            Published on decentralized Fediverse for transparent verification.<br>
-                            <small style="color: #9ca3af; font-style: italic;">Your badge exists on many computers, not just one - so it can't disappear if one company goes out of business.</small>
-                        </p>
-                        <div class="trust-factor-value">ActivityPub Protocol</div>
+                }
+                else
+                {
+                    <div class="vr-modal-actions">
+                        <a href="@badgeRecord.NoteId" target="_blank" class="vr-btn secondary">
+                            <i class="fas fa-external-link-alt"></i> View Original Badge
+                        </a>
                     </div>
-                    <div class="trust-factor-help tooltip">
-                        <i class="fas fa-question"></i>
-                        <span class="tooltiptext">
-                            ActivityPub is a decentralized social networking protocol that ensures your badge exists on multiple independent servers across the Fediverse, providing transparent and public verification. This prevents single points of failure, censorship, and ensures the badge remains accessible and verifiable even if one server goes offline.
-                        </span>
-                    </div>
-                </div>
-
-                <!-- OpenBadges Standard -->
-                <div class="trust-factor">
-                    <div class="trust-factor-check">
-                        <i class="fas fa-certificate"></i>
-                    </div>
-                    <div class="trust-factor-content">
-                        <h4 class="trust-factor-title">Open Badge Standard Compliance</h4>
-                        <p class="trust-factor-description">
-                            Follows global standard for interoperability and verification.<br>
-                            <small style="color: #9ca3af; font-style: italic;">Like having a universally accepted driver's license that works everywhere - so other organizations will recognize and trust your badge.</small>
-                        </p>
-                        <div class="trust-factor-value">Open Badge v2.0 Specification</div>
-                    </div>
-                    <div class="trust-factor-help tooltip">
-                        <i class="fas fa-question"></i>
-                        <span class="tooltiptext">
-                            Open Badges is a globally recognized industry standard maintained by 1EdTech that ensures badges can be verified by any compliant system worldwide. This provides universal recognition, portability across platforms, and independent verification by third-party tools, making your badge internationally trusted and transferable.
-                        </span>
-                    </div>
-                </div>
-            }
-
-            <!-- Timestamp Verification -->
-            <div class="trust-factor">
-                <div class="trust-factor-check">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="trust-factor-content">
-                    <h4 class="trust-factor-title">Tamper-Evident Timestamp</h4>
-                    <p class="trust-factor-description">
-                        Cryptographically protected issuance date prevents backdating.<br>
-                        <small style="color: #9ca3af; font-style: italic;">Like a permanent marker that can't be erased or changed - so no one can fake when you earned this achievement.</small>
-                    </p>
-                    <div class="trust-factor-value">@badgeRecord.IssuedOn.ToString("yyyy-MM-dd HH:mm:ss UTC")</div>
-                </div>
-                <div class="trust-factor-help tooltip">
-                    <i class="fas fa-question"></i>
-                    <span class="tooltiptext">
-                        The timestamp is cryptographically included in the badge signature, making it impossible to alter the issuance date or backdate the badge without completely invalidating the entire signature. This prevents fraudulent claims about when achievements were earned and ensures chronological integrity.
-                    </span>
-                </div>
-            </div>
-
-            <!-- Recipient Verification -->
-            <div class="trust-factor">
-                <div class="trust-factor-check">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="trust-factor-content">
-                    <h4 class="trust-factor-title">Recipient Identity Verification</h4>
-                    <p class="trust-factor-description">
-                        Identity cryptographically linked to prevent theft.<br>
-                        <small style="color: #9ca3af; font-style: italic;">Like your name being permanently written inside - so no one else can steal your badge and pretend they earned it.</small>
-                    </p>
-                    <div class="trust-factor-value">@badgeRecord.IssuedToName</div>
-                </div>
-                <div class="trust-factor-help tooltip">
-                    <i class="fas fa-question"></i>
-                    <span class="tooltiptext">
-                        The recipient's identity is verified through their authenticated account credentials and cryptographically linked to the badge signature, ensuring only the rightful owner can legitimately present this badge. This prevents badge theft, impersonation, and unauthorized use by other parties.
-                    </span>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
-            {
-                <!-- Badge Program Verification -->
-                <div class="trust-factor">
-                    <div class="trust-factor-check">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div class="trust-factor-content">
-                        <h4 class="trust-factor-title">Verified Badge Program</h4>
-                        <p class="trust-factor-description">
-                            Established program with published criteria and standards.<br>
-                            <small style="color: #9ca3af; font-style: italic;">Like a recipe book that shows exactly what you did to earn this - there's a public webpage that anyone can check to see the requirements weren't made up or hidden.</small>
-                        </p>
-                        <div class="trust-factor-value">
-                            <a href="@badgeRecord.Badge.InfoUri" target="_blank" style="color: #10b981; text-decoration: none;">
-                                View Program Information
-                                <i class="fas fa-external-link-alt" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="trust-factor-help tooltip">
-                        <i class="fas fa-question"></i>
-                        <span class="tooltiptext">
-                            This badge is part of an established program with publicly available information about the specific criteria, requirements, learning outcomes, and standards that must be met to earn the badge. This transparency establishes credibility and allows others to understand the achievement's value and rigor.
-                        </span>
-                    </div>
-                </div>
-            }
-
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; text-align: center;">
-                <p style="color: #6b7280; font-size: 0.9rem; margin: 0;">
-                    <i class="fas fa-shield-alt" style="color: #10b981; margin-right: 0.5rem;"></i>
-                    All trust factors have been verified.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-@if (badgeRecord.IsExternal)
-{
-    <div class="notification is-warning">
-        This badge was issued externally. You can view it on the original platform by clicking the button below.
-        <a href="@badgeRecord.NoteId" class="button is-light">View Badge</a>
-    </div>
-} else {
-    <div class="badge-container comments-section">
-        <h3 class="title is-4">
-            <span class="icon" style="color: #6b7280;"><i class="fas fa-comments"></i></span>&nbsp;
-            Comments
-        </h3>
-        
-        <div class="comments-intro">
-            <p>Reply to this badge from your Fediverse account to leave a comment.</p>
-            <a href="javascript:void(0)" 
-               class="button is-small is-outlined is-info"
-               onclick="copyBadgeUrl()">
-                <span class="icon"><i class="fas fa-copy"></i></span>
-                <span>Copy Badge URL</span>
-            </a>
-        </div>
-        @if (comments == null || !comments.Any())
-        {
-            <div class="comments-empty">
-                <i class="far fa-comment-dots"></i>
-                <p>No comments yet. Be the first to comment!</p>
-            </div>
-        }
-        else
-        {
-            <script>
-                var comments = @((MarkupString)@JsonSerializer.Serialize(comments));
-            
-                function getStatusUrl(originalUrl) {
-                    // Parse the original URL
-                    let url = new URL(originalUrl);
-                    
-                    // Extract the host and id
-                    let host = url.host;
-                    let id = url.pathname.split('/').pop(); // Extract the id from the last part of the pathname
-                    
-                    // Construct the modified URL
-                    let modifiedUrl = "https://" + host + "/api/v1/statuses/" + id;
-                    
-                    return modifiedUrl;
                 }
 
-                document.addEventListener('DOMContentLoaded', function() {
-                    var commentsWrapper = document.querySelector(".comments-wrapper");
+                <div class="vr-modal-divider">Trust Factors</div>
 
-                    if (comments && comments.length > 0) {
-                        Promise.all(
-                            comments.map(replyId => 
-                                fetch(getStatusUrl(replyId), {
-                                    headers: { 
-                                        'Content-Type': 'application/activity+json', 
-                                        'Accept': 'application/activity+json' 
-                                    }
-                                })
-                                .then(response => response.ok ? response.json() : null)
-                                .catch(() => null)
-                            )
-                        ).then(responses => {
-                            const validResponses = responses.filter(r => r);
-                            validResponses.sort((a, b) => new Date(a.published) - new Date(b.published));
-                            
-                            if (validResponses.length > 0) {
-                                commentsWrapper.innerHTML = validResponses.map(status => {
-                                    return `
-                                        <div class="comment-card">
-                                            <div class="comment-header">
-                                                <div class="comment-avatar">
-                                                    <span class="icon"><img src="${status.account.avatar}" /></span>
-                                                </div>
-                                                <div>
-                                                    <div class="comment-author">${status.account ? status.account.display_name || status.account.acct : 'Anonymous'}</div>
-                                                    <div class="comment-date">${status.created_at}</div>
-                                                </div>
-                                            </div>
-                                            <div class="comment-content">
-                                                ${status.content || ''}
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join("");
-                            }
-                        });
-                    }
-                });
-            
-            </script>
-            <div class="comments-wrapper">
-                <div class="comment-card">
-                    <div class="comment-header">
-                        <div class="comment-avatar">
-                            <span class="icon"><i class="fas fa-user"></i></span>
-                        </div>
-                        <div>
-                            <div class="comment-author"></div>
-                            <div class="comment-date"></div>
-                        </div>
+                <div class="trust-factor">
+                    <div class="trust-factor-check"><i class="fas fa-signature"></i></div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Cryptographic Signature</h4>
+                        <p class="trust-factor-description">
+                            Unique fingerprint prevents counterfeiting.
+                            <small>Like a unique DNA that can't be faked — proves the badge is 100% real and untampered.</small>
+                        </p>
+                        <div class="trust-factor-value">@badgeRecord.FingerPrint.ToUpper()</div>
                     </div>
-                    <div class="comment-content">
-                    
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">This SHA-256 hash is generated from the badge's content and metadata, creating an unforgeable digital signature. Any alteration would result in a completely different fingerprint.</span>
                     </div>
                 </div>
+
+                <div class="trust-factor">
+                    <div class="trust-factor-check"><i class="fas fa-building"></i></div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Verified Issuer Domain</h4>
+                        <p class="trust-factor-description">
+                            Issuer controls a verified domain with institutional accountability.
+                            <small>Like checking a diploma really came from the school it claims.</small>
+                        </p>
+                        <div class="trust-factor-value">@actorUri.Host</div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">Domain verification ensures that only the legitimate organization can issue badges from this domain, preventing impersonation attacks.</span>
+                    </div>
+                </div>
+
+                @if (!badgeRecord.IsExternal)
+                {
+                    <div class="trust-factor">
+                        <div class="trust-factor-check"><i class="fas fa-network-wired"></i></div>
+                        <div class="trust-factor-content">
+                            <h4 class="trust-factor-title">Decentralized Network Verification</h4>
+                            <p class="trust-factor-description">
+                                Published on the Fediverse for transparent verification.
+                                <small>Your badge exists on many computers, not just one — it can't disappear if one company shuts down.</small>
+                            </p>
+                            <div class="trust-factor-value">ActivityPub Protocol</div>
+                        </div>
+                        <div class="trust-factor-help tooltip">
+                            <i class="fas fa-question"></i>
+                            <span class="tooltiptext">ActivityPub is a decentralized protocol ensuring your badge exists on multiple independent servers across the Fediverse, preventing single points of failure.</span>
+                        </div>
+                    </div>
+
+                    <div class="trust-factor">
+                        <div class="trust-factor-check"><i class="fas fa-certificate"></i></div>
+                        <div class="trust-factor-content">
+                            <h4 class="trust-factor-title">Open Badge Standard Compliance</h4>
+                            <p class="trust-factor-description">
+                                Follows the global standard for interoperability.
+                                <small>Like a universally accepted driver's license — recognized and trusted by other organizations.</small>
+                            </p>
+                            <div class="trust-factor-value">Open Badge v2.0 Specification</div>
+                        </div>
+                        <div class="trust-factor-help tooltip">
+                            <i class="fas fa-question"></i>
+                            <span class="tooltiptext">Open Badges is a globally recognized standard maintained by 1EdTech, ensuring badges can be verified by any compliant system worldwide.</span>
+                        </div>
+                    </div>
+                }
+
+                <div class="trust-factor">
+                    <div class="trust-factor-check"><i class="fas fa-clock"></i></div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Tamper-Evident Timestamp</h4>
+                        <p class="trust-factor-description">
+                            Cryptographically protected issuance date prevents backdating.
+                            <small>Like a permanent marker — no one can fake when you earned this achievement.</small>
+                        </p>
+                        <div class="trust-factor-value">@badgeRecord.IssuedOn.ToString("yyyy-MM-dd HH:mm:ss UTC")</div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">The timestamp is cryptographically included in the badge signature, making it impossible to alter the issuance date without invalidating the entire signature.</span>
+                    </div>
+                </div>
+
+                <div class="trust-factor">
+                    <div class="trust-factor-check"><i class="fas fa-user-check"></i></div>
+                    <div class="trust-factor-content">
+                        <h4 class="trust-factor-title">Recipient Identity Verification</h4>
+                        <p class="trust-factor-description">
+                            Identity cryptographically linked to prevent theft.
+                            <small>Your name is permanently written inside — no one else can steal and claim this badge.</small>
+                        </p>
+                        <div class="trust-factor-value">@badgeRecord.IssuedToName</div>
+                    </div>
+                    <div class="trust-factor-help tooltip">
+                        <i class="fas fa-question"></i>
+                        <span class="tooltiptext">The recipient's identity is cryptographically linked to the badge signature, ensuring only the rightful owner can legitimately present this badge.</span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(badgeRecord.Badge?.InfoUri))
+                {
+                    <div class="trust-factor">
+                        <div class="trust-factor-check"><i class="fas fa-graduation-cap"></i></div>
+                        <div class="trust-factor-content">
+                            <h4 class="trust-factor-title">Verified Badge Program</h4>
+                            <p class="trust-factor-description">
+                                Established program with published criteria and standards.
+                                <small>A public page shows exactly what you did to earn this — no hidden requirements.</small>
+                            </p>
+                            <div class="trust-factor-value">
+                                <a href="@badgeRecord.Badge.InfoUri" target="_blank">
+                                    View Program Information <i class="fas fa-external-link-alt" style="font-size:.7rem;margin-left:.3rem;"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="trust-factor-help tooltip">
+                            <i class="fas fa-question"></i>
+                            <span class="tooltiptext">This badge has a publicly available page showing the specific criteria, requirements, and standards that must be met to earn it.</span>
+                        </div>
+                    </div>
+                }
+
+                <div class="vr-modal-footer">
+                    <i class="fas fa-shield-alt"></i> All trust factors verified.
+                </div>
             </div>
-            
-        }
+        </div>
     </div>
 }
-}
-
 @code {
     private List<string> comments = new List<string>();
     [Parameter] public string? NoteIdParam { get; set; }
