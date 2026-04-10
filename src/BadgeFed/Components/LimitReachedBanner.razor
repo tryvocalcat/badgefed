@@ -1,0 +1,82 @@
+<div class="limit-reached-banner mb-5">
+    <div class="limit-banner-content">
+        <div class="limit-banner-icon-wrap">
+            <span class="icon is-large">
+                <i class="fas fa-lock fa-2x" style="color:#f59e0b;"></i>
+            </span>
+        </div>
+        <div class="limit-banner-text">
+            <h3 class="limit-banner-title">Plan limit reached</h3>
+            <p class="limit-banner-desc">
+                Your current plan includes up to
+                <strong>@Max @ResourceName@(Max == 1 ? "" : "s")</strong>.
+                You have used all of them. Upgrade to unlock more.
+            </p>
+        </div>
+        @if (!string.IsNullOrEmpty(UpgradeUrl))
+        {
+            <div class="limit-banner-action">
+                <a href="@UpgradeUrl" class="button is-warning is-rounded">
+                    <span class="icon"><i class="fas fa-arrow-circle-up"></i></span>
+                    <span>Upgrade Plan</span>
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="limit-banner-action">
+                <p class="limit-banner-admin-hint">
+                    <span class="icon is-small"><i class="fas fa-user-shield"></i></span>
+                    Contact your administrator to upgrade your account.
+                </p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .limit-reached-banner {
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        padding: 1.5rem 2rem;
+    }
+    .limit-banner-content {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .limit-banner-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #92400e;
+        margin-bottom: 0.4rem;
+    }
+    .limit-banner-desc {
+        color: #78350f;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    .limit-banner-text {
+        flex: 1;
+    }
+    .limit-banner-admin-hint {
+        color: #92400e;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    @@media (max-width: 640px) {
+        .limit-banner-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string ResourceName { get; set; } = "item";
+    [Parameter] public int Max { get; set; } = 1;
+    [Parameter] public string? UpgradeUrl { get; set; }
+}

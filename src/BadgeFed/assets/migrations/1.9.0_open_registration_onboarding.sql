@@ -1,0 +1,1 @@
+ALTER TABLE UserGroups ADD COLUMN onboardingCompleted INTEGER NOT NULL DEFAULT 1;

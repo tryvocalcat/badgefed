@@ -1,0 +1,1 @@
+ALTER TABLE InstanceDescription ADD COLUMN OpenRegistrationEnabled BOOLEAN NULL;
