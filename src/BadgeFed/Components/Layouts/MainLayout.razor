@@ -5,20 +5,21 @@
 @using BadgeFed.Core
 @using BadgeFed.Components
 @using BadgeFed.Services
+
 <div class="app-shell public-shell">
     <nav class="navbar public-navbar is-spaced">
         <div class="container">
             <div class="navbar-brand">
                 <Logo />
 
-                <a role="button" class="navbar-burger @(isMenuActive ? "is-active" : "")" aria-label="menu" aria-expanded="@isMenuActive" data-target="navMenu" @onclick="ToggleMenu">
+                <button type="button" class="navbar-burger" aria-label="menu" aria-expanded="false" aria-controls="mainNavMenu" data-menu-toggle>
                     <span aria-hidden="true"></span>
                     <span aria-hidden="true"></span>
                     <span aria-hidden="true"></span>
-                </a>
+                </button>
             </div>
 
-            <div id="navMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">
+            <div id="mainNavMenu" class="navbar-menu" data-menu>
                 <div class="navbar-start">
                     <a class="navbar-item" href="/">
                         <span class="icon"><i class="fas fa-home"></i></span>
@@ -50,11 +51,7 @@
     </nav>
 
     <main class="app-main">
-        <section class="section page-section">
-            <div class="container page-container">
-                @Body
-            </div>
-        </section>
+        @Body
     </main>
 
     <footer class="footer app-footer public-footer">
@@ -79,12 +76,3 @@
         </div>
     </footer>
 </div>
-
-@code {
-    private bool isMenuActive = false;
-
-    private void ToggleMenu()
-    {
-        isMenuActive = !isMenuActive;
-    }
-}

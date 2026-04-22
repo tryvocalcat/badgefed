@@ -9,11 +9,6 @@
 @inject IWebHostEnvironment Environment
 @inject ICustomAssetPathService CustomAssetPathService
 
-@if (!string.IsNullOrEmpty(GetThemeCssPath()))
-{
-    <link rel="stylesheet" href="@GetThemeCssPath()" />
-}
-
 <style>
 /* ═══════════════════════════════════════════════════
    ViewActor — BadgeFed Design System (token-driven)
@@ -213,6 +208,11 @@
     .bf-actor-avatar-ph { font-size:1.8rem; }
 }
 </style>
+
+@if (!string.IsNullOrEmpty(GetThemeCssPath()))
+{
+    <link rel="stylesheet" href="@GetThemeCssPath()" />
+}
 
 <div class="bf">
     @if (isLoading)

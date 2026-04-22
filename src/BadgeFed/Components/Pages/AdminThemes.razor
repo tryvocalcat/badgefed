@@ -72,31 +72,21 @@
             </div>
             <div class="column is-6">
                 <div class="card">
-                    <div class="card-header" style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #14b8a6 100%); color: white;">
-                        <p class="card-header-title has-text-white">Ocean - Blue & Teal</p>
+                    <div class="card-header" style="background: linear-gradient(135deg, #0f172a 0%, #111827 55%, #1f2937 100%); color: white;">
+                        <p class="card-header-title has-text-white">Dark - Midnight Contrast</p>
                     </div>
                     <div class="card-content">
-                        <p>Ocean-inspired theme with blue and teal gradients</p>
+                        <p>Deep charcoal surfaces with cool blue highlights for a dark presentation</p>
                     </div>
                 </div>
             </div>
             <div class="column is-6">
                 <div class="card">
-                    <div class="card-header" style="background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%); color: white;">
-                        <p class="card-header-title has-text-white">Forest - Green & Earth</p>
+                    <div class="card-header" style="background: linear-gradient(135deg, #1f2937 0%, #334155 65%, #c2410c 100%); color: white;">
+                        <p class="card-header-title has-text-white">Professional - Slate & Gold</p>
                     </div>
                     <div class="card-content">
-                        <p>Nature-inspired theme with green and earth tones</p>
-                    </div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="card">
-                    <div class="card-header" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 25%, #dc2626 50%, #be123c 75%, #9333ea 100%); color: white;">
-                        <p class="card-header-title has-text-white">Sunset - Orange & Purple</p>
-                    </div>
-                    <div class="card-content">
-                        <p>Vibrant sunset theme with warm orange and purple gradients</p>
+                        <p>Neutral slate branding with restrained amber accents for a polished institutional look</p>
                     </div>
                 </div>
             </div>
@@ -127,27 +117,14 @@
         </h2>
         
         <div class="content">
-            <p>Upload a custom CSS file to create a new theme. The file must contain CSS rules for styling issuer profiles.</p>
-            <p><strong>Required CSS classes:</strong></p>
+            <p>Upload a custom CSS file to create a new theme. Theme files are loaded after the built-in page styles, so they can override the shared design tokens or targeted selectors.</p>
+            <p><strong>Recommended approach:</strong></p>
             <ul>
-                <li><code>.issuer-header</code> - Main header section</li>
-                <li><code>.issuer-avatar</code> - Profile avatar styling</li>
-                <li><code>.stat-card</code> - Statistics cards</li>
-                <li><code>.badge-card</code> - Badge display cards</li>
-                <li><code>.follower-card</code> - Follower cards</li>
-                <li><code>.social-link</code> - Social media links</li>
+                <li>Override shared tokens on <code>.bf</code> for issuer and badge-grant pages</li>
+                <li>Override shared tokens on <code>.vr-shell</code> for verification pages</li>
+                <li>Use the downloadable <code>custom-template.css</code> as the starting point for supported variables and optional selector overrides</li>
+                <li>The uploaded filename becomes the theme identifier automatically</li>
             </ul>
-        </div>
-
-        <div class="field">
-            <label class="label">Theme Name</label>
-            <div class="control">
-                <input @bind="themeName" class="input" type="text" placeholder="Enter theme name (e.g., corporate, dark, minimal)" />
-            </div>
-            @if (!string.IsNullOrEmpty(themeNameError))
-            {
-                <p class="help is-danger">@themeNameError</p>
-            }
         </div>
 
         <div class="field">
@@ -174,7 +151,7 @@
 
         <div class="field">
             <div class="control">
-                <button class="button is-success" @onclick="UploadTheme" disabled="@(selectedThemeFile == null || string.IsNullOrWhiteSpace(themeName))">
+                <button class="button is-success" @onclick="UploadTheme" disabled="@(selectedThemeFile == null)">
                     <span class="icon">
                         <i class="fas fa-check"></i>
                     </span>
@@ -267,7 +244,6 @@
     private string errorMessage = string.Empty;
 
     private IBrowserFile? selectedThemeFile;
-    private string themeName = string.Empty;
     private string? themeUploadMessage;
     private string? themeUploadError;
     private string? themeNameError;
@@ -293,7 +269,7 @@
         
         if (Directory.Exists(themesPath))
         {
-            var builtInThemes = new[] { "default", "ocean", "forest", "sunset" };
+            var builtInThemes = new[] { "default", "dark", "professional", "custom-template" };
             var cssFiles = Directory.GetFiles(themesPath, "*.css")
                 .Where(f => !builtInThemes.Contains(Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase));
             
@@ -317,6 +293,7 @@
         selectedThemeFile = e.File;
         themeUploadError = string.Empty;
         themeUploadMessage = string.Empty;
+        themeNameError = string.Empty;
         
         if (selectedThemeFile != null)
         {
@@ -335,23 +312,24 @@
 
     private async Task UploadTheme()
     {
-        if (selectedThemeFile == null || string.IsNullOrWhiteSpace(themeName))
+        if (selectedThemeFile == null)
             return;
 
         try
         {
             themeNameError = string.Empty;
             themeUploadError = string.Empty;
+
+            var derivedThemeName = Path.GetFileNameWithoutExtension(selectedThemeFile.Name)?.Trim();
             
-            // Validate theme name
-            if (!IsValidThemeName(themeName))
+            if (string.IsNullOrWhiteSpace(derivedThemeName) || !IsValidThemeName(derivedThemeName))
             {
-                themeNameError = "Theme name can only contain letters, numbers, hyphens, and underscores.";
+                themeNameError = "Filename must contain only letters, numbers, hyphens, and underscores.";
                 return;
             }
 
-            var sanitizedName = themeName.ToLowerInvariant().Trim();
-            var builtInThemes = new[] { "default", "ocean", "forest", "sunset" };
+            var sanitizedName = derivedThemeName.ToLowerInvariant();
+            var builtInThemes = new[] { "default", "dark", "professional", "custom-template" };
             
             if (builtInThemes.Contains(sanitizedName))
             {
@@ -369,11 +347,10 @@
             using var fileStream = new FileStream(filePath, FileMode.Create);
             await stream.CopyToAsync(fileStream);
 
-            themeUploadMessage = $"Theme '{themeName}' uploaded successfully!";
+            themeUploadMessage = $"Theme '{sanitizedName}' uploaded successfully!";
             
             // Reset form
             selectedThemeFile = null;
-            themeName = string.Empty;
             
             await LoadCustomThemes();
             StateHasChanged();

@@ -7,11 +7,6 @@
 @inject IWebHostEnvironment Environment
 @inject ICustomAssetPathService CustomAssetPathService
 
-@if (!string.IsNullOrEmpty(GetThemeCssPath()))
-{
-    <link rel="stylesheet" href="@GetThemeCssPath()" />
-}
-
 <style>
 /* ═══════════════════════════════════════════════════
    View Badge Grants — BadgeFed Design System
@@ -208,6 +203,11 @@
 /* ── Section padding ──────────────────────────────── */
 .bf-s { padding:2rem 0 3rem; }
 </style>
+
+@if (!string.IsNullOrEmpty(GetThemeCssPath()))
+{
+    <link rel="stylesheet" href="@GetThemeCssPath()" />
+}
 
 <div class="bf">
     @if (isLoading)

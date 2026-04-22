@@ -26,6 +26,10 @@
 }
 
 .admin-navbar .navbar-logo {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-height: none;
   background-color: white !important;
 }
 
@@ -474,7 +478,13 @@
   align-items: center;
 }
 
+.admin-shell .navbar-brand {
+  flex-wrap: nowrap;
+}
+
 .admin-shell .navbar-logo img {
+  width: auto;
+  max-width: min(100%, 12rem);
   max-height: 2.9rem;
 }
 
@@ -627,7 +637,12 @@
 }
 
 @media (max-width: 1023px) {
+  .admin-shell .navbar-brand {
+    flex: 0 0 auto;
+  }
+
   .admin-shell .navbar-menu {
+    width: 100%;
     margin-top: 0.8rem;
     padding: 0.8rem;
     border: 1px solid rgba(94, 77, 173, 0.14);

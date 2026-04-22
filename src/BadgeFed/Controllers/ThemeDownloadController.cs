@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
+using BadgeFed.Services;
+
 
 namespace BadgeFed.Controllers
 {
@@ -9,12 +11,12 @@ namespace BadgeFed.Controllers
     [Authorize(Roles = "admin")]
     public class ThemeDownloadController : ControllerBase
     {
-        private readonly IWebHostEnvironment _environment;
+        private readonly ICustomAssetPathService _customAssetPathService;
         private readonly ILogger<ThemeDownloadController> _logger;
 
-        public ThemeDownloadController(IWebHostEnvironment environment, ILogger<ThemeDownloadController> logger)
+        public ThemeDownloadController(ICustomAssetPathService customAssetPathService, ILogger<ThemeDownloadController> logger)
         {
-            _environment = environment;
+            _customAssetPathService = customAssetPathService;
             _logger = logger;
         }
 
@@ -34,7 +36,7 @@ namespace BadgeFed.Controllers
                 }
 
                 var fileName = $"{themeName}.css";
-                var themesPath = Path.Combine(_environment.WebRootPath, "css", "themes");
+                var themesPath = _customAssetPathService.GetThemesPath();
                 var filePath = Path.Combine(themesPath, fileName);
 
                 if (!System.IO.File.Exists(filePath))

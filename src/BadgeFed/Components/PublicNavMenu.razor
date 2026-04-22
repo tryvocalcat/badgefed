@@ -1,0 +1,58 @@
+@using BadgeFed.Core
+@using BadgeFed.Services
+@inject NavigationManager NavManager
+@inject LocalScopedDb LocalDbService
+
+@rendermode InteractiveServer
+
+<nav class="navbar public-navbar is-spaced">
+    <div class="container">
+        <div class="navbar-brand">
+            <Logo />
+
+            <a role="button" class="navbar-burger @(isMenuActive ? "is-active" : "")" aria-label="menu" aria-expanded="@isMenuActive" data-target="navMenu" @onclick="ToggleMenu">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+
+        <div id="navMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">
+            <div class="navbar-start">
+                <a class="navbar-item" href="/">
+                    <span class="icon"><i class="fas fa-home"></i></span>
+                    <span>Home</span>
+                </a>
+                <a class="navbar-item" href="/explore">
+                    <span class="icon"><i class="fas fa-award"></i></span>
+                    <span>Explore Badges</span>
+                </a>
+                <a class="navbar-item" href="/search">
+                    <span class="icon"><i class="fas fa-search"></i></span>
+                    <span>Search Grants</span>
+                </a>
+                <a class="navbar-item" href="/pages/how-to-accept-a-badge.html">
+                    <span class="icon"><i class="fas fa-hand-holding-heart"></i></span>
+                    <span>How to Accept</span>
+                </a>
+                @{ var instanceDescription = LocalDbService.GetInstanceDescription(); }
+                @if (!string.IsNullOrEmpty(instanceDescription.ProfileCTAUrl))
+                {
+                    <a class="navbar-item" href="@CtaHelper.BuildCtaUrl(instanceDescription.ProfileCTAUrl, NavManager.Uri)" target="_blank" rel="noopener">
+                        <span class="icon"><i class="fas fa-wallet"></i></span>
+                        <span>Badge Wallet</span>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private bool isMenuActive;
+
+    private void ToggleMenu()
+    {
+        isMenuActive = !isMenuActive;
+    }
+}

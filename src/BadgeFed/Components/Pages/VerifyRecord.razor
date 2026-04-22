@@ -2,6 +2,7 @@
 @using ActivityPubDotNet.Core
 @using System.Text.Json
 @using Markdig
+@using BadgeFed.Services
 
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavManager
@@ -9,6 +10,7 @@
 @inject BadgeImageService BadgeImageService
 @layout BadgeFed.Components.Layouts.MinimalLayout
 @inject IJSRuntime JSRuntime
+@inject ICustomAssetPathService CustomAssetPathService
 
 <HeadContent>
   <meta name="author" content="@badgeRecord!.IssuedBy" />
@@ -365,6 +367,11 @@
     .certificate-container { margin:0; box-shadow:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
 }
 </style>
+
+@if (!string.IsNullOrEmpty(GetThemeCssPath()))
+{
+    <link rel="stylesheet" href="@GetThemeCssPath()" />
+}
 
 @if (badgeRecord == null)
 {
@@ -898,6 +905,19 @@ else
     private async Task CopyToClipboard()
     {
         await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", NavManager.Uri);
+    }
+
+    private string GetThemeCssPath()
+    {
+        var themeName = badgeRecord?.Actor?.Theme;
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            return string.Empty;
+        }
+
+        var themePath = CustomAssetPathService.GetThemeUrl(themeName);
+        var physicalPath = CustomAssetPathService.GetCustomAssetPath("css", "themes", $"{themeName}.css");
+        return File.Exists(physicalPath) ? themePath : string.Empty;
     }
 
     protected override async Task OnInitializedAsync()

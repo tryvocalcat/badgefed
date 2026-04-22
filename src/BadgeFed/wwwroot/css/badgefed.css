@@ -649,6 +649,7 @@ a:hover {
 .navbar-logo img {
   max-width: min(100%, 16rem);
   max-height: 3.2rem;
+  width: auto;
   object-fit: contain;
 }
 
@@ -999,8 +1000,23 @@ a:hover {
 }
 
 @media (max-width: 1023px) {
+  .public-shell .navbar>.container,
+  .minimal-shell .navbar>.container,
+  .admin-shell .navbar>.container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .public-shell .navbar-brand,
+  .minimal-shell .navbar-brand,
+  .admin-shell .navbar-brand {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .public-shell .navbar-menu,
-  .minimal-shell .navbar-menu {
+  .minimal-shell .navbar-menu,
+  .admin-shell .navbar-menu {
     margin-top: 0.85rem;
     padding: 0.75rem;
     border: 1px solid rgba(93, 77, 162, 0.12);

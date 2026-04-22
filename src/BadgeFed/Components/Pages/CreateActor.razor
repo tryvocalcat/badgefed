@@ -410,9 +410,8 @@
                         <div class="select is-fullwidth">
                             <InputSelect id="theme" @bind-Value="Model!.Theme">
                                 <option value="default">Default - Modern Gradient</option>
-                                <option value="ocean">Ocean - Blue & Teal</option>
-                                <option value="forest">Forest - Green & Earth</option>
-                                <option value="sunset">Sunset - Orange & Purple</option>
+                                <option value="dark">Dark - Midnight Contrast</option>
+                                <option value="professional">Professional - Slate & Gold</option>
                                 @foreach (var customTheme in GetCustomThemes())
                                 {
                                     <option value="@customTheme.Key">@customTheme.Value</option>
@@ -1084,9 +1083,9 @@
         {
             var cssFiles = Directory.GetFiles(themesPath, "*.css")
                 .Where(f => !Path.GetFileNameWithoutExtension(f).Equals("default", StringComparison.OrdinalIgnoreCase) &&
-                           !Path.GetFileNameWithoutExtension(f).Equals("ocean", StringComparison.OrdinalIgnoreCase) &&
-                           !Path.GetFileNameWithoutExtension(f).Equals("forest", StringComparison.OrdinalIgnoreCase) &&
-                           !Path.GetFileNameWithoutExtension(f).Equals("sunset", StringComparison.OrdinalIgnoreCase));
+                           !Path.GetFileNameWithoutExtension(f).Equals("dark", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("professional", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetFileNameWithoutExtension(f).Equals("custom-template", StringComparison.OrdinalIgnoreCase));
             
             foreach (var file in cssFiles)
             {
