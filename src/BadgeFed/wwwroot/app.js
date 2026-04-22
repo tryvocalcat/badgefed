@@ -50,4 +50,79 @@ window.setCookie = function(name, value, days) {
         expires = "; expires=" + date.toUTCString();
     }
     document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
+};
+
+;(function () {
+    function findMenu(toggle) {
+        const menuId = toggle.getAttribute('aria-controls');
+        const navbar = toggle.closest('.navbar');
+
+        if (menuId) {
+            return (navbar && navbar.querySelector('#' + menuId)) || document.getElementById(menuId);
+        }
+
+        return navbar ? navbar.querySelector('[data-menu]') : null;
+    }
+
+    function setMenuState(toggle, menu, isOpen) {
+        toggle.classList.toggle('is-active', isOpen);
+        toggle.setAttribute('aria-expanded', String(isOpen));
+
+        if (menu) {
+            menu.classList.toggle('is-active', isOpen);
+        }
+    }
+
+    function closeNavbar(navbar) {
+        if (!navbar) {
+            return;
+        }
+
+        const toggle = navbar.querySelector('[data-menu-toggle]');
+        const menu = navbar.querySelector('[data-menu]');
+
+        if (toggle && menu) {
+            setMenuState(toggle, menu, false);
+        }
+    }
+
+    function closeAllNavbars() {
+        document.querySelectorAll('.navbar').forEach(closeNavbar);
+    }
+
+    document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-menu-toggle]');
+        if (toggle) {
+            const menu = findMenu(toggle);
+            const isOpen = !toggle.classList.contains('is-active');
+
+            closeAllNavbars();
+            setMenuState(toggle, menu, isOpen);
+            return;
+        }
+
+        if (window.innerWidth <= 1023) {
+            const navItem = event.target.closest('.navbar-menu.is-active a.navbar-item');
+            if (navItem) {
+                closeNavbar(navItem.closest('.navbar'));
+                return;
+            }
+        }
+
+        if (!event.target.closest('.navbar')) {
+            closeAllNavbars();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeAllNavbars();
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 1024) {
+            closeAllNavbars();
+        }
+    });
+})();

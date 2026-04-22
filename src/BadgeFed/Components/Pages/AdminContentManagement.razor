@@ -121,6 +121,11 @@
             <!-- Instance Description (only shown when default is selected) -->
             @if (instanceDescription.LandingPageType == "default")
             {
+                <div class="notification is-info is-light">
+                    <p><strong>Markdown is supported</strong> in Description, Purpose, and Contact Information.</p>
+                    <p>You can use formatting like <code>**bold**</code>, <code>*italic*</code>, lists, and links such as <code>[Email us](mailto:team@example.org)</code>. Raw HTML is still stripped when saved.</p>
+                </div>
+
                 <div class="field">
                     <label class="label">Enable Instance Description Section</label>
                     <div class="control">
@@ -144,7 +149,7 @@
                     <div class="control">
                         <textarea @bind="instanceDescription.Description" class="textarea" placeholder="Brief description of your instance" rows="3" maxlength="500"></textarea>
                     </div>
-                    <p class="help">A brief description of your instance (max 500 characters, no HTML allowed)</p>
+                    <p class="help">A brief description of your instance. Markdown is allowed, raw HTML is removed on save, max 500 characters.</p>
                 </div>
 
                 <div class="field">
@@ -152,7 +157,7 @@
                     <div class="control">
                         <textarea @bind="instanceDescription.Purpose" class="textarea" placeholder="What is the purpose of your instance?" rows="4" maxlength="1000"></textarea>
                     </div>
-                    <p class="help">Explain the purpose and goals of your instance (max 1000 characters, no HTML allowed)</p>
+                    <p class="help">Explain the purpose and goals of your instance. Markdown is allowed, raw HTML is removed on save, max 1000 characters.</p>
                 </div>
 
                 <div class="field">
@@ -160,7 +165,7 @@
                     <div class="control">
                         <textarea @bind="instanceDescription.ContactInfo" class="textarea" placeholder="How can people contact you?" rows="3" maxlength="300"></textarea>
                     </div>
-                    <p class="help">Contact information for your instance (max 300 characters, no HTML allowed)</p>
+                    <p class="help">Contact details for your instance. Markdown is allowed, raw HTML is removed on save, max 300 characters.</p>
                 </div>
             }
 

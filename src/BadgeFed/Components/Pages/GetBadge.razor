@@ -1,9 +1,12 @@
 @page "/get/{ShortCode}"
+@using BadgeFed.Core
 @using BadgeFed.Models
 @using BadgeFed.Services
+@using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager NavigationManager
+@inject LocalScopedDb DbService
 @inject TokenGrantService TokenGrantService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -97,123 +100,147 @@
                 }
                 else
                 {
-                    <!-- Badge Information Card -->
-                    @if (tokenGrant.Badge != null)
-                    {
-                        <div class="card badge-showcase mb-5">
-                            <div class="card-content">
-                                <div class="has-text-centered mb-5">
-                                    @if (!string.IsNullOrEmpty(tokenGrant.Badge.Image))
-                                    {
-                                        <figure class="image is-128x128 mx-auto mb-4">
-                                            <img src="@tokenGrant.Badge.Image" alt="@tokenGrant.Badge.Title" class="badge-image-large" />
-                                        </figure>
-                                    }
-                                    <h1 class="title is-2 mb-3">@tokenGrant.Title</h1>
-                                    @if (!string.IsNullOrEmpty(tokenGrant.Description))
-                                    {
-                                        <p class="subtitle is-5 has-text-grey" style="padding: 20px">@tokenGrant.Description</p>
-                                    }
-                                </div>
-                                
-                                <div class="columns is-variable is-8">
-                                    <div class="column">
-                                        <div class="content">
-                                            <h3 class="title is-5 has-text-primary">Badge Details</h3>
-                                            <p class="has-text-weight-medium">@tokenGrant.Badge.Title</p>
-                                            @if (!string.IsNullOrEmpty(tokenGrant.Badge.Description))
-                                            {
-                                                <p class="has-text-grey">@tokenGrant.Badge.Description</p>
-                                            }
-                                        </div>
-                                    </div>
-                                    @if (!string.IsNullOrEmpty(tokenGrant.Badge.EarningCriteria))
-                                    {
-                                        <div class="column">
-                                            <div class="content">
-                                                <h3 class="title is-5 has-text-primary">Earning Criteria</h3>
-                                                <p class="has-text-grey">@tokenGrant.Badge.EarningCriteria</p>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Redemption Form Card -->
-                    <div class="card redemption-form">
-                        <div class="card-content">
-                            @if (!string.IsNullOrEmpty(errorMessage))
-                            {
-                                <div class="notification is-danger is-light">
-                                    <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
-                                    <span class="icon">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </span>
-                                    @errorMessage
-                                </div>
-                            }
-
-                            <div class="has-text-centered mb-5">
-                                <h2 class="title is-4">Claim Your Badge</h2>
-                                <p class="subtitle is-6 has-text-grey">Please provide your information to receive the badge</p>
-                            </div>
-
-                            <EditForm Model="redemptionRequest" OnValidSubmit="RedeemBadge">
-                                <DataAnnotationsValidator />
-                                
-                                <div class="columns is-variable is-6">
-                                    <div class="column">
-                                        <div class="field">
-                                            <label class="label">Full Name <span class="has-text-danger">*</span></label>
-                                            <div class="control has-icons-left">
-                                                <InputText @bind-Value="redemptionRequest.Name" class="input is-medium" placeholder="Enter your full name" />
-                                                <span class="icon is-left">
-                                                    <i class="fas fa-user"></i>
-                                                </span>
-                                            </div>
-                                            <ValidationMessage For="@(() => redemptionRequest.Name)" class="help is-danger" />
-                                            <p class="help">This name will appear on your badge and can be changed later.</p>
-                                        </div>
+                    <div class="claim-badge-stack">
+                        <!-- Badge Information Card -->
+                        @if (tokenGrant.Badge != null)
+                        {
+                            <div class="card badge-showcase claim-badge-top">
+                                <div class="card-content">
+                                    <div class="claim-badge-header has-text-centered">
+                                        @if (!string.IsNullOrEmpty(tokenGrant.Badge.Image))
+                                        {
+                                            <figure class="badge-image-frame mb-5">
+                                                <img src="@tokenGrant.Badge.Image" alt="@tokenGrant.Badge.Title" class="badge-image-large" />
+                                            </figure>
+                                        }
+                                        <h1 class="title is-2 mb-3">@tokenGrant.Title</h1>
+                                        @if (!string.IsNullOrEmpty(tokenGrant.Description))
+                                        {
+                                            <p class="subtitle is-5 has-text-grey claim-badge-description">@tokenGrant.Description</p>
+                                        }
                                     </div>
                                     
-                                    <div class="column">
-                                        <div class="field">
-                                            <label class="label">Profile URL</label>
-                                            <div class="control has-icons-left">
-                                                <InputText @bind-Value="redemptionRequest.ProfileUri" class="input is-medium" placeholder="https://yourwebsite.com" />
-                                                <span class="icon is-left">
-                                                    <i class="fas fa-link"></i>
-                                                </span>
+                                    <div class="columns is-variable is-8">
+                                        <div class="column">
+                                            <div class="content">
+                                                <h3 class="title is-5 has-text-primary">Badge Details</h3>
+                                                <p class="has-text-weight-medium">@tokenGrant.Badge.Title</p>
+                                                @if (!string.IsNullOrEmpty(tokenGrant.Badge.Description))
+                                                {
+                                                    <p class="has-text-grey">@tokenGrant.Badge.Description</p>
+                                                }
                                             </div>
-                                            <ValidationMessage For="@(() => redemptionRequest.ProfileUri)" class="help is-danger" />
-                                            <p class="help">Your personal website, portfolio, or social profile.</p>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(tokenGrant.Badge.EarningCriteria))
+                                        {
+                                            <div class="column">
+                                                <div class="content">
+                                                    <h3 class="title is-5 has-text-primary">Earning Criteria</h3>
+                                                    <p class="has-text-grey">@tokenGrant.Badge.EarningCriteria</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Redemption Form Card -->
+                        <div class="card redemption-form claim-badge-bottom">
+                            <div class="card-content">
+                                @if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="notification is-danger is-light">
+                                        <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+                                        <span class="icon">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </span>
+                                        @errorMessage
+                                    </div>
+                                }
+
+                                <EditForm Model="redemptionRequest" OnValidSubmit="RedeemBadge">
+                                    <DataAnnotationsValidator />
+                                    
+                                    <div class="columns is-variable is-6">
+                                        <div class="column">
+                                            <div class="field">
+                                                <label class="label">Full Name <span class="has-text-danger">*</span></label>
+                                                <div class="control has-icons-left">
+                                                    <InputText @bind-Value="redemptionRequest.Name" class="input is-medium" placeholder="Enter your full name" />
+                                                    <span class="icon is-left">
+                                                        <i class="fas fa-user"></i>
+                                                    </span>
+                                                </div>
+                                                <ValidationMessage For="@(() => redemptionRequest.Name)" class="help is-danger" />
+                                                <p class="help">This name will appear on your badge and can be changed later.</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="column">
+                                            <div class="field">
+                                                <label class="label profile-url-label">
+                                                    <span>Profile URL</span>
+                                                    <button type="button" class="profile-help-trigger" @onclick="OpenHelpModal">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-question-circle"></i>
+                                                        </span>
+                                                        <span>Why not email?</span>
+                                                    </button>
+                                                </label>
+                                                <div class="control has-icons-left">
+                                                    <InputText @bind-Value="redemptionRequest.ProfileUri" class="input is-medium" placeholder="https://yourwebsite.com" />
+                                                    <span class="icon is-left">
+                                                        <i class="fas fa-link"></i>
+                                                    </span>
+                                                </div>
+                                                <ValidationMessage For="@(() => redemptionRequest.ProfileUri)" class="help is-danger" />
+                                                <p class="help">Your personal website, portfolio, or social profile.</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div class="field mt-5">
-                                    <div class="control">
-                                        <button type="submit" class="button is-primary is-large is-fullwidth is-rounded" disabled="@isSubmitting">
-                                            @if (isSubmitting)
-                                            {
-                                                <span class="icon">
-                                                    <i class="fas fa-spinner fa-pulse"></i>
+                                    @if (hasCta)
+                                    {
+                                        <div class="profile-cta-simple">
+                                            <span class="profile-cta-simple-icon">
+                                                <i class="@GetCtaIconClass()"></i>
+                                            </span>
+                                            <div>
+                                                <p class="profile-cta-simple-title">@GetCtaHeadline()</p>
+                                                <p class="profile-cta-simple-copy">@GetCtaDescription()</p>
+                                            </div>
+                                            <a href="@CtaHelper.BuildCtaUrl(ctaUrl, NavigationManager.Uri)" target="_blank" rel="noopener" class="button is-light is-rounded profile-cta-simple-button">
+                                                <span>@GetCtaButtonText()</span>
+                                                <span class="icon is-small">
+                                                    <i class="fas fa-arrow-right"></i>
                                                 </span>
-                                                <span>Claiming Your Badge...</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="icon">
-                                                    <i class="fas fa-award"></i>
-                                                </span>
-                                                <span>Claim Badge</span>
-                                            }
-                                        </button>
+                                            </a>
+                                        </div>
+                                    }
+
+                                    <div class="field mt-5">
+                                        <div class="control">
+                                            <button type="submit" class="button is-primary is-large is-fullwidth is-rounded" disabled="@isSubmitting">
+                                                @if (isSubmitting)
+                                                {
+                                                    <span class="icon">
+                                                        <i class="fas fa-spinner fa-pulse"></i>
+                                                    </span>
+                                                    <span>Claiming Your Badge...</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="icon">
+                                                        <i class="fas fa-award"></i>
+                                                    </span>
+                                                    <span>Claim Badge</span>
+                                                }
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            </EditForm>
+                                </EditForm>
+                            </div>
                         </div>
                     </div>
 
@@ -227,6 +254,8 @@
     </div>
 </section>
 
+<ProfileUrlHelpModal IsOpen="@showHelpModal" OnClose="CloseHelpModal" CtaType="@ctaType" CtaUrl="@ctaUrl" />
+
 @code {
     [Parameter] public string ShortCode { get; set; } = string.Empty;
 
@@ -237,7 +266,12 @@
     private bool isLoading = true;
     private bool isSubmitting = false;
     private bool isSubmitted = false;
+    private bool showHelpModal = false;
     private string errorMessage = string.Empty;
+    private string ctaType = string.Empty;
+    private string ctaUrl = string.Empty;
+
+    private bool hasCta => !string.IsNullOrEmpty(ctaType) && !string.IsNullOrEmpty(ctaUrl);
 
     public class TokenRedemptionRequest
     {
@@ -252,7 +286,27 @@
 
     protected override async Task OnInitializedAsync()
     {
+        LoadProfileSupport();
         await LoadTokenGrant();
+    }
+
+    private void LoadProfileSupport()
+    {
+        var instanceDesc = DbService.GetInstanceDescription();
+        ctaType = (instanceDesc.ProfileCTAType ?? string.Empty).ToLowerInvariant();
+        ctaUrl = instanceDesc.ProfileCTAUrl ?? string.Empty;
+
+        var uri = new Uri(NavigationManager.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        if (queryParams.TryGetValue("profileUrl", out var returnedProfileUrl))
+        {
+            var profileUrl = returnedProfileUrl.ToString().Trim();
+            if (!string.IsNullOrEmpty(profileUrl) && profileUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                redemptionRequest.ProfileUri = profileUrl;
+            }
+        }
     }
 
     private async Task LoadTokenGrant()
@@ -278,6 +332,38 @@
             StateHasChanged();
         }
     }
+
+    private void OpenHelpModal() => showHelpModal = true;
+
+    private void CloseHelpModal() => showHelpModal = false;
+
+    private string GetCtaHeadline() => ctaType switch
+    {
+        "fedihub" => "Need a profile URL? Create a free badge wallet.",
+        "mastodon" => "Need a profile URL? Create a Mastodon profile.",
+        _ => "Need a profile URL? Start with a public profile."
+    };
+
+    private string GetCtaDescription() => ctaType switch
+    {
+        "fedihub" => "A badge wallet gives you a public profile for collecting and sharing badges.",
+        "mastodon" => "A Mastodon profile works as your public identity and unlocks federation-friendly badge sharing.",
+        _ => "Any stable public URL works, but this server has a recommended option to get you started quickly."
+    };
+
+    private string GetCtaButtonText() => ctaType switch
+    {
+        "fedihub" => "Create wallet",
+        "mastodon" => "Create profile",
+        _ => "Get started"
+    };
+
+    private string GetCtaIconClass() => ctaType switch
+    {
+        "fedihub" => "fas fa-wallet",
+        "mastodon" => "fab fa-mastodon",
+        _ => "fas fa-link"
+    };
 
     private async Task RedeemBadge()
     {
@@ -355,8 +441,49 @@
         background: linear-gradient(145deg, #ffffff 0%, #f8f9fc 100%);
         border: 2px solid #e3f2fd;
     }
+
+    .claim-badge-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .claim-badge-top {
+        margin-bottom: 0;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .claim-badge-bottom {
+        margin-top: 0;
+        border-top: 0;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+
+    .claim-badge-header {
+        max-width: 680px;
+        margin: 0 auto 2rem;
+    }
+
+    .claim-badge-description {
+        padding: 0 1.5rem;
+    }
+
+    .badge-image-frame {
+        width: 220px;
+        height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
     
     .badge-image-large {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
         border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
         transition: transform 0.3s ease;
@@ -373,6 +500,93 @@
     .success-card {
         background: linear-gradient(145deg, #f0fff4 0%, #e8f8f0 100%);
         border: 2px solid #c6f6d5;
+    }
+
+    .profile-url-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .profile-help-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #3273dc;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .profile-help-trigger:hover {
+        color: #205bbc;
+    }
+
+    .profile-cta-simple {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.85rem;
+        padding: 0.85rem 1rem;
+        margin-top: 0.5rem;
+        border: 1px solid #d6e4ff;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+    }
+
+    .profile-cta-simple-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #2356b8;
+        flex-shrink: 0;
+    }
+
+    .profile-cta-simple-title {
+        margin: 0 0 0.15rem;
+        color: #1f2937;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .profile-cta-simple-copy {
+        margin: 0;
+        color: #5b6472;
+        font-size: 0.88rem;
+        line-height: 1.35;
+    }
+
+    .profile-cta-simple-button {
+        flex-shrink: 0;
+        border-color: #bfd3ff;
+        background: #ffffff;
+        color: #2356b8;
+        font-weight: 600;
+    }
+
+    @@media screen and (max-width: 768px) {
+        .claim-badge-description {
+            padding: 0;
+        }
+
+        .profile-cta-simple {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .profile-cta-simple-button {
+            width: 100%;
+            justify-content: center;
+        }
     }
     
     .input.is-medium {

@@ -2092,7 +2092,7 @@ public class ActorStats
         var command = connection.CreateCommand();
         command.Transaction = transaction;
 
-        // Sanitize input - remove HTML tags
+        // Preserve Markdown syntax while stripping raw HTML tags before storage.
         description.Name = System.Text.RegularExpressions.Regex.Replace(description.Name ?? "", "<.*?>", "").Trim();
         description.Description = System.Text.RegularExpressions.Regex.Replace(description.Description ?? "", "<.*?>", "").Trim();
         description.Purpose = System.Text.RegularExpressions.Regex.Replace(description.Purpose ?? "", "<.*?>", "").Trim();

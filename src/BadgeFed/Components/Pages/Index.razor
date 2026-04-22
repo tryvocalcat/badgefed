@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using Markdig
 @using BadgeFed.Models
 @using BadgeFed.Services
 @inject HttpClient Http
@@ -233,6 +234,28 @@ else
 }
 .bf-infoblock-label { font-size:.67rem; font-weight:700; color:#6366f1; letter-spacing:.07em; text-transform:uppercase; margin-bottom:.25rem; }
 .bf-infoblock-text  { font-size:.85rem; color:#475569; line-height:1.6; }
+.bf-md > :first-child { margin-top:0; }
+.bf-md > :last-child { margin-bottom:0; }
+.bf-md p,
+.bf-md ul,
+.bf-md ol,
+.bf-md blockquote { margin-bottom:.7rem; }
+.bf-md ul,
+.bf-md ol { padding-left:1.2rem; }
+.bf-md a { color:#4f46e5; text-decoration:underline; text-underline-offset:.12em; }
+.bf-md strong { color:#0f172a; }
+.bf-md code {
+    background:#eef2ff;
+    color:#4338ca;
+    border-radius:6px;
+    padding:.08rem .35rem;
+    font-size:.92em;
+}
+.bf-md blockquote {
+    border-left:3px solid #c7d2fe;
+    padding-left:.85rem;
+    color:#64748b;
+}
 
 /* ── Issuer cards ─────────────────────────────────── */
 .bf-issuer {
@@ -569,7 +592,7 @@ else
                     <div class="bf-inst-head">
                         <span class="bf-lbl">About this instance</span>
                         <div class="bf-inst-title">@InstanceDescriptionData.Name</div>
-                        <div class="bf-inst-sub">@InstanceDescriptionData.Description</div>
+                        <div class="bf-inst-sub bf-md">@RenderMarkdown(InstanceDescriptionData.Description)</div>
                     </div>
                     <div class="bf-inst-body">
                         @if (!string.IsNullOrWhiteSpace(InstanceDescriptionData.Purpose))
@@ -578,7 +601,7 @@ else
                                 <div class="bf-infoblock-icon"><i class="fas fa-bullseye"></i></div>
                                 <div>
                                     <div class="bf-infoblock-label">Our Purpose</div>
-                                    <div class="bf-infoblock-text">@InstanceDescriptionData.Purpose</div>
+                                    <div class="bf-infoblock-text bf-md">@RenderMarkdown(InstanceDescriptionData.Purpose)</div>
                                 </div>
                             </div>
                         }
@@ -588,7 +611,7 @@ else
                                 <div class="bf-infoblock-icon"><i class="fas fa-envelope"></i></div>
                                 <div>
                                     <div class="bf-infoblock-label">Contact</div>
-                                    <div class="bf-infoblock-text">@InstanceDescriptionData.ContactInfo</div>
+                                    <div class="bf-infoblock-text bf-md">@RenderMarkdown(InstanceDescriptionData.ContactInfo)</div>
                                 </div>
                             </div>
                         }
@@ -810,6 +833,20 @@ else
     private InstanceDescription? InstanceDescriptionData { get; set; } = null;
     private string CustomLandingPageHtmlContent { get; set; }
     private string walletCtaUrl = string.Empty;
+    private static readonly MarkdownPipeline InstanceMarkdownPipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .UseAdvancedExtensions()
+        .Build();
+
+    private static MarkupString RenderMarkdown(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return new MarkupString(string.Empty);
+        }
+
+        return new MarkupString(Markdown.ToHtml(content, InstanceMarkdownPipeline));
+    }
 
     protected override async Task OnInitializedAsync()
     {
