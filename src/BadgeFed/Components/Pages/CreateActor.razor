@@ -394,7 +394,7 @@
                 <div class="field">
                     <label class="field-label required" for="summary">Summary<span class="required-asterisk">*</span></label>
                     <div class="control">
-                        <InputTextArea id="summary" @bind-Value="Model.Summary" @bind-Value:event="oninput" class="textarea" rows="4" placeholder="Briefly describe this issuer's purpose and the types of badges they issue" required />
+                        <InputTextArea id="summary" @bind-Value="Model.Summary" class="textarea" rows="4" placeholder="Briefly describe this issuer's purpose and the types of badges they issue" required />
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem;">
                         <ValidationMessage For="@(() => Model.Summary)" class="help is-danger" />
@@ -495,13 +495,13 @@
 
             <div class="column is-12">
                 <div class="field">
-                    <label class="field-label">Avatar</label>
+                    <label class="field-label">Avatar <span class="has-text-danger">*</span></label>
                     <div class="file-upload">
                         <div class="file-upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <p class="has-text-grey">Click to upload or drag and drop</p>
-                        <p class="help-text">PNG, JPG up to 2MB</p>
+                        <p class="help-text">A default image is provided. Upload your own to replace it. PNG, JPG, GIF, WebP up to 10 MB. Resized to 300×300.</p>
                         <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" />
                     </div>
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -763,6 +763,7 @@
     public string ActorId { get; set; }
 
     private Actor? Model = new();
+    private const string DefaultIssuerImage = "/defaultbadgeissuer.jpg";
     private IBrowserFile? selectedFile;
     private string? imagePreview;
     private string? errorMessage;
@@ -805,6 +806,12 @@
             Model.Domain = HttpContextAccessor?.HttpContext?.Request?.Host.Value;
         }
 
+        if (string.IsNullOrEmpty(Model.AvatarPath))
+        {
+            Model.AvatarPath = DefaultIssuerImage;
+        }
+        imagePreview = Model.AvatarPath;
+
         // Load groups for admin owner assignment
         if (CurrentUser.IsAdmin())
         {
@@ -838,8 +845,10 @@
 
     private void ClearForm() 
     {
-        Model = new();
+        Model = new() { AvatarPath = DefaultIssuerImage };
         usernameManuallyEdited = false;
+        selectedFile = null;
+        imagePreview = DefaultIssuerImage;
         // Initialize socials list for new model
         Model.Socials = new List<SocialUri>();
         while (Model.Socials.Count < 3)
@@ -947,19 +956,33 @@
         errorMessage = null;
         selectedFile = e.File;
         
-        if (selectedFile.Size > 2 * 1024 * 1024) // 2MB limit
+        var maxAllowedSize = 10 * 1024 * 1024;
+
+        if (selectedFile.Size > maxAllowedSize)
         {
-            errorMessage = "File size exceeds 2MB limit.";
+            errorMessage = "File size exceeds 10 MB limit.";
             selectedFile = null;
             return;
         }
 
-        var format = "image/jpeg";
-        var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
-        var buffer = new byte[resizedImage.Size];
-        await resizedImage.OpenReadStream().ReadAsync(buffer);
-        
-        imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        try
+        {
+            var format = "image/jpeg";
+            var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+            using var stream = resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var buffer = ms.ToArray();
+
+            imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to process image. Please try a smaller file or a different format.";
+            selectedFile = null;
+            imagePreview = DefaultIssuerImage;
+        }
+        StateHasChanged();
     }
 
     private bool IsLimitedManager() =>
@@ -992,7 +1015,7 @@
                 
                 var fullPath = Path.Combine(path, fileName);
                 
-                using var stream = selectedFile.OpenReadStream(2 * 1024 * 1024);
+                using var stream = selectedFile.OpenReadStream(10 * 1024 * 1024);
                 using var fileStream = new FileStream(fullPath, FileMode.Create);
                 await stream.CopyToAsync(fileStream);
                 

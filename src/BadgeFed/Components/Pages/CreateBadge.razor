@@ -30,12 +30,30 @@
 }
 else
 {
-<EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="badgeForm">
+<EditForm Model="Model" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit" FormName="badgeForm">
     <DataAnnotationsValidator />
-    <ValidationSummary />
+
+    @if (showValidationErrors)
+    {
+        <div class="notification is-danger is-light mb-4">
+            <button class="delete" @onclick="() => showValidationErrors = false"></button>
+            <p class="has-text-weight-bold mb-2">Please fix the following errors:</p>
+            <ValidationSummary />
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger is-light mb-4">
+            <button class="delete" @onclick="() => errorMessage = null"></button>
+            <p>@errorMessage</p>
+        </div>
+    }
+
+    <p class="help is-size-7 mb-4"><span class="has-text-danger">*</span> Required fields</p>
 
     <div class="field">
-        <label class="label" for="title">Title</label>
+        <label class="label" for="title">Title <span class="has-text-danger">*</span></label>
         <div class="control">
             <InputText id="name" @bind-Value="Model!.Title" class="input" />
         </div>
@@ -43,51 +61,56 @@ else
     </div>
 
     <div class="field">
-        <label class="label" for="description">Description</label>
+        <label class="label" for="description">Description <span class="has-text-danger">*</span></label>
         <div class="control">
             <InputTextArea id="description" @bind-Value="Model.Description" rows="4" class="textarea" />
         </div>
         <ValidationMessage For="@(() => Model.Description)" class="help is-danger" />
     </div>
 
-    <div class="field">
-        <label class="label" for="avatar">Badge Image</label>
-        <div class="control">
-            <div class="file has-name">
-                <label class="file-label">
-                    <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" class="file-input" />
-                    <span class="file-cta">
-                        <span class="file-icon">
-                            <i class="fas fa-upload"></i>
-                        </span>
-                        <span class="file-label">Choose a file…</span>
-                    </span>
-                    <span class="file-name">@(selectedFile?.Name ?? "No file selected")</span>
-                </label>
+    <div class="columns">
+        <div class="column is-half">
+            <div class="field">
+                <label class="label" for="avatar">Badge Image <span class="has-text-danger">*</span></label>
+                <div class="control">
+                    <div class="file has-name">
+                        <label class="file-label">
+                            <InputFile id="avatar" OnChange="HandleFileSelection" accept="image/*" class="file-input" />
+                            <span class="file-cta">
+                                <span class="file-icon">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                                <span class="file-label">Choose a file…</span>
+                            </span>
+                            <span class="file-name">@(selectedFile?.Name ?? "No file selected")</span>
+                        </label>
+                    </div>
+                </div>
+                <p class="help is-size-7 mt-1">
+                    A default badge image is provided. Upload your own to replace it.
+                    Accepted formats: PNG, JPEG, GIF, WebP. Max file size: 10 MB. The image will be resized to 300×300 pixels and converted to PNG.
+                </p>
+                @if (imagePreview != null)
+                {
+                    <div class="mt-3">
+                        <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" />
+                    </div>
+                }
             </div>
         </div>
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <p class="help is-danger">@errorMessage</p>
-        }
-        @if (imagePreview != null)
-        {
-            <div class="mt-3">
-                <img src="@imagePreview" alt="Avatar Preview" style="max-width: 200px; max-height: 200px;" />
+        <div class="column is-half">
+            <div class="field">
+                <label class="label" for="imageAltText">Image alt text</label>
+                <div class="control">
+                    <InputTextArea id="imageAltText" @bind-Value="Model.ImageAltText" rows="12" class="textarea" />
+                </div>
+                <ValidationMessage For="@(() => Model.ImageAltText)" class="help is-danger" />
             </div>
-        }
+        </div>
     </div>
 
     <div class="field">
-        <label class="label" for="imageAltText">Image alt text</label>
-        <div class="control">
-            <InputTextArea id="imageAltText" @bind-Value="Model.ImageAltText" rows="12" class="textarea" />
-        </div>
-        <ValidationMessage For="@(() => Model.ImageAltText)" class="help is-danger" />
-    </div>
-
-    <div class="field">
-        <label class="label" for="earningCriteria">Earning Criteria</label>
+        <label class="label" for="earningCriteria">Earning Criteria <span class="has-text-danger">*</span></label>
         <div class="control">
             <InputTextArea id="earningCriteria" @bind-Value="Model.EarningCriteria" rows="4" class="textarea" />
         </div>
@@ -95,7 +118,7 @@ else
     </div>
 
     <div class="field">
-        <label class="label" for="infoUri">More Information URL</label>
+        <label class="label" for="infoUri">More Information URL <span class="has-text-danger">*</span></label>
         <div class="control">
             <InputText 
                 id="infoUri" 
@@ -106,7 +129,7 @@ else
             />
         </div>
         <p class="help is-size-7 mt-1">
-            Optional: Add a URL where recipients can learn more about this badge or the program behind it.
+            Add a URL where recipients can learn more about this badge or the program behind it. Must be a valid URL if provided.
         </p>
         <ValidationMessage For="@(() => Model.InfoUri)" class="help is-danger" />
     </div>
@@ -136,7 +159,7 @@ else
 
     
     <div class="field">
-        <label class="label" for="issuedBy">Issued By</label>
+        <label class="label" for="issuedBy">Issued By <span class="has-text-danger">*</span></label>
         <div class="control">
             <div class="select is-fullwidth">
                 <InputSelect id="actorId" @bind-Value="Model.IssuedBy">
@@ -152,7 +175,7 @@ else
     </div>
 
     <div class="field">
-        <label class="label">Badge Type</label>
+        <label class="label">Badge Type <span class="has-text-danger">*</span></label>
         <div class="control">
             <div class="select is-fullwidth">
                 <InputSelect id="badgeType" @bind-Value="Model.BadgeType">
@@ -218,9 +241,12 @@ else
     private string? errorMessage;
     private bool isSubmitting = false;
     private bool isAtBadgeLimit;
+    private bool showValidationErrors = false;
     private string? upgradeUrl;
 
     private List<Actor> actors;
+
+    private const string DefaultBadgeImage = "/defaultbadge.jpg";
 
     protected override void OnInitialized()
     {
@@ -230,6 +256,12 @@ else
             var id = long.Parse(BadgeId);
             Model = LocalDbService.GetBadgeById(id);
         }
+
+        if (string.IsNullOrEmpty(Model.Image))
+        {
+            Model.Image = DefaultBadgeImage;
+        }
+        imagePreview = Model.Image;
     }
 
     protected override async Task OnInitializedAsync()
@@ -259,28 +291,50 @@ else
         }
     }
 
-    private void ClearForm() => Model = new();
+    private void ClearForm()
+    {
+        Model = new() { Image = DefaultBadgeImage };
+        selectedFile = null;
+        imagePreview = DefaultBadgeImage;
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        showValidationErrors = true;
+    }
 
     private async Task HandleFileSelection(InputFileChangeEventArgs e)
     {
         errorMessage = null;
         selectedFile = e.File;
 
-        var maxAllowedSize = 5 * 1024 * 1024;
+        var maxAllowedSize = 10 * 1024 * 1024;
 
-        if (selectedFile.Size > maxAllowedSize) // 2MB limit
+        if (selectedFile.Size > maxAllowedSize)
         {
-            errorMessage = "File size exceeds 2MB limit.";
+            errorMessage = "File size exceeds 10 MB limit.";
             selectedFile = null;
             return;
         }
 
-        var format = "image/png";
-        var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
-        var buffer = new byte[resizedImage.Size];
-        await resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize).ReadAsync(buffer);
-        
-        imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        try
+        {
+            var format = "image/png";
+            var resizedImage = await selectedFile.RequestImageFileAsync(format, 300, 300);
+            using var stream = resizedImage.OpenReadStream(maxAllowedSize: maxAllowedSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var buffer = ms.ToArray();
+
+            imagePreview = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to process image. Please try a smaller file or a different format.";
+            selectedFile = null;
+            imagePreview = DefaultBadgeImage;
+        }
+        StateHasChanged();
     }
 
     private async Task HandleValidSubmit()
@@ -290,6 +344,8 @@ else
             errorMessage = "You have reached your badge limit. Please upgrade your plan to create more badges.";
             return;
         }
+        showValidationErrors = false;
+        errorMessage = null;
         isSubmitting = true;
         try
         {
@@ -301,7 +357,7 @@ else
                 // Ensure directory exists
                 Directory.CreateDirectory(path);
                 
-                var maxAllowedSize = 5 * 1024 * 1024;
+                var maxAllowedSize = 10 * 1024 * 1024;
 
                 var fullPath = Path.Combine(path, fileName);
                 
@@ -337,7 +393,18 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error creating badge: {ex.Message}";
+            if (ex.Message.Contains("CHECK") && ex.Message.Contains("Title"))
+                errorMessage = "Title must be between 2 and 100 characters.";
+            else if (ex.Message.Contains("CHECK") && ex.Message.Contains("Description"))
+                errorMessage = "Description cannot exceed 500 characters.";
+            else if (ex.Message.Contains("CHECK") && ex.Message.Contains("EarningCriteria"))
+                errorMessage = "Earning criteria cannot exceed 500 characters.";
+            else if (ex.Message.Contains("CHECK") && ex.Message.Contains("ImageAltText"))
+                errorMessage = "Image alt text cannot exceed 1500 characters.";
+            else if (ex.Message.Contains("NOT NULL") || ex.Message.Contains("constraint"))
+                errorMessage = "A required field is missing. Please check all required fields are filled in.";
+            else
+                errorMessage = $"Error saving badge: {ex.Message}";
         }
         finally
         {

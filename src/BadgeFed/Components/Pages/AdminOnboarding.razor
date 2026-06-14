@@ -6,6 +6,7 @@
 @inject LocalScopedDb LocalDbService
 @inject NavigationManager NavigationManager
 @inject OpenRegistrationService OpenRegistrationService
+@inject IOnboardingPlugin OnboardingPlugin
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -102,6 +103,18 @@
         {
             NavigationManager.NavigateTo("/admin/");
             return;
+        }
+
+        // Plugin hook: redirect to custom onboarding wizard if one is installed
+        if (OnboardingPlugin.IsEnabled)
+        {
+            var customRoute = OnboardingPlugin.GetOnboardingRoute(
+                CurrentUser.UserId ?? string.Empty, groupId);
+            if (!string.IsNullOrEmpty(customRoute))
+            {
+                NavigationManager.NavigateTo(customRoute);
+                return;
+            }
         }
 
         group = LocalDbService.GetUserGroupById(groupId);

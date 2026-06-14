@@ -50,7 +50,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddServerSideBlazor();
+builder.Services.AddServerSideBlazor()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB for image uploads
+    });
 builder.Services.AddControllers();
 
 // Register the landing page cache service as a singleton
@@ -119,6 +123,10 @@ builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
 // by registering its own IBillingService implementation via IHostingStartup
 // before this line runs (using ASPNETCORE_HOSTINGSTARTUPASSEMBLIES env var).
 builder.Services.TryAddScoped<IBillingService, NullBillingService>();
+
+// Onboarding: register the no-op default. A private plugin (e.g. AI wizard) can
+// replace this via IHostingStartup to redirect users to a custom onboarding flow.
+builder.Services.TryAddScoped<IOnboardingPlugin, NullOnboardingPlugin>();
 
 // Detect listen port for localhost fallback domain
 var listenUrl = (builder.Configuration["urls"] ?? builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000")
@@ -232,6 +240,7 @@ if (googleConfig != null)
          }, localDbFactory);
 }
 
+builder.Services.AddSingleton<JobSignal>();
 builder.Services.AddHostedService<JobExecutor>();
 builder.Services.AddScoped<JobProcessor>();
 
@@ -545,10 +554,10 @@ public static class MastodonOAuthExtensions
                             new Claim(ClaimTypes.Role, "admin"),
                             new Claim("urn:badgefed:group", "system")
                         }));
-                    }
+                    } 
                     else
                     {
-                        var userId = $"{hostname}_{username}";
+                        var userId = $"{hostname.ToLowerInvariant()}_{username}";
                         Console.WriteLine($"User ID: {userId}");
 
                         var registeredUser = localDbService.GetUserById(userId);
@@ -733,7 +742,7 @@ public static class MastodonOAuthExtensions
                     }
                     else
                     {
-                        var userId = $"{hostname}_{username}";
+                        var userId = $"{hostname.ToLowerInvariant()}_{username}";
                         
                         try
                         {
@@ -930,7 +939,7 @@ public static class MastodonOAuthExtensions
                     }
                     else
                     {
-                        var userId = $"{hostname}_{username}";
+                        var userId = $"{hostname.ToLowerInvariant()}_{username}";
                         Console.WriteLine($"User ID: {userId} [ic: {invitationCode}]");
 
                         try

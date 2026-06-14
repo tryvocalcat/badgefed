@@ -7,12 +7,14 @@ namespace BadgeFed.Services
         private readonly LocalScopedDb _localDbService;
         private readonly BadgeService _badgeService;
         private readonly ILogger<BadgeGrantService> _logger;
+        private readonly JobSignal _jobSignal;
 
-        public BadgeGrantService(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeGrantService> logger)
+        public BadgeGrantService(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeGrantService> logger, JobSignal jobSignal)
         {
             _localDbService = localDbService;
             _badgeService = badgeService;
             _logger = logger;
+            _jobSignal = jobSignal;
         }
 
         public class BadgeGrantRequest
@@ -110,6 +112,9 @@ namespace BadgeFed.Services
                 badgeRecord.EarningCriteria = !string.IsNullOrEmpty(request.Evidence) ? request.Evidence : badge.EarningCriteria;
 
                 _localDbService.CreateBadgeRecord(badgeRecord);
+
+                // Wake up job processor immediately
+                _jobSignal.Signal();
 
                 // Generate accept URL
                 var acceptUrl = GenerateAcceptUrl(badgeRecord);

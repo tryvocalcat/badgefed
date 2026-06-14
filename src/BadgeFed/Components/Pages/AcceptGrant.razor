@@ -11,6 +11,7 @@
 @inject HttpClient HttpClient
 @inject IConfiguration Configuration
 @inject JobQueueService JobQueue
+@inject JobSignal JobSignal
 @rendermode InteractiveServer
 
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -668,6 +669,9 @@ else if (accepted)
         BadgeRecord.Visibility = visibility;
 
         DbService.AcceptBadgeRecord(BadgeRecord);
+
+        // Wake up job processor immediately
+        JobSignal.Signal();
 
         accepted = true;
 

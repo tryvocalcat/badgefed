@@ -2,6 +2,7 @@ using BadgeFed.Services;
 
 public sealed class JobExecutor(
     IServiceScopeFactory serviceScopeFactory,
+    JobSignal jobSignal,
     ILogger<JobExecutor> logger) : BackgroundService
 {
     private const string ClassName = nameof(JobExecutor);
@@ -15,9 +16,9 @@ public sealed class JobExecutor(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation(
-            "{Name} is running every {delayWithJobs} / {delayNoJobs}.", ClassName, delayWithJobs, delayNoJobs);
+            "{Name} is running every {delayWithJobs} / {delayNoJobs} (with signal wake-up).", ClassName, delayWithJobs, delayNoJobs);
 
-        await Task.Delay(delayNoJobs, stoppingToken);
+        await jobSignal.WaitAsync(delayNoJobs, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -37,8 +38,14 @@ public sealed class JobExecutor(
                     ex,
                     "Error occurred executing {Name}.", ClassName);
             }
-            
-            await Task.Delay(jobsProcessed > 0 ? delayWithJobs : delayNoJobs, stoppingToken);
+
+            var delay = jobsProcessed > 0 ? delayWithJobs : delayNoJobs;
+            var signaled = await jobSignal.WaitAsync(delay, stoppingToken);
+
+            if (signaled)
+            {
+                logger.LogInformation("{Name} woke up early via signal.", ClassName);
+            }
         }
     }
 

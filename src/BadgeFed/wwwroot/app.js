@@ -126,3 +126,12 @@ window.setCookie = function(name, value, days) {
         }
     });
 })();
+
+window.triggerFileDownload = function (url, fileName) {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName || '';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+};

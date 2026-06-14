@@ -6,6 +6,7 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
 @using System.IO
+@using System.IO.Compression
 @using Microsoft.AspNetCore.Hosting
 
 @inject LocalScopedDb LocalDbService
@@ -255,7 +256,7 @@
             </div>
         }
 
-        <div class="field">
+        <div class="field is-grouped">
             <div class="control">
                 <button class="button is-success" @onclick="UploadStaticPage" disabled="@(selectedStaticPageFile == null)">
                     <span class="icon">
@@ -264,7 +265,75 @@
                     <span>Upload Static Page</span>
                 </button>
             </div>
+            @if (staticPages.Any())
+            {
+                <div class="control">
+                    <button class="button is-info" @onclick="DownloadAllStaticPages">
+                        <span class="icon">
+                            <i class="fas fa-download"></i>
+                        </span>
+                        <span>Download All (ZIP)</span>
+                    </button>
+                </div>
+            }
         </div>
+
+        <!-- Upload Zip to Replace All -->
+        <div class="field mt-4">
+            <label class="label">Upload ZIP to Replace All Static Pages</label>
+            <div class="control">
+                <div class="file has-name">
+                    <label class="file-label">
+                        <InputFile OnChange="OnZipFileSelected" accept=".zip" class="file-input" />
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-file-archive"></i>
+                            </span>
+                            <span class="file-label">Choose ZIP file…</span>
+                        </span>
+                        <span class="file-name">@(selectedZipFile?.Name ?? "No file selected")</span>
+                    </label>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(zipUploadError))
+            {
+                <p class="help is-danger">@zipUploadError</p>
+            }
+        </div>
+
+        @if (selectedZipFile != null)
+        {
+            <div class="notification is-warning is-light">
+                <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
+                <strong>Warning:</strong> This will <strong>replace all existing static pages</strong> with the contents of the ZIP file. Only HTML files inside the ZIP will be extracted.
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <button class="button is-warning" @onclick="UploadZipFile" disabled="@isUploadingZip">
+                        @if (isUploadingZip)
+                        {
+                            <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                            <span>Uploading...</span>
+                        }
+                        else
+                        {
+                            <span class="icon"><i class="fas fa-file-archive"></i></span>
+                            <span>Upload &amp; Replace All Pages</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(zipUploadMessage))
+        {
+            <div class="notification is-success is-light">
+                @zipUploadMessage
+            </div>
+        }
 
         @if (selectedStaticPageFile != null && WillOverwriteExistingFile())
         {
@@ -316,6 +385,12 @@
                                             </span>
                                             <span>View</span>
                                         </a>
+                                        <button class="button is-small is-link" @onclick="() => DownloadSinglePage(staticPage)">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-download"></i>
+                                            </span>
+                                            <span>Download</span>
+                                        </button>
                                         <button class="button is-small is-danger" @onclick="() => DeleteStaticPage(staticPage)">
                                             <span class="icon is-small">
                                                 <i class="fas fa-trash"></i>
@@ -502,6 +577,12 @@
     private string staticPageUploadMessage = "";
     private string newPageTitle = "";
     private string newPageDescription = "";
+
+    // Zip upload
+    private IBrowserFile? selectedZipFile;
+    private string zipUploadError = "";
+    private string zipUploadMessage = "";
+    private bool isUploadingZip = false;
 
     // Image upload
     private IBrowserFile? selectedImageFile;
@@ -713,6 +794,183 @@
         var pagesDir = CustomAssetPathService.GetPagesPath();
         var filePath = Path.Combine(pagesDir, selectedStaticPageFile.Name);
         return File.Exists(filePath);
+    }
+
+    private async Task DownloadSinglePage(StaticPage page)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("triggerFileDownload", $"/api/StaticPages/download/{page.Filename}", page.Filename);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error downloading page: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadAllStaticPages()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("triggerFileDownload", "/api/StaticPages/download-all", "static-pages.zip");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error downloading pages: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void OnZipFileSelected(InputFileChangeEventArgs e)
+    {
+        zipUploadMessage = "";
+        zipUploadError = "";
+        var file = e.File;
+
+        if (file != null)
+        {
+            var extension = Path.GetExtension(file.Name).ToLower();
+            if (extension != ".zip")
+            {
+                zipUploadError = "Only ZIP files (.zip) are allowed.";
+                selectedZipFile = null;
+            }
+            else if (file.Size > 50 * 1024 * 1024) // 50MB limit
+            {
+                zipUploadError = "File size must be less than 50MB.";
+                selectedZipFile = null;
+            }
+            else
+            {
+                selectedZipFile = file;
+            }
+        }
+    }
+
+    private async Task UploadZipFile()
+    {
+        if (selectedZipFile == null)
+        {
+            zipUploadError = "No file selected.";
+            return;
+        }
+
+        try
+        {
+            isUploadingZip = true;
+            StateHasChanged();
+
+            var pagesDir = CustomAssetPathService.GetPagesPath();
+            Directory.CreateDirectory(pagesDir);
+
+            // Read zip into memory
+            using var stream = selectedZipFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            // Delete existing HTML files from disk
+            var existingFiles = Directory.GetFiles(pagesDir, "*.*", SearchOption.TopDirectoryOnly)
+                .Where(f =>
+                {
+                    var ext = Path.GetExtension(f).ToLower();
+                    return ext == ".html" || ext == ".htm";
+                })
+                .ToArray();
+
+            foreach (var existing in existingFiles)
+            {
+                File.Delete(existing);
+            }
+
+            // Extract zip contents
+            var extractedPages = new List<string>();
+            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Read))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    var entryExt = Path.GetExtension(entry.FullName).ToLower();
+                    if (entryExt != ".html" && entryExt != ".htm")
+                        continue;
+
+                    var entryFileName = Path.GetFileName(entry.FullName);
+                    if (string.IsNullOrWhiteSpace(entryFileName))
+                        continue;
+
+                    var destPath = Path.Combine(pagesDir, entryFileName);
+
+                    // Prevent path traversal
+                    var fullDestPath = Path.GetFullPath(destPath);
+                    if (!fullDestPath.StartsWith(Path.GetFullPath(pagesDir)))
+                        continue;
+
+                    using var entryStream = entry.Open();
+                    using var fileStream = File.Create(fullDestPath);
+                    await entryStream.CopyToAsync(fileStream);
+
+                    extractedPages.Add(entryFileName);
+                }
+            }
+
+            if (extractedPages.Count == 0)
+            {
+                zipUploadError = "No HTML files found in the ZIP archive.";
+                return;
+            }
+
+            // Clear existing static pages from database and re-add
+            var existingDbPages = LocalDbService.GetAllStaticPages();
+            foreach (var page in existingDbPages)
+            {
+                LocalDbService.DeleteStaticPage(page.Id);
+            }
+
+            foreach (var pageName in extractedPages)
+            {
+                var fileInfo = new FileInfo(Path.Combine(pagesDir, pageName));
+                var staticPage = new StaticPage
+                {
+                    Filename = pageName,
+                    Title = Path.GetFileNameWithoutExtension(pageName),
+                    Description = "Imported from zip upload",
+                    FileSize = fileInfo.Length,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+                LocalDbService.UpsertStaticPage(staticPage);
+            }
+
+            zipUploadMessage = $"Successfully imported {extractedPages.Count} static page(s) from ZIP file.";
+            selectedZipFile = null;
+
+            // Check if current landing page was removed
+            if (instanceDescription.LandingPageType == "static_page" && 
+                !string.IsNullOrEmpty(instanceDescription.StaticPageFilename) &&
+                !extractedPages.Contains(instanceDescription.StaticPageFilename))
+            {
+                instanceDescription.StaticPageFilename = "";
+                instanceDescription.LandingPageType = "default";
+                LocalDbService.SaveInstanceDescription(instanceDescription);
+                zipUploadMessage += " Note: The previous landing page was not found in the ZIP, so it has been reset to default.";
+            }
+
+            // Refresh the list
+            staticPages = LocalDbService.GetAllStaticPages();
+        }
+        catch (InvalidDataException)
+        {
+            zipUploadError = "The uploaded file is not a valid ZIP archive.";
+        }
+        catch (Exception ex)
+        {
+            zipUploadError = $"Error uploading ZIP: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingZip = false;
+            StateHasChanged();
+        }
     }
 
     // Image management methods

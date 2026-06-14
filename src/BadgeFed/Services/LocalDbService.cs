@@ -3304,4 +3304,114 @@ public class ActorStats
         var count = Convert.ToInt32(command.ExecuteScalar());
         return count == 0;
     }
+
+    // Badge Templates
+
+    public void UpsertBadgeTemplate(BadgeTemplate template)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var command = connection.CreateCommand();
+        if (template.Id == 0)
+        {
+            command.CommandText = @"
+                INSERT INTO BadgeTemplate (Name, Description, Category, ConfigurationJson, CreatedAt, UpdatedAt)
+                VALUES (@Name, @Description, @Category, @ConfigurationJson, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                SELECT last_insert_rowid();
+            ";
+        }
+        else
+        {
+            command.CommandText = @"
+                UPDATE BadgeTemplate SET 
+                    Name = @Name,
+                    Description = @Description,
+                    Category = @Category,
+                    ConfigurationJson = @ConfigurationJson,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE Id = @Id;
+            ";
+            command.Parameters.AddWithValue("@Id", template.Id);
+        }
+
+        command.Parameters.AddWithValue("@Name", template.Name);
+        command.Parameters.AddWithValue("@Description", template.Description ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@Category", template.Category ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ConfigurationJson", template.ConfigurationJson);
+
+        if (template.Id == 0)
+        {
+            template.Id = Convert.ToInt64(command.ExecuteScalar());
+        }
+        else
+        {
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    public List<BadgeTemplate> GetAllBadgeTemplates()
+    {
+        var templates = new List<BadgeTemplate>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id, Name, Description, Category, ConfigurationJson, CreatedAt, UpdatedAt FROM BadgeTemplate ORDER BY Name";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            templates.Add(ReadBadgeTemplate(reader));
+        }
+
+        return templates;
+    }
+
+    public BadgeTemplate? GetBadgeTemplateById(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id, Name, Description, Category, ConfigurationJson, CreatedAt, UpdatedAt FROM BadgeTemplate WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return ReadBadgeTemplate(reader);
+        }
+
+        return null;
+    }
+
+    public void DeleteBadgeTemplate(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM BadgeTemplate WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+        command.ExecuteNonQuery();
+    }
+
+    private BadgeTemplate ReadBadgeTemplate(System.Data.SQLite.SQLiteDataReader reader)
+    {
+        return new BadgeTemplate
+        {
+            Id = reader.GetInt64(reader.GetOrdinal("Id")),
+            Name = reader.GetString(reader.GetOrdinal("Name")),
+            Description = reader["Description"] == DBNull.Value ? "" : reader.GetString(reader.GetOrdinal("Description")),
+            Category = reader["Category"] == DBNull.Value ? "" : reader.GetString(reader.GetOrdinal("Category")),
+            ConfigurationJson = reader.GetString(reader.GetOrdinal("ConfigurationJson")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+            UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
+        };
+    }
 }

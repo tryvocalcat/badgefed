@@ -26,7 +26,7 @@ public class CurrentUser
     public string? Surname => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Surname)?.Value;
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
 
-    public string? UserId => IsAuthenticated ? string.Concat(Issuer, "_", Id) : null;
+    public string? UserId => IsAuthenticated ? string.Concat(Issuer?.ToLowerInvariant(), "_", Id) : null;
 
     public bool HasClaim(string claimType) =>
         _httpContextAccessor.HttpContext?.User.HasClaim(c => c.Type == claimType) ?? false;
