@@ -1,0 +1,333 @@
+@page "/admin/badges/from-template"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@inject LocalScopedDb LocalDbService
+@inject NavigationManager NavigationManager
+@inject CurrentUser CurrentUser
+@inject IBillingService BillingService
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
+
+<h1>Create Badges from Template</h1>
+<p class="subtitle">Select a badge template to quickly create a set of pre-configured badges.</p>
+
+@if (step == Step.SelectTemplate)
+{
+    @if (templates == null || !templates.Any())
+    {
+        <div class="notification is-warning is-light">
+            <p>No badge templates available. 
+                @if (CurrentUser.IsAdmin())
+                {
+                    <a href="/admin/badge-templates/create">Create one in Settings</a>
+                }
+                else
+                {
+                    <text>Ask your administrator to configure badge templates.</text>
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="columns is-multiline">
+            @foreach (var template in templates)
+            {
+                <div class="column is-4">
+                    <div class="card">
+                        <div class="card-content">
+                            <p class="title is-5">@template.Name</p>
+                            @if (!string.IsNullOrEmpty(template.Category))
+                            {
+                                <p><span class="tag is-info is-light">@template.Category</span></p>
+                            }
+                            @if (!string.IsNullOrEmpty(template.Description))
+                            {
+                                <p class="has-text-grey is-size-7 mt-2">@template.Description</p>
+                            }
+                            <p class="mt-2 is-size-7">
+                                <span class="icon is-small"><i class="fas fa-award"></i></span>
+                                @template.Configuration.BadgeItems.Count badge(s)
+                                @if (template.Configuration.Variables.Any())
+                                {
+                                    <span class="ml-2">
+                                        <span class="icon is-small"><i class="fas fa-cog"></i></span>
+                                        @template.Configuration.Variables.Count variable(s)
+                                    </span>
+                                }
+                            </p>
+                        </div>
+                        <footer class="card-footer">
+                            <a class="card-footer-item" @onclick="() => SelectTemplate(template)">
+                                <span class="icon"><i class="fas fa-check"></i></span>
+                                <span>Use this template</span>
+                            </a>
+                        </footer>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+else if (step == Step.FillVariables)
+{
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a @onclick="BackToSelect">Templates</a></li>
+            <li class="is-active"><a>@selectedTemplate!.Name</a></li>
+        </ul>
+    </nav>
+
+    <div class="box">
+        <h2 class="title is-5">Configure: @selectedTemplate!.Name</h2>
+        <p class="subtitle is-6 has-text-grey">Fill in the values below to customize your badges.</p>
+
+        <div class="field">
+            <label class="label">Issued By</label>
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select @bind="selectedActorId">
+                        <option value="0">-- Select an issuer --</option>
+                        @foreach (var actor in actors)
+                        {
+                            <option value="@actor.Id">@actor.FullName - @@@actor.Username@@@actor.Domain</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (selectedTemplate.Configuration.Variables.Any())
+        {
+            <hr />
+            <h3 class="title is-6">Template Variables</h3>
+
+            @foreach (var variable in selectedTemplate.Configuration.Variables)
+            {
+                <div class="field">
+                    <label class="label">@variable.Name</label>
+                    @if (!string.IsNullOrEmpty(variable.Description))
+                    {
+                        <p class="help mb-1">@variable.Description</p>
+                    }
+                    <div class="control">
+                        <input class="input" type="text"
+                            placeholder="@variable.Placeholder"
+                            value="@GetVariableValue(variable.Name)"
+                            @onchange="(e) => SetVariableValue(variable.Name, e.Value?.ToString() ?? string.Empty)" />
+                    </div>
+                </div>
+            }
+        }
+
+        <hr />
+        <h3 class="title is-6">Preview</h3>
+        <p class="help mb-3">These badges will be created:</p>
+
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Earning Criteria</th>
+                        <th>Certificate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in selectedTemplate.Configuration.BadgeItems)
+                    {
+                        <tr>
+                            <td>@ApplyVariables(item.Title)</td>
+                            <td><span class="tag">@item.BadgeType</span></td>
+                            <td class="is-size-7">@ApplyVariables(item.EarningCriteria)</td>
+                            <td>@(item.IsCertificate ? "Yes" : "No")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="notification is-danger is-light mt-3">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="notification is-success is-light mt-3">@successMessage</div>
+        }
+
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <button class="button is-primary" @onclick="ApplyTemplate" disabled="@isApplying">
+                    @if (isApplying)
+                    {
+                        <span class="icon is-small"><i class="fas fa-spinner fa-spin"></i></span>
+                        <span>Creating badges...</span>
+                    }
+                    else
+                    {
+                        <span class="icon"><i class="fas fa-magic"></i></span>
+                        <span>Create @selectedTemplate.Configuration.BadgeItems.Count Badge(s)</span>
+                    }
+                </button>
+            </div>
+            <div class="control">
+                <button class="button is-light" @onclick="BackToSelect">Back</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Step { SelectTemplate, FillVariables }
+
+    private Step step = Step.SelectTemplate;
+    private List<BadgeTemplate>? templates;
+    private BadgeTemplate? selectedTemplate;
+    private List<Actor> actors = new();
+    private long selectedActorId;
+    private Dictionary<string, string> variableValues = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isApplying;
+
+    protected override void OnInitialized()
+    {
+        templates = LocalDbService.GetAllBadgeTemplates();
+        FetchActors();
+    }
+
+    private void FetchActors()
+    {
+        if (CurrentUser.IsAdmin())
+        {
+            actors = LocalDbService.GetActors();
+        }
+        else
+        {
+            actors = LocalDbService.GetActors($"OwnerId = '{CurrentUser.GetGroupId()}'");
+        }
+    }
+
+    private void SelectTemplate(BadgeTemplate template)
+    {
+        selectedTemplate = template;
+        variableValues = new Dictionary<string, string>();
+        foreach (var v in template.Configuration.Variables)
+        {
+            variableValues[v.Name] = "";
+        }
+        step = Step.FillVariables;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void BackToSelect()
+    {
+        step = Step.SelectTemplate;
+        selectedTemplate = null;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private string GetVariableValue(string name)
+    {
+        return variableValues.TryGetValue(name, out var value) ? value : "";
+    }
+
+    private void SetVariableValue(string name, string value)
+    {
+        variableValues[name] = value;
+    }
+
+    private string ApplyVariables(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        var result = text;
+
+        // Built-in variables
+        if (selectedActorId > 0)
+        {
+            var actor = actors.FirstOrDefault(a => a.Id == selectedActorId);
+            if (actor != null)
+            {
+                result = result.Replace("{ISSUER_NAME}", actor.FullName);
+            }
+        }
+
+        // Custom variables
+        foreach (var kvp in variableValues)
+        {
+            result = result.Replace($"{{{kvp.Key}}}", kvp.Value);
+        }
+
+        return result;
+    }
+
+    private void ApplyTemplate()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (selectedActorId == 0)
+        {
+            errorMessage = "Please select an issuer.";
+            return;
+        }
+
+        // Check that all variables have values
+        foreach (var variable in selectedTemplate!.Configuration.Variables)
+        {
+            if (!variableValues.TryGetValue(variable.Name, out var val) || string.IsNullOrWhiteSpace(val))
+            {
+                errorMessage = $"Please fill in the variable: {variable.Name}";
+                return;
+            }
+        }
+
+        isApplying = true;
+
+        try
+        {
+            var createdCount = 0;
+            foreach (var item in selectedTemplate.Configuration.BadgeItems)
+            {
+                var badge = new Badge
+                {
+                    Title = ApplyVariables(item.Title),
+                    Description = ApplyVariables(item.Description),
+                    EarningCriteria = ApplyVariables(item.EarningCriteria),
+                    BadgeType = item.BadgeType,
+                    Hashtags = ApplyVariables(item.Hashtags),
+                    IsCertificate = item.IsCertificate,
+                    ImageAltText = ApplyVariables(item.ImageAltText),
+                    IssuedBy = selectedActorId,
+                    OwnerId = CurrentUser.GetGroupId()
+                };
+
+                LocalDbService.UpsertBadgeDefinition(badge);
+                createdCount++;
+            }
+
+            successMessage = $"Successfully created {createdCount} badge(s) from template \"{selectedTemplate.Name}\".";
+            LocalDbService.InsertRecentActivityLog(
+                $"Applied badge template: {selectedTemplate.Name}",
+                $"Created {createdCount} badges",
+                "/admin/badges");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error applying template: {ex.Message}";
+        }
+        finally
+        {
+            isApplying = false;
+        }
+    }
+}

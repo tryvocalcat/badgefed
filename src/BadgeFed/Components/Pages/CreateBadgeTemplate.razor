@@ -1,0 +1,443 @@
+@page "/admin/badge-templates/create"
+@page "/admin/badge-templates/edit/{templateId}"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using System.Text.Json
+@inject LocalScopedDb LocalDbService
+@inject NavigationManager NavigationManager
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+@if (string.IsNullOrEmpty(TemplateId))
+{
+    <h1>Create Badge Template</h1>
+}
+else
+{
+    <h1>Edit Badge Template</h1>
+}
+
+<div class="columns">
+    <div class="column is-8">
+        <div class="box">
+            <h2 class="title is-5">Template Details</h2>
+
+            <div class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                    <input class="input" type="text" @bind="model.Name" placeholder="e.g. Conference Badge Set" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Description</label>
+                <div class="control">
+                    <textarea class="textarea" rows="2" @bind="model.Description" placeholder="Brief description of this template set"></textarea>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Category</label>
+                <div class="control">
+                    <input class="input" type="text" @bind="model.Category" placeholder="e.g. Conference, Hackathon, Workshop" />
+                </div>
+            </div>
+        </div>
+
+        <div class="field mt-4 mb-4">
+            <button class="button is-small @(showJsonEditor ? "is-warning" : "is-outlined")" @onclick="ToggleJsonEditor">
+                <span class="icon"><i class="fas fa-code"></i></span>
+                <span>@(showJsonEditor ? "Switch to Visual Editor" : "Advanced: Edit JSON")</span>
+            </button>
+        </div>
+
+        @if (showJsonEditor)
+        {
+            <div class="box">
+                <h2 class="title is-5">Configuration JSON</h2>
+                <p class="subtitle is-6 has-text-grey">Edit the raw configuration JSON directly. Must be valid JSON with <code>badgeItems</code> and <code>variables</code> arrays.</p>
+
+                <div class="field">
+                    <div class="control">
+                        <textarea class="textarea is-family-monospace" rows="20" @bind="rawJson" style="font-size: 0.85rem; tab-size: 2;"></textarea>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(jsonError))
+                {
+                    <div class="notification is-danger is-light mt-2">@jsonError</div>
+                }
+            </div>
+        }
+        else
+        {
+
+        <div class="box">
+            <h2 class="title is-5">Variables</h2>
+            <p class="subtitle is-6 has-text-grey">Define variables that users will fill in when applying this template. Use <code>{VARIABLE_NAME}</code> in badge item fields.</p>
+            <p class="help mb-3">Built-in variable: <code>{ISSUER_NAME}</code> is automatically replaced with the selected issuer's name.</p>
+
+            @for (int i = 0; i < variables.Count; i++)
+            {
+                var index = i;
+                <div class="box has-background-light mb-3">
+                    <div class="columns">
+                        <div class="column is-4">
+                            <div class="field">
+                                <label class="label is-small">Variable Name</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" value="@variables[index].Name"
+                                        @onchange="(e) => variables[index].Name = e.Value?.ToString()?.ToUpperInvariant()?.Replace(' ', '_') ?? string.Empty"
+                                        placeholder="CONFERENCE_NAME" />
+                                </div>
+                                <p class="help">UPPERCASE, no spaces</p>
+                            </div>
+                        </div>
+                        <div class="column is-4">
+                            <div class="field">
+                                <label class="label is-small">Description</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" @bind="variables[index].Description"
+                                        placeholder="What this variable represents" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-3">
+                            <div class="field">
+                                <label class="label is-small">Placeholder</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" @bind="variables[index].Placeholder"
+                                        placeholder="Example value" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-1">
+                            <label class="label is-small">&nbsp;</label>
+                            <button class="button is-small is-danger is-outlined" @onclick="() => RemoveVariable(index)">
+                                <span class="icon"><i class="fas fa-times"></i></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <button class="button is-small is-info is-outlined" @onclick="AddVariable">
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>Add Variable</span>
+            </button>
+        </div>
+
+        <div class="box">
+            <h2 class="title is-5">Badge Items</h2>
+            <p class="subtitle is-6 has-text-grey">Define the badges that will be created when this template is applied.</p>
+
+            @for (int i = 0; i < items.Count; i++)
+            {
+                var index = i;
+                <div class="box mb-4">
+                    <div class="level mb-2">
+                        <div class="level-left">
+                            <strong>Badge #@(index + 1)</strong>
+                        </div>
+                        <div class="level-right">
+                            <button class="button is-small is-danger is-outlined" @onclick="() => RemoveItem(index)">
+                                <span class="icon"><i class="fas fa-trash"></i></span>
+                                <span>Remove</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column is-6">
+                            <div class="field">
+                                <label class="label is-small">Title</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" @bind="items[index].Title"
+                                        placeholder="e.g. {CONFERENCE_NAME} Speaker" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-3">
+                            <div class="field">
+                                <label class="label is-small">Badge Type</label>
+                                <div class="control">
+                                    <div class="select is-small is-fullwidth">
+                                        <select @bind="items[index].BadgeType">
+                                            @foreach (var badgeType in Badge.BadgeTypes)
+                                            {
+                                                <option value="@badgeType">@badgeType</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-3">
+                            <div class="field">
+                                <label class="label is-small">&nbsp;</label>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" @bind="items[index].IsCertificate" />
+                                        Certificate
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label is-small">Description</label>
+                        <div class="control">
+                            <textarea class="textarea is-small" rows="2" @bind="items[index].Description"
+                                placeholder="e.g. Awarded to speakers at {CONFERENCE_NAME}"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label is-small">Earning Criteria</label>
+                        <div class="control">
+                            <textarea class="textarea is-small" rows="2" @bind="items[index].EarningCriteria"
+                                placeholder="e.g. Delivered a talk or presentation at {CONFERENCE_NAME}"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column is-6">
+                            <div class="field">
+                                <label class="label is-small">Hashtags</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" @bind="items[index].Hashtags"
+                                        placeholder="#conference #speaker" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-6">
+                            <div class="field">
+                                <label class="label is-small">Image Alt Text</label>
+                                <div class="control">
+                                    <input class="input is-small" type="text" @bind="items[index].ImageAltText"
+                                        placeholder="Badge image description" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <button class="button is-info is-outlined" @onclick="AddItem">
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>Add Badge Item</span>
+            </button>
+        </div>
+
+        } @* end visual editor *@
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="notification is-danger is-light">@errorMessage</div>
+        }
+
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <button class="button is-primary" @onclick="Save" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="icon is-small"><i class="fas fa-spinner fa-spin"></i></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>@(string.IsNullOrEmpty(TemplateId) ? "Create Template" : "Update Template")</span>
+                    }
+                </button>
+            </div>
+            <div class="control">
+                <a href="/admin/badge-templates" class="button is-light">Cancel</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="column is-4">
+        <div class="box has-background-light">
+            <h3 class="title is-6">Help</h3>
+            <div class="content is-small">
+                <p><strong>Variables</strong> allow dynamic text replacement when a user applies this template.</p>
+                <p>Use the format <code>{VARIABLE_NAME}</code> in any badge item field. When the template is applied, the user will be prompted to enter values for each variable.</p>
+                <p><strong>Built-in variables:</strong></p>
+                <ul>
+                    <li><code>{ISSUER_NAME}</code> — Replaced with the selected issuer's display name</li>
+                </ul>
+                <p><strong>Example:</strong></p>
+                <p>If you define a variable <code>CONFERENCE_NAME</code> and use it in a title like <code>{CONFERENCE_NAME} Speaker</code>, when the user enters "FOSDEM 2025", the badge title becomes "FOSDEM 2025 Speaker".</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? TemplateId { get; set; }
+
+    private BadgeTemplate model = new();
+    private List<BadgeTemplateItem> items = new();
+    private List<BadgeTemplateVariable> variables = new();
+    private string? errorMessage;
+    private string? jsonError;
+    private bool isSaving = false;
+    private bool showJsonEditor = false;
+    private string rawJson = "{}";
+
+    private static readonly JsonSerializerOptions JsonPrettyOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(TemplateId))
+        {
+            var id = long.Parse(TemplateId);
+            var existing = LocalDbService.GetBadgeTemplateById(id);
+            if (existing != null)
+            {
+                model = existing;
+                items = existing.Configuration.BadgeItems;
+                variables = existing.Configuration.Variables;
+            }
+        }
+    }
+
+    private void ToggleJsonEditor()
+    {
+        if (!showJsonEditor)
+        {
+            // Switching TO json editor: serialize current visual state
+            var config = new BadgeTemplateConfiguration
+            {
+                BadgeItems = items,
+                Variables = variables.Where(v => !string.IsNullOrWhiteSpace(v.Name)).ToList()
+            };
+            rawJson = JsonSerializer.Serialize(config, JsonPrettyOptions);
+            jsonError = null;
+        }
+        else
+        {
+            // Switching FROM json editor: parse JSON back into visual state
+            if (!TryParseJsonToVisual())
+                return;
+        }
+        showJsonEditor = !showJsonEditor;
+    }
+
+    private bool TryParseJsonToVisual()
+    {
+        jsonError = null;
+        try
+        {
+            var config = JsonSerializer.Deserialize<BadgeTemplateConfiguration>(rawJson, JsonPrettyOptions);
+            if (config == null)
+            {
+                jsonError = "Invalid JSON: could not parse configuration.";
+                return false;
+            }
+            items = config.BadgeItems ?? new();
+            variables = config.Variables ?? new();
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            jsonError = $"Invalid JSON: {ex.Message}";
+            return false;
+        }
+    }
+
+    private void AddVariable()
+    {
+        variables.Add(new BadgeTemplateVariable());
+    }
+
+    private void RemoveVariable(int index)
+    {
+        if (index >= 0 && index < variables.Count)
+            variables.RemoveAt(index);
+    }
+
+    private void AddItem()
+    {
+        items.Add(new BadgeTemplateItem());
+    }
+
+    private void RemoveItem(int index)
+    {
+        if (index >= 0 && index < items.Count)
+            items.RemoveAt(index);
+    }
+
+    private void Save()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(model.Name))
+        {
+            errorMessage = "Template name is required.";
+            return;
+        }
+
+        // If in JSON editor mode, parse JSON first
+        if (showJsonEditor)
+        {
+            if (!TryParseJsonToVisual())
+            {
+                errorMessage = jsonError;
+                return;
+            }
+        }
+
+        if (!items.Any())
+        {
+            errorMessage = "At least one badge item is required.";
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Title))
+            {
+                errorMessage = "All badge items must have a title.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(item.EarningCriteria))
+            {
+                errorMessage = "All badge items must have earning criteria.";
+                return;
+            }
+        }
+
+        isSaving = true;
+
+        try
+        {
+            model.Configuration = new BadgeTemplateConfiguration
+            {
+                BadgeItems = items,
+                Variables = variables.Where(v => !string.IsNullOrWhiteSpace(v.Name)).ToList()
+            };
+
+            LocalDbService.UpsertBadgeTemplate(model);
+            NavigationManager.NavigateTo("/admin/badge-templates");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving template: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

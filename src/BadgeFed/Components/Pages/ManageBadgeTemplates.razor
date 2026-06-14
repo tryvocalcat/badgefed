@@ -1,0 +1,131 @@
+@page "/admin/badge-templates"
+@using BadgeFed.Models
+@using BadgeFed.Services
+@inject LocalScopedDb LocalDbService
+@inject NavigationManager NavigationManager
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin")]
+
+<h1>Badge Templates</h1>
+
+<p class="subtitle">Pre-configured badge sets that can be used to quickly create multiple badges at once.</p>
+
+<div class="buttons mb-4">
+    <a href="/admin/badge-templates/create" class="button is-primary">
+        <span class="icon"><i class="fas fa-plus"></i></span>
+        <span>Create Template</span>
+    </a>
+</div>
+
+@if (templates == null)
+{
+    <p>Loading...</p>
+}
+else if (!templates.Any())
+{
+    <div class="notification is-info is-light">
+        <p>No badge templates configured yet. Create your first template to get started.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Badges</th>
+                    <th>Variables</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var template in templates)
+                {
+                    <tr>
+                        <td>
+                            <strong>@template.Name</strong>
+                            @if (!string.IsNullOrEmpty(template.Description))
+                            {
+                                <br /><small class="has-text-grey">@template.Description</small>
+                            }
+                        </td>
+                        <td><span class="tag is-light">@template.Category</span></td>
+                        <td>@template.Configuration.BadgeItems.Count badge(s)</td>
+                        <td>@template.Configuration.Variables.Count variable(s)</td>
+                        <td>
+                            <div class="buttons are-small">
+                                <a href="/admin/badge-templates/edit/@template.Id" class="button is-info is-outlined">
+                                    <span class="icon"><i class="fas fa-edit"></i></span>
+                                </a>
+                                <button class="button is-danger is-outlined" @onclick="() => ConfirmDelete(template)">
+                                    <span class="icon"><i class="fas fa-trash"></i></span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (templateToDelete != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="CancelDelete"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Delete</p>
+                <button class="delete" aria-label="close" @onclick="CancelDelete"></button>
+            </header>
+            <section class="modal-card-body">
+                <p>Are you sure you want to delete the template <strong>@templateToDelete.Name</strong>?</p>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" @onclick="DeleteTemplate">Delete</button>
+                <button class="button" @onclick="CancelDelete">Cancel</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BadgeTemplate>? templates;
+    private BadgeTemplate? templateToDelete;
+
+    protected override void OnInitialized()
+    {
+        LoadTemplates();
+    }
+
+    private void LoadTemplates()
+    {
+        templates = LocalDbService.GetAllBadgeTemplates();
+    }
+
+    private void ConfirmDelete(BadgeTemplate template)
+    {
+        templateToDelete = template;
+    }
+
+    private void CancelDelete()
+    {
+        templateToDelete = null;
+    }
+
+    private void DeleteTemplate()
+    {
+        if (templateToDelete != null)
+        {
+            LocalDbService.DeleteBadgeTemplate(templateToDelete.Id);
+            templateToDelete = null;
+            LoadTemplates();
+        }
+    }
+}
