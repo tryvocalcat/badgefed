@@ -536,6 +536,37 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+@media (max-width: 1023px) {
+  .admin-shell .navbar-menu.is-active {
+    background: rgba(26, 19, 44, 0.95);
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .admin-shell .navbar-item.has-dropdown .navbar-link {
+    display: none;
+  }
+
+  .admin-shell .navbar-dropdown {
+    display: block;
+    position: static;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0;
+  }
+
+  .admin-shell .navbar-dropdown .navbar-item {
+    color: rgba(238, 234, 255, 0.9) !important;
+    background: transparent !important;
+  }
+
+  .admin-shell .navbar-dropdown .navbar-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+  }
+}
+
 .admin-shell .admin-container-shell {
   max-width: 1600px;
 }

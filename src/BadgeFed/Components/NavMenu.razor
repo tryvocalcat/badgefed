@@ -13,14 +13,14 @@
     <div class="container">
         <div class="navbar-brand">
             <Logo Href="/admin" />
-            <button type="button" class="navbar-burger" aria-label="menu" aria-expanded="false" aria-controls="adminNavMenu" data-menu-toggle>
+            <a role="button" class="navbar-burger @(isMenuActive ? "is-active" : "")" aria-label="menu" aria-expanded="@isMenuActive" data-target="adminNavMenu" @onclick="ToggleMenu">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
-            </button>
+            </a>
         </div>
         
-        <div id="adminNavMenu" class="navbar-menu" data-menu>
+        <div id="adminNavMenu" class="navbar-menu @(isMenuActive ? "is-active" : "")">
             <div class="navbar-start">
                 @if (CurrentUser.CanManage())
                 {
@@ -224,3 +224,12 @@
         </div>
     </div>
 </nav>
+
+@code {
+    private bool isMenuActive;
+
+    private void ToggleMenu()
+    {
+        isMenuActive = !isMenuActive;
+    }
+}
