@@ -4,6 +4,7 @@
 @using ActivityPubDotNet.Core
 @inject LocalScopedDb LocalDbService
 @inject NavigationManager NavigationManager
+@inject JobSignal JobSignal
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -85,6 +86,9 @@
 
             if (badgeRecord != null)
             {
+                // Wake up job processor to handle the imported badge
+                JobSignal.Signal();
+
                 // Redirect to the recipient's profile page
                 var recipientUri = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(badgeRecord.IssuedToSubjectUri));
                 NavigationManager.NavigateTo($"/recipient/{recipientUri}");

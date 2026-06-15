@@ -96,6 +96,7 @@ builder.Services.AddScoped<DatabaseMigrationService>();
 builder.Services.AddScoped<BadgeProcessor>();
 
 builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddSingleton<ImpersonationService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<OpenBadgeService>();
@@ -352,6 +353,35 @@ if (gotoSocialConfig != null && !string.IsNullOrEmpty(gotoSocialConfig.Server))
 }
 
 app.MapGroup("/admin").MapLoginAndLogout(loginSchemas);
+
+// Impersonation endpoints (admin only)
+app.MapGet("/admin/impersonate/start", (string groupId, string role, string userName, HttpContext httpContext, ImpersonationService impersonation) =>
+{
+    var roleClaim = httpContext.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+    if (!roleClaim.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Forbid();
+
+    var issuer = httpContext.User.Identity?.AuthenticationType?.ToLowerInvariant() ?? "";
+    var id = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+    var userId = $"{issuer}_{id}";
+
+    impersonation.Start(userId, groupId, role, userName);
+    return Results.Redirect("/admin");
+}).RequireAuthorization();
+
+app.MapGet("/admin/impersonate/stop", (HttpContext httpContext, ImpersonationService impersonation) =>
+{
+    var roleClaim = httpContext.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+    if (!roleClaim.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Forbid();
+
+    var issuer = httpContext.User.Identity?.AuthenticationType?.ToLowerInvariant() ?? "";
+    var id = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+    var userId = $"{issuer}_{id}";
+
+    impersonation.Stop(userId);
+    return Results.Redirect("/admin");
+}).RequireAuthorization();
 
 app.Run();
 

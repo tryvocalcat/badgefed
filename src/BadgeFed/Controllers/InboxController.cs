@@ -17,6 +17,7 @@ namespace BadgeFed.Controllers
         private readonly BadgeProcessor _badgeProcessor;
         private readonly QuoteRequestService _quoteRequestService;
         private readonly JobQueueService _jobQueue;
+        private readonly JobSignal _jobSignal;
 
         private readonly LocalScopedDb _db;
 
@@ -27,6 +28,7 @@ namespace BadgeFed.Controllers
             BadgeProcessor badgeProcessor,
             QuoteRequestService quoteRequestService,
             JobQueueService jobQueue,
+            JobSignal jobSignal,
             LocalScopedDb db)
         {
             _logger = logger;
@@ -35,6 +37,7 @@ namespace BadgeFed.Controllers
             _badgeProcessor = badgeProcessor;
             _quoteRequestService = quoteRequestService;
             _jobQueue = jobQueue;
+            _jobSignal = jobSignal;
             _db = db;
         }
 
@@ -97,6 +100,8 @@ namespace BadgeFed.Controllers
                     await _jobQueue.AddJobAsync("process_announce", message, createdBy: "InboxController");
                 }
                 
+                // Wake up job processor for any queued work
+                _jobSignal.Signal();
             }
             catch (Exception e)
             {

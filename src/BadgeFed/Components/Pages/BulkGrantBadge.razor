@@ -7,6 +7,7 @@
 @inject LocalScopedDb LocalDbService
 @inject IConfiguration Configuration
 @inject BadgeService BadgeService
+@inject JobSignal JobSignal
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -505,6 +506,9 @@
 
             grantResults.Add(result);
         }
+
+        // Wake up job processor to handle new grants immediately
+        JobSignal.Signal();
 
         isProcessing = false;
         currentStep = 3;

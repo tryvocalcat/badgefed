@@ -14,7 +14,7 @@ else
     <div class="user-logout-container">
         <span class="user-greeting">
             <i class="fas fa-user-circle"></i>
-            @CurrentUser.Name
+            @(CurrentUser.IsImpersonating ? CurrentUser.ImpersonatingUserName : CurrentUser.Name)
         </span>
         <a href="/admin/logout" class="logout-link">
             <i class="fas fa-arrow-right-from-bracket"></i> Logout

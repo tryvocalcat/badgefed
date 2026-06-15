@@ -1,0 +1,44 @@
+@inject CurrentUser CurrentUser
+
+@if (CurrentUser.IsImpersonating)
+{
+    <div class="impersonation-banner">
+        <div class="container">
+            <div class="level is-mobile">
+                <div class="level-left">
+                    <div class="level-item">
+                        <span class="icon has-text-warning">
+                            <i class="fas fa-user-secret"></i>
+                        </span>
+                        <span>
+                            You are viewing as <strong>@CurrentUser.ImpersonatingUserName</strong>
+                            (Group: @CurrentUser.GetGroupId(), Role: @CurrentUser.GetRole())
+                        </span>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <a href="/admin/impersonate/stop" class="button is-small is-warning is-outlined">
+                            <span class="icon">
+                                <i class="fas fa-times"></i>
+                            </span>
+                            <span>Stop Impersonation</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .impersonation-banner {
+        background-color: #363636;
+        color: #fff;
+        padding: 0.5rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        border-bottom: 3px solid #ffdd57;
+    }
+</style>

@@ -14,7 +14,7 @@
 
 @attribute [Authorize(Roles = "admin")]
 
-<div class="container">
+<div class="container is-fluid">
     <nav class="breadcrumb" aria-label="breadcrumbs">
         <ul>
             <li><a href="/admin">Dashboard</a></li>
@@ -460,6 +460,15 @@
                                                 <span>Activate</span>
                                             </button>
                                         }
+                                        @if (user.IsActive)
+                                        {
+                                            <a class="button is-dark is-small" href="/admin/impersonate/start?groupId=@(Uri.EscapeDataString(user.GroupId))&role=@(Uri.EscapeDataString(user.Role))&userName=@(Uri.EscapeDataString(user.GivenName ?? user.Id))">
+                                                <span class="icon">
+                                                    <i class="fas fa-user-secret"></i>
+                                                </span>
+                                                <span>Impersonate</span>
+                                            </a>
+                                        }
                                     }
                                     else
                                     {
@@ -514,6 +523,14 @@
     .field.has-addons .select.is-small + .control .button {
         border-top-left-radius: 0;
         border-bottom-left-radius: 0;
+    }
+
+    .table td, .table th {
+        white-space: nowrap;
+    }
+
+    .table .buttons {
+        flex-wrap: nowrap;
     }
 </style>
 

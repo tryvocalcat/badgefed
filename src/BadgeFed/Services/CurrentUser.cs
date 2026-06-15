@@ -10,11 +10,14 @@ public class CurrentUser
 
     private readonly IBillingService _billingService;
 
-    public CurrentUser(IHttpContextAccessor httpContextAccessor, ProtectedSessionStorage protectedSessionStorage, IBillingService billingService)
+    private readonly ImpersonationService _impersonationService;
+
+    public CurrentUser(IHttpContextAccessor httpContextAccessor, ProtectedSessionStorage protectedSessionStorage, IBillingService billingService, ImpersonationService impersonationService)
     {
         _httpContextAccessor = httpContextAccessor;
         _protectedSessionStorage = protectedSessionStorage;
         _billingService = billingService;
+        _impersonationService = impersonationService;
     }
 
     public string? Issuer => _httpContextAccessor.HttpContext?.User.Identity.AuthenticationType;
@@ -33,20 +36,64 @@ public class CurrentUser
 
     public string GetRole()
     {
+        // When impersonating, return the target user's role
+        var session = GetImpersonationSession();
+        if (session != null)
+            return session.TargetRole;
+
+        var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role);
+        return roleClaim?.Value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns the real role from claims, ignoring impersonation.
+    /// Used to ensure the admin can always stop impersonation.
+    /// </summary>
+    public string GetRealRole()
+    {
         var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role);
         return roleClaim?.Value ?? string.Empty;
     }
 
     public string GetGroupId()
     {
+        // When impersonating, return the target user's group
+        var session = GetImpersonationSession();
+        if (session != null)
+            return session.TargetGroupId;
+
         var groupClaim = _httpContextAccessor.HttpContext?.User.FindFirst("urn:badgefed:group");
         return groupClaim?.Value ?? "system";
     }
 
     public bool IsAdmin()
     {
-        var role = GetRole();
+        // Returns false during impersonation so data filtering works correctly
+        if (IsImpersonating)
+            return false;
+        return IsRealAdmin();
+    }
+
+    /// <summary>
+    /// Always returns the real admin status from claims, ignoring impersonation.
+    /// Used for impersonation banner visibility and stop controls.
+    /// </summary>
+    public bool IsRealAdmin()
+    {
+        var role = GetRealRole();
         return !string.IsNullOrEmpty(role) && role.Equals("admin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsImpersonating => GetImpersonationSession() != null;
+
+    public string? ImpersonatingUserName => GetImpersonationSession()?.TargetUserName;
+
+    private ImpersonationSession? GetImpersonationSession()
+    {
+        var userId = UserId;
+        if (string.IsNullOrEmpty(userId))
+            return null;
+        return _impersonationService.GetSession(userId);
     }
 
     public bool CanManage()
