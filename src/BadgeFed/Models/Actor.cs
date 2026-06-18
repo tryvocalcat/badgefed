@@ -22,6 +22,8 @@ public class Actor
 
     public bool IsMain { get; set; } = false; // New property
 
+    public bool Featured { get; set; } = true;
+
     public string OwnerId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Website / Profile URL is required")]

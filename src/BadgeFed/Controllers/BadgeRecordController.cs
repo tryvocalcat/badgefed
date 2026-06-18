@@ -12,14 +12,16 @@ namespace BadgeFed.Controllers
         private LocalScopedDb _localDbService;
         private BadgeService _badgeService { get; }
         private readonly ILogger<BadgeController> _logger;
+        private readonly FederationAnalyticsService _analytics;
 
         private static ConcurrentDictionary<string, string> _notesInMemoryCache = new ConcurrentDictionary<string, string>();
 
-        public BadgeController(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeController> logger)
+        public BadgeController(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeController> logger, FederationAnalyticsService analytics)
         {
             _localDbService = localDbService;
             _badgeService = badgeService;
             _logger = logger;
+            _analytics = analytics;
         }
 
         [HttpGet("{noteId}")]
@@ -43,6 +45,13 @@ namespace BadgeFed.Controllers
             {
                 _logger.LogInformation("[{RequestHost}] Serving badge grant {NoteId} from in-memory cache", Request.Host, noteId);
                 
+                _analytics.TrackEvent(
+                    FederationEventType.BadgeRequested,
+                    objectUri: $"https://{Request.Host}/grant/{noteId}",
+                    remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: userAgent);
+
                 // Add caching headers - cache for 24 hours (86400 seconds)
                 Response.Headers.Add("Cache-Control", "public, max-age=86400");
                 Response.Headers.Add("Expires", DateTime.UtcNow.AddHours(24).ToString("R"));
@@ -60,6 +69,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully retrieved badge grant {NoteId}", Request.Host, noteId);
+
+            _analytics.TrackEvent(
+                FederationEventType.BadgeRequested,
+                objectUri: $"https://{Request.Host}/grant/{noteId}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: userAgent);
 
             var actor = _localDbService.GetActorByUri(record.IssuedBy);
 

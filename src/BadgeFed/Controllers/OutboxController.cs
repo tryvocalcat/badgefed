@@ -13,17 +13,20 @@ namespace BadgeFed.Controllers
         private readonly LocalScopedDb _localDbService;
         private readonly BadgeService _badgeService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly FederationAnalyticsService _analytics;
 
         public OutboxController(
             ILogger<OutboxController> logger,
             LocalScopedDb localDbService,
             BadgeService badgeService,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            FederationAnalyticsService analytics)
         {
             _logger = logger;
             _localDbService = localDbService;
             _badgeService = badgeService;
             _httpClientFactory = httpClientFactory;
+            _analytics = analytics;
         }
 
         [HttpGet]
@@ -44,6 +47,14 @@ namespace BadgeFed.Controllers
 
             var domain = Request.Host.Host;
             var baseOutboxUrl = $"https://{domain}/outbox";
+
+            _analytics.TrackEventAutoGroup(
+                FederationEventType.OutboxRequested,
+                actorUri: attributedTo,
+                objectUri: baseOutboxUrl,
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             if (!page)
             {

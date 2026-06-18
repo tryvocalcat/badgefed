@@ -9,12 +9,14 @@ public class BadgeProcessor
     private readonly LocalScopedDb _localDbService;
     private readonly BadgeService _badgeService;
     private readonly ILogger<BadgeProcessor>? _logger;
+    private readonly FederationAnalyticsService? _analytics;
 
-    public BadgeProcessor(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeProcessor>? logger = null)
+    public BadgeProcessor(LocalScopedDb localDbService, BadgeService badgeService, ILogger<BadgeProcessor>? logger = null, FederationAnalyticsService? analytics = null)
     {
         _localDbService = localDbService;
         _badgeService = badgeService;
         _logger = logger;
+        _analytics = analytics;
     }
     
     private BadgeRecord? GetBadgeRecord(long recordId)
@@ -265,6 +267,11 @@ public class BadgeProcessor
             // Send the delete activity to all followers
             await NotifyFollowersOfNote(serializedDelete, actor);
 
+            _analytics?.TrackEvent(
+                FederationEventType.BadgeRevocationSent,
+                actorUri: actor.Uri?.ToString(),
+                objectUri: noteId);
+
             // Also notify the recipient directly if they have an inbox
             if (!string.IsNullOrEmpty(record.IssuedToSubjectUri))
             {
@@ -343,6 +350,11 @@ public class BadgeProcessor
             _logger?.LogInformation("Boosting badge grant: {OriginalNoteId} by {MainActorUri}", originalNoteId, mainActor.Uri);
 
             await NotifyFollowersOfNote(serializedAnnouncement, mainActor);
+
+            _analytics?.TrackEvent(
+                FederationEventType.BadgeAnnounce,
+                actorUri: mainActor.Uri?.ToString(),
+                objectUri: originalNoteId);
         }
         catch (Exception e)
         {
@@ -382,6 +394,12 @@ public class BadgeProcessor
                 endpointsAlreadySent.Add(endpointUri);
 
                 await actorHelper.SendPostSignedRequest(serializedActivityPubObject, new Uri(fediverseInfo.Inbox));
+
+                _analytics?.TrackEvent(
+                    FederationEventType.BadgeDeliveredToFollower,
+                    actorUri: actor.Uri?.ToString(),
+                    targetUri: follower.FollowerUri,
+                    remoteHost: new Uri(fediverseInfo.Inbox).Host);
 
                 _logger?.LogDebug("Sent note to {FollowerUri}", follower.FollowerUri);
             }
@@ -426,6 +444,11 @@ public class BadgeProcessor
         var serializedNote = JsonSerializer.Serialize(createNote, options);
 
         await NotifyFollowersOfNote(serializedNote, actor);
+
+        _analytics?.TrackEvent(
+            FederationEventType.BadgeBroadcast,
+            actorUri: actor.Uri?.ToString(),
+            objectUri: record.NoteId);
 
         await AnnounceGrantByMainActor(record);
 

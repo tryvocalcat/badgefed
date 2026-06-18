@@ -11,11 +11,13 @@ namespace BadgeFed.Controllers
     {
         private readonly LocalScopedDb _localDbService;
         private readonly ILogger<BadgeClassController> _logger;
+        private readonly FederationAnalyticsService _analytics;
 
-        public BadgeClassController(LocalScopedDb localDbService, ILogger<BadgeClassController> logger)
+        public BadgeClassController(LocalScopedDb localDbService, ILogger<BadgeClassController> logger, FederationAnalyticsService analytics)
         {
             _localDbService = localDbService;
             _logger = logger;
+            _analytics = analytics;
         }
 
         [HttpGet("{id}")]
@@ -32,6 +34,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully retrieved badge class for ID: {BadgeId}", Request.Host, id);
+
+            _analytics.TrackEvent(
+                FederationEventType.BadgeClassRequested,
+                objectUri: $"https://{Request.Host}/badge/{id}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             var actor = _localDbService.GetActorById(badge.IssuedBy);
 

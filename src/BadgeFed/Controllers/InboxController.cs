@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using ActivityPubDotNet.Core;
+using BadgeFed.Models;
 using BadgeFed.Services;
 using BadgeFed.Core;
 
@@ -18,6 +19,7 @@ namespace BadgeFed.Controllers
         private readonly QuoteRequestService _quoteRequestService;
         private readonly JobQueueService _jobQueue;
         private readonly JobSignal _jobSignal;
+        private readonly FederationAnalyticsService _analytics;
 
         private readonly LocalScopedDb _db;
 
@@ -29,7 +31,8 @@ namespace BadgeFed.Controllers
             QuoteRequestService quoteRequestService,
             JobQueueService jobQueue,
             JobSignal jobSignal,
-            LocalScopedDb db)
+            LocalScopedDb db,
+            FederationAnalyticsService analytics)
         {
             _logger = logger;
             _followService = followService;
@@ -39,6 +42,7 @@ namespace BadgeFed.Controllers
             _jobQueue = jobQueue;
             _jobSignal = jobSignal;
             _db = db;
+            _analytics = analytics;
         }
 
         [HttpPost]
@@ -68,6 +72,12 @@ namespace BadgeFed.Controllers
                 {
                     _logger?.LogInformation($"Follow action for actor: {message.Actor}");
                     
+                    _analytics.TrackEvent(
+                        FederationEventType.InboxFollow,
+                        actorUri: message.Actor,
+                        remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                        requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                     // Insert job into queue
                     await _jobQueue.AddJobAsync("accept_follow_request", message, createdBy: "InboxController");
                 }
@@ -75,6 +85,12 @@ namespace BadgeFed.Controllers
                 {
                     _logger?.LogInformation($"Unfollow action for actor: {message.Actor}");
                     
+                    _analytics.TrackEvent(
+                        FederationEventType.InboxUndoFollow,
+                        actorUri: message.Actor,
+                        remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                        requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                     // Insert job into queue
                     await _jobQueue.AddJobAsync("unfollow", message, createdBy: "InboxController");
                 }
@@ -89,6 +105,12 @@ namespace BadgeFed.Controllers
                 {
                     _logger?.LogInformation($"Create action for actor: {message.Actor}");
                     
+                    _analytics.TrackEvent(
+                        FederationEventType.InboxCreate,
+                        actorUri: message.Actor,
+                        remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                        requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                     // Insert job into queue
                     await _jobQueue.AddJobAsync("create_activity", message, createdBy: "InboxController");
                 }
@@ -96,6 +118,12 @@ namespace BadgeFed.Controllers
                 {
                     _logger?.LogInformation($"Announce action for actor: {message.Actor}");
                     
+                    _analytics.TrackEvent(
+                        FederationEventType.InboxAnnounce,
+                        actorUri: message.Actor,
+                        remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                        requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                     // Insert job into queue
                     await _jobQueue.AddJobAsync("process_announce", message, createdBy: "InboxController");
                 }

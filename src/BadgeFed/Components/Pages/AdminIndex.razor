@@ -9,6 +9,7 @@
 @inject IWebHostEnvironment Environment
 @inject CurrentUser CurrentUser
 @inject OpenRegistrationService OpenRegistrationService
+@inject FederationAnalyticsService AnalyticsService
 @rendermode InteractiveServer
 
 @layout BadgeFed.Components.Layouts.AdminLayout
@@ -140,6 +141,65 @@
                         <p class="heading is-size-7 mb-2">Acceptance Rate</p>
                         <progress class="progress is-success" value="@percentage" max="100">@percentage%</progress>
                         <p class="is-size-7 has-text-grey mt-2"><strong>@percentage%</strong> of issued badges accepted</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Distribution & Reach Panel -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-5 mb-4">
+                    <span class="icon-text">
+                        <span class="icon has-text-success">
+                            <i class="fas fa-globe"></i>
+                        </span>
+                        <span>Distribution & Reach</span>
+                    </span>
+                </h2>
+
+                @if (distributionCounts.Count == 0)
+                {
+                    <p class="has-text-grey">No distribution data yet. Badges will appear here once they start being shared across platforms.</p>
+                }
+                else
+                {
+                    <div class="mb-4">
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Badges Distributed</span>
+                            <span class="tag is-success is-light">@GetDistributionCount("badge_broadcast")</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Deliveries to Subscribers</span>
+                            <span class="tag is-info is-light">@GetDistributionCount("badge_delivered_to_follower")</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Amplified (Shared Onwards)</span>
+                            <span class="tag is-link is-light">@GetDistributionCount("badge_announce")</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">New Subscribers</span>
+                            <span class="tag is-primary is-light">@GetDistributionCount("inbox_follow")</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Profile Views (by other platforms)</span>
+                            <span class="tag is-warning is-light">@GetDistributionCount("actor_requested")</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Badge Lookups (by other platforms)</span>
+                            <span class="tag is-dark is-light">@(GetDistributionCount("badge_requested") + GetDistributionCount("openbadge_assertion_requested"))</span>
+                        </div>
+                        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                            <span class="is-size-7 has-text-weight-semibold">Discovery Queries</span>
+                            <span class="tag is-grey is-light">@GetDistributionCount("webfinger_requested")</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-3" style="border-top: 1px solid #e8e8e8;">
+                        <p class="is-size-7 has-text-grey">
+                            <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                            Total reach: <strong>@distributionCounts.Values.Sum()</strong> cross-platform interactions
+                        </p>
                     </div>
                 }
             </div>
@@ -561,6 +621,8 @@
     private List<CommentItem> lastComments = [];
     private List<BadgeRecord> lastAccepted = [];
     private List<BadgeRecord> lastReceivedExternal = [];
+
+    private Dictionary<string, long> distributionCounts = new();
     
     private string adminResourcesHtml = "";
     private string assemblyVersion = "";
@@ -667,6 +729,12 @@
             lastReceivedExternal = GetLastReceivedExternalBadges(5, IsSystemAdmin ? null : CurrentOwnerGroupId);
         } catch (Exception ex) {
             lastReceivedExternal = new List<BadgeRecord>();
+        }
+
+        try {
+            distributionCounts = AnalyticsService.GetEventCounts(groupId: IsSystemAdmin ? null : CurrentOwnerGroupId);
+        } catch {
+            distributionCounts = new Dictionary<string, long>();
         }
         
         // Load admin resources HTML from static file
@@ -940,6 +1008,11 @@
         public string NoteId { get; set; } = "";
         public string AuthorId { get; set; } = "";
         public DateTime CreatedAt { get; set; }
+    }
+
+    private long GetDistributionCount(string eventType)
+    {
+        return distributionCounts.TryGetValue(eventType, out var count) ? count : 0;
     }
 
     private string ExtractActivityPubHandle(string authorUrl)

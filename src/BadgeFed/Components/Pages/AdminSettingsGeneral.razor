@@ -152,6 +152,63 @@
         }
     </div>
 
+    <!-- Custom JavaScript -->
+    <div class="box">
+        <h2 class="subtitle">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-code"></i>
+                </span>
+                <span>Custom JavaScript</span>
+            </span>
+        </h2>
+        
+        <div class="content">
+            <p>Edit custom JavaScript for public-facing pages. Changes will be saved as <code>custom.js</code> in <code>wwwroot/js/</code>.</p>
+            <p class="has-text-warning-dark"><strong>⚠ Warning:</strong> Only add JavaScript you trust. Malicious scripts can compromise your instance and visitors.</p>
+        </div>
+
+        <div class="field">
+            <label class="label">JavaScript Content</label>
+            <div class="control">
+                <textarea @bind="CustomJsContent" class="textarea" rows="12" placeholder="Enter your custom JavaScript here..."></textarea>
+            </div>
+        </div>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-success" @onclick="SaveJs">
+                    <span class="icon">
+                        <i class="fas fa-save"></i>
+                    </span>
+                    <span>Save JavaScript</span>
+                </button>
+            </div>
+            <div class="control">
+                <button class="button is-info" @onclick="ReloadJs">
+                    <span class="icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </span>
+                    <span>Reload JavaScript</span>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(JsMessage))
+        {
+            <div class="notification is-success is-light">
+                @JsMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(JsError))
+        {
+            <div class="notification is-danger is-light">
+                <strong>Error:</strong> @JsError
+            </div>
+        }
+    </div>
+
     <!-- Profile CTA -->
     <div class="box">
         <h2 class="subtitle">
@@ -288,6 +345,10 @@
     private string CssMessage { get; set; } = string.Empty;
     private string CssError { get; set; } = string.Empty;
 
+    private string CustomJsContent { get; set; } = string.Empty;
+    private string JsMessage { get; set; } = string.Empty;
+    private string JsError { get; set; } = string.Empty;
+
     private InstanceDescription instanceDescription = new();
     private bool isSavingCta = false;
     private string CtaMessage { get; set; } = string.Empty;
@@ -300,6 +361,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadCustomCss();
+        await LoadCustomJs();
         LoadProfileCta();
     }
 
@@ -442,6 +504,61 @@
         if (string.IsNullOrEmpty(CssError))
         {
             successMessage = "CSS content reloaded from file.";
+        }
+    }
+
+    private async Task LoadCustomJs()
+    {
+        JsMessage = string.Empty;
+        JsError = string.Empty;
+        try
+        {
+            var jsPath = Path.Combine(Environment.WebRootPath, "js", "custom.js");
+            if (File.Exists(jsPath))
+            {
+                CustomJsContent = await File.ReadAllTextAsync(jsPath);
+            }
+            else
+            {
+                CustomJsContent = "/* Add your custom JavaScript here */";
+            }
+        }
+        catch (Exception ex)
+        {
+            JsError = $"Error loading JavaScript: {ex.Message}";
+            errorMessage = $"Failed to load custom JavaScript: {ex.Message}";
+        }
+    }
+
+    private async Task SaveJs()
+    {
+        JsMessage = string.Empty;
+        JsError = string.Empty;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        
+        try
+        {
+            var jsFolder = Path.Combine(Environment.WebRootPath, "js");
+            Directory.CreateDirectory(jsFolder);
+            var jsPath = Path.Combine(jsFolder, "custom.js");
+            await File.WriteAllTextAsync(jsPath, CustomJsContent);
+            JsMessage = "JavaScript saved successfully!";
+            successMessage = "Custom JavaScript has been saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            JsError = $"Error saving JavaScript: {ex.Message}";
+            errorMessage = $"Failed to save JavaScript: {ex.Message}";
+        }
+    }
+
+    private async Task ReloadJs()
+    {
+        await LoadCustomJs();
+        if (string.IsNullOrEmpty(JsError))
+        {
+            successMessage = "JavaScript content reloaded from file.";
         }
     }
 

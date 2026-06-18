@@ -12,12 +12,14 @@ namespace BadgeFed.Controllers
         private readonly LocalScopedDb _localDbService;
         private readonly OpenBadgeService _openBadgeService;
         private readonly ILogger<OpenBadgeController> _logger;
+        private readonly FederationAnalyticsService _analytics;
 
-        public OpenBadgeController(LocalScopedDb localDbService, OpenBadgeService openBadgeService, ILogger<OpenBadgeController> logger)
+        public OpenBadgeController(LocalScopedDb localDbService, OpenBadgeService openBadgeService, ILogger<OpenBadgeController> logger, FederationAnalyticsService analytics)
         {
             _localDbService = localDbService;
             _openBadgeService = openBadgeService;
             _logger = logger;
+            _analytics = analytics;
         }
 
         [HttpGet("issuer/{domain}/{username}")]
@@ -42,6 +44,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully retrieved issuer: {Username}@{Domain}", Request.Host, username, domain);
+
+            _analytics.TrackEventAutoGroup(
+                FederationEventType.OpenBadgeIssuerRequested,
+                actorUri: $"https://{domain}/actors/{domain}/{username}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             var json = _openBadgeService.GetIssuerJson(actor);
             return Content(json, "application/json");
@@ -72,6 +81,14 @@ namespace BadgeFed.Controllers
 
             var actor = _localDbService.GetActorById(badge.IssuedBy);
 
+            _analytics.TrackEventAutoGroup(
+                FederationEventType.OpenBadgeClassRequested,
+                actorUri: actor?.Uri?.ToString(),
+                objectUri: $"https://{Request.Host}/openbadge/class/{id}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
+
             var json = _openBadgeService.GetBadgeClassJson(badge, actor);
             return Content(json, "application/json");
         }
@@ -98,6 +115,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully retrieved OpenBadge for noteId: {NoteId}", Request.Host, noteId);
+
+            _analytics.TrackEvent(
+                FederationEventType.OpenBadgeAssertionRequested,
+                objectUri: $"https://{Request.Host}/openbadge/{noteId}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             var json = _openBadgeService.GetOpenBadgeJson(record);
             return Content(json, "application/json");

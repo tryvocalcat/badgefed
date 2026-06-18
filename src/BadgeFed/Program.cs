@@ -117,6 +117,8 @@ builder.Services.AddScoped<UserService>();
 
 builder.Services.AddScoped<RelayActorService>();
 
+builder.Services.AddScoped<FederationAnalyticsService>();
+
 // Add custom asset path service
 builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
 

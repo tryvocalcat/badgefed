@@ -1,4 +1,5 @@
 using ActivityPubDotNet.Core;
+using BadgeFed.Models;
 using BadgeFed.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,12 +13,14 @@ namespace BadgeFed.Controllers
         private readonly IConfiguration _configuration;
         private readonly LocalScopedDb _localDbService;
         private readonly ILogger<ActorController> _logger;
+        private readonly FederationAnalyticsService _analytics;
 
-        public ActorController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<ActorController> logger)
+        public ActorController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<ActorController> logger, FederationAnalyticsService analytics)
         {
             _configuration = configuration;
             _localDbService = localDbService;
             _logger = logger;
+            _analytics = analytics;
         }
 
         [HttpGet]
@@ -47,6 +50,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully retrieved actor {ActorName}@{Domain}", Request.Host, actorName, domain);
+
+            _analytics.TrackEventAutoGroup(
+                FederationEventType.ActorRequested,
+                actorUri: $"https://{domain}/actors/{domain}/{actorName}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             var baseUrlId = $"https://{domain}/actors/{domain}/{actorName}";
 

@@ -489,8 +489,8 @@ public class LocalDbService
         if (actor.Id == 0)
         {
             command.CommandText = @"
-                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId, Theme, SocialUri1, SocialUri2, SocialUri3, ShowFollowers)
-                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId, @Theme, @SocialUri1, @SocialUri2, @SocialUri3, @ShowFollowers);
+                INSERT INTO Actor (Name, Summary, AvatarPath, InformationUri, Uri, Domain, PublicKeyPem, PrivateKeyPem, Username, LinkedInOrganizationId, IsMain, OwnerId, Theme, SocialUri1, SocialUri2, SocialUri3, ShowFollowers, Featured)
+                VALUES (@Name, @Summary, @AvatarPath, @InformationUri, @Uri, @Domain, @PublicKeyPem, @PrivateKeyPem, @Username, @LinkedInOrganizationId, @IsMain, @OwnerId, @Theme, @SocialUri1, @SocialUri2, @SocialUri3, @ShowFollowers, @Featured);
                 SELECT last_insert_rowid();
             ";
         }
@@ -521,7 +521,8 @@ public class LocalDbService
                     SocialUri1 = @SocialUri1,
                     SocialUri2 = @SocialUri2,
                     SocialUri3 = @SocialUri3,
-                    ShowFollowers = @ShowFollowers
+                    ShowFollowers = @ShowFollowers,
+                    Featured = @Featured
                 WHERE Id = @Id;
             ";
             command.Parameters.AddWithValue("@Id", actor.Id);
@@ -544,6 +545,7 @@ public class LocalDbService
         command.Parameters.AddWithValue("@SocialUri2", socialUri2 ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@SocialUri3", socialUri3 ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@ShowFollowers", actor.ShowFollowers);
+        command.Parameters.AddWithValue("@Featured", actor.Featured);
 
         if (actor.Id == 0)
         {
@@ -600,6 +602,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Featured = reader["Featured"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("Featured")),
                 OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
@@ -743,6 +746,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Featured = reader["Featured"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("Featured")),
                 OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))
@@ -791,6 +795,7 @@ public class LocalDbService
                 Username = reader["Username"] == DBNull.Value ? null : reader["Username"].ToString(),
                 LinkedInOrganizationId = reader["LinkedInOrganizationId"] == DBNull.Value ? null : reader["LinkedInOrganizationId"].ToString(),
                 IsMain = reader.GetBoolean(reader.GetOrdinal("IsMain")),
+                Featured = reader["Featured"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("Featured")),
                 OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                 Theme = reader["Theme"] == DBNull.Value ? "default" : reader["Theme"].ToString(),
                 ShowFollowers = reader["ShowFollowers"] == DBNull.Value ? true : reader.GetBoolean(reader.GetOrdinal("ShowFollowers"))

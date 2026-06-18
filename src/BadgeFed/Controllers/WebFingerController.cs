@@ -1,3 +1,4 @@
+using BadgeFed.Models;
 using BadgeFed.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,12 +11,14 @@ namespace BadgeFed.Controllers
         private readonly IConfiguration _configuration;
         private readonly LocalScopedDb _localDbService;
         private readonly ILogger<WebFingerController> _logger;
+        private readonly FederationAnalyticsService _analytics;
 
-        public WebFingerController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<WebFingerController> logger)
+        public WebFingerController(IConfiguration configuration, LocalScopedDb localDbService, ILogger<WebFingerController> logger, FederationAnalyticsService analytics)
         {
             _configuration = configuration;
             _localDbService = localDbService;
             _logger = logger;
+            _analytics = analytics;
         }
 
         [HttpGet("webfinger")]
@@ -42,6 +45,13 @@ namespace BadgeFed.Controllers
             }
             
             _logger.LogInformation("[{RequestHost}] Successfully processed WebFinger request for: {Account}", Request.Host, account);
+
+            _analytics.TrackEventAutoGroup(
+                FederationEventType.WebFingerRequested,
+                actorUri: $"https://{domain}/actors/{domain}/{actorName}",
+                remoteHost: Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                requestIp: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers["User-Agent"].ToString());
 
             var subject = $"acct:{actorName}@{domain}";
             var aliases = new[] { 

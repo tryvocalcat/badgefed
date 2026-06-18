@@ -39,18 +39,24 @@ namespace BadgeFed.Services
 
                 foreach (var serverJson in serversFromJson)
                 {
-                    var existingServer = GetServerByUrl(serverJson.url);
+                    var normalizedUrl = serverJson.url?.Trim().TrimEnd('/') ?? string.Empty;
+                    var existingServer = GetServerByUrl(normalizedUrl);
                     
-                    var defaultActor = "https://" + new Uri(serverJson.url).Host + "/actors/" +  new Uri(serverJson.url).Host + "_relaybot";
+                    var host = new Uri(normalizedUrl).Host;
+                    var defaultActor = $"https://{host}/actors/{host}/_relaybot";
+
+                    var actorUri = string.IsNullOrWhiteSpace(serverJson.actor) 
+                        ? defaultActor 
+                        : NormalizeActorUri(serverJson.actor);
 
                     var discoveredServer = new DiscoveredServer
                     {
                         Id = existingServer?.Id ?? 0,
                         Name = serverJson.name,
-                        Url = serverJson.url,
+                        Url = normalizedUrl,
                         Description = serverJson.description,
                         Admin = serverJson.admin,
-                        Actor = string.IsNullOrEmpty(serverJson.actor) ? defaultActor : serverJson.actor,
+                        Actor = actorUri,
                         IsFollowed = existingServer?.IsFollowed ?? false,
                         FollowedAt = existingServer?.FollowedAt,
                         CreatedAt = existingServer?.CreatedAt ?? DateTime.UtcNow,
@@ -101,7 +107,10 @@ namespace BadgeFed.Services
 
         public DiscoveredServer? GetServerByUrl(string url)
         {
-            return _localDbService.GetDiscoveredServerByUrl(url);
+            // Try both with and without trailing slash to handle inconsistencies
+            var normalizedUrl = url?.Trim().TrimEnd('/') ?? string.Empty;
+            return _localDbService.GetDiscoveredServerByUrl(normalizedUrl) 
+                ?? _localDbService.GetDiscoveredServerByUrl(normalizedUrl + "/");
         }
 
         public void UpsertDiscoveredServer(DiscoveredServer server)
@@ -122,9 +131,15 @@ namespace BadgeFed.Services
                     return false;
                 }
 
+                var actorUri = NormalizeActorUri(server.Actor);
+                if (string.IsNullOrEmpty(actorUri))
+                {
+                    _logger.LogWarning($"Server {serverId} has an invalid actor URI: {server.Actor}");
+                    return false;
+                }
 
                 // Use the existing FollowService to follow the server's actor
-                var followedActor = await _followService.FollowIssuer(actor, server.Actor);
+                var followedActor = await _followService.FollowIssuer(actor, actorUri);
                 
                 if (followedActor != null)
                 {
@@ -203,9 +218,16 @@ namespace BadgeFed.Services
                     _localDbService.DeleteFollowedIssuer(followedIssuer.Id);
                 }
 
+                var actorUri = NormalizeActorUri(server.Actor);
+                if (string.IsNullOrEmpty(actorUri))
+                {
+                    _logger.LogWarning($"Server {serverId} has an invalid actor URI for unfollow: {server.Actor}");
+                    return false;
+                }
+
                 // Send Undo Follow activity to the server
                 var actorHelper = new ActorHelper(actor.PrivateKeyPemClean!, actor.KeyId, _logger);
-                var targetActor = await actorHelper.FetchActorInformationAsync(server.Actor);
+                var targetActor = await actorHelper.FetchActorInformationAsync(actorUri);
 
                 if (targetActor != null)
                 {
@@ -251,6 +273,31 @@ namespace BadgeFed.Services
                 _logger.LogError(ex, $"Error unfollowing server {serverId}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Normalizes an actor URI by trimming whitespace, removing trailing slashes,
+        /// and fixing common path issues like double slashes.
+        /// </summary>
+        private static string? NormalizeActorUri(string? uri)
+        {
+            if (string.IsNullOrWhiteSpace(uri))
+                return null;
+
+            var normalized = uri.Trim().TrimEnd('/');
+
+            // Validate it's a proper URI
+            if (!Uri.TryCreate(normalized, UriKind.Absolute, out var parsedUri))
+                return null;
+
+            // Rebuild to fix double slashes in path
+            var path = parsedUri.AbsolutePath;
+            while (path.Contains("//"))
+            {
+                path = path.Replace("//", "/");
+            }
+
+            return $"{parsedUri.Scheme}://{parsedUri.Host}{(parsedUri.IsDefaultPort ? "" : $":{parsedUri.Port}")}{path}";
         }
     }
 }
