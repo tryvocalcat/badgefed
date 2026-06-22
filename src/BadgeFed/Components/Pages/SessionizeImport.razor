@@ -1,0 +1,582 @@
+@page "/admin/import/sessionize/{badgeId}"
+@using System.Net.Http
+@using System.Text.Json
+@using BadgeFed.Models
+@using BadgeFed.Services
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager NavigationManager
+@inject LocalScopedDb LocalDbService
+@inject IConfiguration Configuration
+@inject BadgeService BadgeService
+@inject JobSignal JobSignal
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager")]
+
+<div class="mb-4">
+    <a href="/admin/badges" class="button is-light">
+        <span class="icon">
+            <i class="fas fa-arrow-left"></i>
+        </span>
+        <span>Back to Manage Badges</span>
+    </a>
+</div>
+
+<section class="section">
+    <div class="container">
+        <h1 class="title">Import from Sessionize</h1>
+        <p class="subtitle">Grant badges to speakers from a Sessionize event</p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="notification is-danger mb-4">
+                <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+                @errorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="notification is-success mb-4">
+                <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+                @successMessage
+            </div>
+        }
+
+        @if (currentStep == 1)
+        {
+            <!-- Step 1: Sessionize API URL -->
+            <div class="box">
+                <h2 class="subtitle">Step 1: Enter Sessionize API URL</h2>
+
+                <div class="field">
+                    <label class="label">Sessionize Speakers API URL</label>
+                    <p class="help mb-2">
+                        Enter the Sessionize API v2 Speakers endpoint URL.<br />
+                        <strong>Format:</strong> <code>https://sessionize.com/api/v2/YOUR_EVENT_ID/view/Speakers</code>
+                    </p>
+                    <div class="control has-icons-left">
+                        <input type="url" class="input" @bind="sessionizeUrl" placeholder="https://sessionize.com/api/v2/xxxxxxxx/view/Speakers" />
+                        <span class="icon is-left">
+                            <i class="fas fa-link"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <button type="button" class="button is-primary" @onclick="FetchSpeakers" disabled="@(string.IsNullOrWhiteSpace(sessionizeUrl) || isFetching)">
+                            @if (isFetching)
+                            {
+                                <span class="icon">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                                <span>Fetching speakers...</span>
+                            }
+                            else
+                            {
+                                <span class="icon">
+                                    <i class="fas fa-download"></i>
+                                </span>
+                                <span>Fetch Speakers</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (currentStep == 2)
+        {
+            <!-- Step 2: Preview Speakers -->
+            <div class="box">
+                <h2 class="subtitle">Step 2: Preview Speakers (@speakers.Count found)</h2>
+
+                <div class="field">
+                    <label class="checkbox">
+                        <input type="checkbox" @bind="selectAll" @bind:event="onchange" @onclick="ToggleSelectAll" />
+                        Select All
+                    </label>
+                </div>
+
+                @if (speakers.Any())
+                {
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped">
+                            <thead>
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Name</th>
+                                    <th>Profile URL</th>
+                                    <th>Link Type</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var speaker in speakers)
+                                {
+                                    <tr class="@(speaker.HasErrors ? "has-background-danger-light" : "")">
+                                        <td>
+                                            <input type="checkbox" @bind="speaker.IsSelected" disabled="@speaker.HasErrors" />
+                                        </td>
+                                        <td>@speaker.FullName</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(speaker.ProfileUrl))
+                                            {
+                                                <a href="@speaker.ProfileUrl" target="_blank" rel="noopener noreferrer">@TruncateUrl(speaker.ProfileUrl)</a>
+                                            }
+                                            else
+                                            {
+                                                <span class="has-text-grey">No link found</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(speaker.LinkType))
+                                            {
+                                                <span class="tag is-light">@speaker.LinkType</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (speaker.HasErrors)
+                                            {
+                                                <span class="tag is-danger">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                    </span>
+                                                    <span>@speaker.ErrorMessage</span>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-success">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-check"></i>
+                                                    </span>
+                                                    <span>Ready</span>
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="field is-grouped mt-4">
+                        <div class="control">
+                            <button type="button" class="button is-light" @onclick="() => currentStep = 1">
+                                <span class="icon">
+                                    <i class="fas fa-arrow-left"></i>
+                                </span>
+                                <span>Back</span>
+                            </button>
+                        </div>
+                        <div class="control">
+                            <button type="button" class="button is-success" @onclick="ProcessGrants" disabled="@(!speakers.Any(s => s.IsSelected && !s.HasErrors) || isProcessing)">
+                                @if (isProcessing)
+                                {
+                                    <span class="icon">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </span>
+                                    <span>Processing...</span>
+                                }
+                                else
+                                {
+                                    <span class="icon">
+                                        <i class="fas fa-award"></i>
+                                    </span>
+                                    <span>Grant Badges (@speakers.Count(s => s.IsSelected && !s.HasErrors))</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (currentStep == 3)
+        {
+            <!-- Step 3: Results -->
+            <div class="box">
+                <h2 class="subtitle">Step 3: Results</h2>
+
+                <div class="notification is-success">
+                    <h4 class="title is-4">Import Complete!</h4>
+                    <p>Successfully granted @successfulGrants badges out of @totalProcessed attempts.</p>
+                    @if (failedGrants > 0)
+                    {
+                        <p class="has-text-danger">@failedGrants grants failed. See details below.</p>
+                    }
+                </div>
+
+                @if (grantResults.Any())
+                {
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped">
+                            <thead>
+                                <tr>
+                                    <th>Speaker</th>
+                                    <th>Profile URL</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var result in grantResults)
+                                {
+                                    <tr class="@(result.Success ? "has-background-success-light" : "has-background-danger-light")">
+                                        <td>@result.Name</td>
+                                        <td>@result.ProfileUrl</td>
+                                        <td>
+                                            @if (result.Success)
+                                            {
+                                                <span class="tag is-success">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-check"></i>
+                                                    </span>
+                                                    <span>Success</span>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tag is-danger">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-times"></i>
+                                                    </span>
+                                                    <span>Failed</span>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>@result.Message</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="field is-grouped mt-4">
+                    <div class="control">
+                        <button type="button" class="button is-light" @onclick="ResetForm">
+                            <span class="icon">
+                                <i class="fas fa-redo"></i>
+                            </span>
+                            <span>Import More</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <a href="/admin/grants" class="button is-primary">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>View All Grants</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string BadgeId { get; set; } = "";
+
+    private int currentStep = 1;
+    private string sessionizeUrl = "";
+    private bool isFetching = false;
+    private bool isProcessing = false;
+    private bool selectAll = true;
+
+    private List<SessionizeSpeaker> speakers = new();
+    private List<GrantResult> grantResults = new();
+
+    private int successfulGrants = 0;
+    private int failedGrants = 0;
+    private int totalProcessed = 0;
+
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    private Badge? badge;
+    private long badgeIdValue;
+
+    protected override void OnInitialized()
+    {
+        if (long.TryParse(BadgeId, out badgeIdValue))
+        {
+            badge = LocalDbService.GetBadgeDefinitionById(badgeIdValue);
+
+            if (badge == null)
+            {
+                errorMessage = $"Badge with ID {badgeIdValue} not found.";
+            }
+        }
+        else
+        {
+            errorMessage = $"Invalid badge ID format: {BadgeId}";
+            NavigationManager.NavigateTo("/admin/badges");
+        }
+    }
+
+    private async Task FetchSpeakers()
+    {
+        isFetching = true;
+        speakers.Clear();
+        errorMessage = "";
+
+        try
+        {
+            if (!Uri.TryCreate(sessionizeUrl, UriKind.Absolute, out var uri) ||
+                !uri.Host.EndsWith("sessionize.com", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage = "Please enter a valid Sessionize API URL (must be from sessionize.com).";
+                isFetching = false;
+                return;
+            }
+
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+            var response = await httpClient.GetAsync(sessionizeUrl);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = $"Failed to fetch speakers. HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
+                isFetching = false;
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var speakersData = JsonSerializer.Deserialize<List<SessionizeApiSpeaker>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (speakersData == null || !speakersData.Any())
+            {
+                errorMessage = "No speakers found in the API response.";
+                isFetching = false;
+                return;
+            }
+
+            foreach (var apiSpeaker in speakersData)
+            {
+                var speaker = new SessionizeSpeaker
+                {
+                    FullName = apiSpeaker.FullName ?? $"{apiSpeaker.FirstName} {apiSpeaker.LastName}".Trim(),
+                    IsSelected = true
+                };
+
+                // Priority: LinkedIn > Blog > Twitter > Instagram
+                var profileLink = GetPreferredLink(apiSpeaker.Links);
+                if (profileLink != null)
+                {
+                    speaker.ProfileUrl = profileLink.Url;
+                    speaker.LinkType = profileLink.LinkType;
+                }
+
+                // Validate and check for existing grants
+                ValidateSpeaker(speaker);
+                speakers.Add(speaker);
+            }
+
+            currentStep = 2;
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "Request timed out. Please check the URL and try again.";
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Network error: {ex.Message}";
+        }
+        catch (JsonException)
+        {
+            errorMessage = "Failed to parse the API response. Please ensure the URL points to a valid Sessionize Speakers endpoint.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An unexpected error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isFetching = false;
+        }
+    }
+
+    private SessionizeApiLink? GetPreferredLink(List<SessionizeApiLink>? links)
+    {
+        if (links == null || !links.Any())
+            return null;
+
+        // Priority: LinkedIn > Blog > Twitter > Instagram
+        var linkedin = links.FirstOrDefault(l => string.Equals(l.LinkType, "LinkedIn", StringComparison.OrdinalIgnoreCase));
+        if (linkedin != null) return linkedin;
+
+        var blog = links.FirstOrDefault(l => string.Equals(l.LinkType, "Blog", StringComparison.OrdinalIgnoreCase));
+        if (blog != null) return blog;
+
+        var twitter = links.FirstOrDefault(l => string.Equals(l.LinkType, "Twitter", StringComparison.OrdinalIgnoreCase));
+        if (twitter != null) return twitter;
+
+        var instagram = links.FirstOrDefault(l => string.Equals(l.LinkType, "Instagram", StringComparison.OrdinalIgnoreCase));
+        if (instagram != null) return instagram;
+
+        return null;
+    }
+
+    private void ValidateSpeaker(SessionizeSpeaker speaker)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(speaker.ProfileUrl))
+        {
+            errors.Add("No usable profile link found");
+        }
+        else if (!Uri.TryCreate(speaker.ProfileUrl, UriKind.Absolute, out _))
+        {
+            errors.Add("Invalid profile URL");
+        }
+        else
+        {
+            // Check for existing grants
+            var sqlExisting = $"BadgeId = {badgeIdValue} AND IssuedToSubjectUri = '{speaker.ProfileUrl}'";
+            var existing = LocalDbService.GetBadgeRecords(sqlExisting);
+            if (existing != null && existing.Count > 0)
+            {
+                errors.Add("Already granted");
+            }
+        }
+
+        if (errors.Any())
+        {
+            speaker.HasErrors = true;
+            speaker.ErrorMessage = string.Join("; ", errors);
+            speaker.IsSelected = false;
+        }
+    }
+
+    private void ToggleSelectAll()
+    {
+        // The value is toggled after bind, so we invert
+        var newValue = !selectAll;
+        foreach (var speaker in speakers.Where(s => !s.HasErrors))
+        {
+            speaker.IsSelected = newValue;
+        }
+    }
+
+    private async Task ProcessGrants()
+    {
+        isProcessing = true;
+        grantResults.Clear();
+        successfulGrants = 0;
+        failedGrants = 0;
+        totalProcessed = 0;
+
+        var selectedSpeakers = speakers.Where(s => s.IsSelected && !s.HasErrors).ToList();
+        totalProcessed = selectedSpeakers.Count;
+
+        foreach (var speaker in selectedSpeakers)
+        {
+            var result = new GrantResult
+            {
+                Name = speaker.FullName,
+                ProfileUrl = speaker.ProfileUrl
+            };
+
+            try
+            {
+                var recipient = new Recipient
+                {
+                    ProfileUri = speaker.ProfileUrl,
+                    Name = speaker.FullName,
+                    Email = ""
+                };
+
+                var badgeRecord = BadgeService.GetGrantBadgeRecord(badge!, recipient);
+                LocalDbService.CreateBadgeRecord(badgeRecord);
+
+                result.Success = true;
+                result.Message = "Badge granted successfully";
+                successfulGrants++;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Message = $"Error: {ex.Message}";
+                failedGrants++;
+            }
+
+            grantResults.Add(result);
+        }
+
+        // Wake up job processor
+        JobSignal.Signal();
+
+        isProcessing = false;
+        currentStep = 3;
+
+        if (successfulGrants > 0)
+        {
+            successMessage = $"Successfully granted {successfulGrants} badges to Sessionize speakers!";
+        }
+    }
+
+    private void ResetForm()
+    {
+        currentStep = 1;
+        sessionizeUrl = "";
+        speakers.Clear();
+        grantResults.Clear();
+        errorMessage = "";
+        successMessage = "";
+        successfulGrants = 0;
+        failedGrants = 0;
+        totalProcessed = 0;
+    }
+
+    private string TruncateUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+        return url.Length > 50 ? url[..50] + "..." : url;
+    }
+
+    // API Models
+    public class SessionizeApiSpeaker
+    {
+        public string Id { get; set; } = "";
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string FullName { get; set; } = "";
+        public List<SessionizeApiLink>? Links { get; set; }
+    }
+
+    public class SessionizeApiLink
+    {
+        public string Title { get; set; } = "";
+        public string Url { get; set; } = "";
+        public string LinkType { get; set; } = "";
+    }
+
+    // UI Models
+    public class SessionizeSpeaker
+    {
+        public string FullName { get; set; } = "";
+        public string ProfileUrl { get; set; } = "";
+        public string LinkType { get; set; } = "";
+        public bool IsSelected { get; set; } = true;
+        public bool HasErrors { get; set; } = false;
+        public string ErrorMessage { get; set; } = "";
+    }
+
+    public class GrantResult
+    {
+        public string Name { get; set; } = "";
+        public string ProfileUrl { get; set; } = "";
+        public bool Success { get; set; } = false;
+        public string Message { get; set; } = "";
+    }
+}
