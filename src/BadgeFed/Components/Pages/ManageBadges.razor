@@ -85,6 +85,7 @@
                                     @if (!IsLimitedManager())
                                     {
                                         <button class="button is-info" @onclick="() => BulkGrantBadge(badge)">Bulk Grant</button>
+                                        <button class="button is-warning" @onclick="() => SessionizeImport(badge)">Sessionize</button>
                                     }
                                     <button class="button is-link" @onclick="() => PreviewBadge(badge)">View</button>
                                     <button class="button is-secondary" @onclick="() => EditBadge(badge)">Edit</button>
@@ -276,6 +277,11 @@
     private void BulkGrantBadge(Badge badge)
     {
         NavigationManager.NavigateTo($"/admin/bulk-grant/{badge.Id}");
+    }
+
+    private void SessionizeImport(Badge badge)
+    {
+        NavigationManager.NavigateTo($"/admin/import/sessionize/{badge.Id}");
     }
 
     private bool IsLimitedManager()

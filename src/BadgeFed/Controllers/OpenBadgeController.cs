@@ -25,6 +25,8 @@ namespace BadgeFed.Controllers
         [HttpGet("issuer/{domain}/{username}")]
         public IActionResult GetIssuer(string domain, string username)
         {
+            Response.Headers["Vary"] = "Accept";
+
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge issuer for {Username}@{Domain}", Request.Host, username, domain);
 
             var accept = Request.Headers["Accept"].ToString();
@@ -59,6 +61,8 @@ namespace BadgeFed.Controllers
         [HttpGet("class/{id}")]
         public IActionResult GetBadgeClass(long id)
         {
+            Response.Headers["Vary"] = "Accept";
+
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge class for badge ID: {BadgeId}", Request.Host, id);
 
             var accept = Request.Headers["Accept"].ToString();
@@ -96,6 +100,8 @@ namespace BadgeFed.Controllers
         [HttpGet("{noteId}")]
         public IActionResult GetOpenBadge(string noteId)
         {
+            Response.Headers["Vary"] = "Accept";
+
             _logger.LogInformation("[{RequestHost}] Fetching OpenBadge for noteId: {NoteId}", Request.Host, noteId);
 
             var accept = Request.Headers["Accept"].ToString();

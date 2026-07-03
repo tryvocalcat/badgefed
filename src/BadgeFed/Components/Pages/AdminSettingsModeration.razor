@@ -1,0 +1,218 @@
+@page "/admin/settings/moderation"
+
+@using BadgeFed.Models
+@using BadgeFed.Services
+
+@inject NavigationManager NavigationManager
+@inject LocalScopedDb LocalDbService
+@inject CurrentUser CurrentUser
+@rendermode InteractiveServer
+
+@layout BadgeFed.Components.Layouts.AdminLayout
+
+@attribute [Authorize(Roles = "admin, manager, manager-limited")]
+
+<div class="container">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="/admin">Dashboard</a></li>
+            <li><a href="/admin/settings">Settings</a></li>
+            <li class="is-active"><a href="#" aria-current="page">Moderation</a></li>
+        </ul>
+    </nav>
+
+    <h1 class="title">Comment Moderation</h1>
+    <p class="subtitle">@(IsSystemAdmin ? "Manage all comments across the instance" : "Manage comments on your badges")</p>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="notification is-success">
+            <button class="delete" @onclick="() => successMessage = string.Empty"></button>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="notification is-danger">
+            <button class="delete" @onclick="() => errorMessage = string.Empty"></button>
+            @errorMessage
+        </div>
+    }
+
+    <div class="box">
+        <div class="level mb-4">
+            <div class="level-left">
+                <h2 class="subtitle mb-0">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-comments"></i></span>
+                        <span>Comments (@comments.Count)</span>
+                    </span>
+                </h2>
+            </div>
+            <div class="level-right">
+                <button class="button is-small is-light" @onclick="LoadComments">
+                    <span class="icon"><i class="fas fa-sync-alt"></i></span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <progress class="progress is-small is-primary" max="100">Loading...</progress>
+        }
+        else if (comments.Count == 0)
+        {
+            <div class="has-text-centered py-6">
+                <span class="icon is-large has-text-grey-light">
+                    <i class="fas fa-comment-slash fa-3x"></i>
+                </span>
+                <p class="has-text-grey mt-3">No comments found.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable is-striped">
+                    <thead>
+                        <tr>
+                            <th>Author</th>
+                            <th>Note</th>
+                            <th>Badge Record</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var comment in comments)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold is-size-7">@ExtractHandle(comment.AuthorId)</span>
+                                    <br />
+                                    <a href="@comment.AuthorId" target="_blank" class="is-size-7 has-text-grey" title="@comment.AuthorId">
+                                        <i class="fas fa-external-link-alt" style="font-size: 0.6rem;"></i> Profile
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="@comment.NoteId" target="_blank" class="is-size-7 has-text-link" title="@comment.NoteId">
+                                        <i class="fas fa-external-link-alt" style="font-size: 0.6rem;"></i> View Comment
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="tag is-light is-small">Record #@comment.BadgeRecordId</span>
+                                </td>
+                                <td>
+                                    <span class="is-size-7">@comment.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                </td>
+                                <td>
+                                    @if (confirmDeleteId == comment.Id)
+                                    {
+                                        <div class="buttons are-small">
+                                            <button class="button is-danger is-small" @onclick="() => DeleteComment(comment.Id)">
+                                                <span class="icon"><i class="fas fa-check"></i></span>
+                                                <span>Confirm</span>
+                                            </button>
+                                            <button class="button is-light is-small" @onclick="() => confirmDeleteId = null">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button class="button is-danger is-small is-outlined" @onclick="() => confirmDeleteId = comment.Id">
+                                            <span class="icon"><i class="fas fa-trash"></i></span>
+                                            <span>Delete</span>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<CommentItem> comments = new();
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+    private long? confirmDeleteId = null;
+
+    private bool IsSystemAdmin => CurrentUser.IsAdmin();
+    private string CurrentOwnerGroupId => CurrentUser.GetGroupId();
+
+    protected override void OnInitialized()
+    {
+        LoadComments();
+    }
+
+    private void LoadComments()
+    {
+        isLoading = true;
+        try
+        {
+            var rawComments = LocalDbService.GetAllBadgeComments(IsSystemAdmin ? null : CurrentOwnerGroupId);
+            comments = rawComments.Select(c => new CommentItem
+            {
+                Id = c.Id,
+                BadgeRecordId = c.BadgeRecordId,
+                NoteId = c.NoteId,
+                AuthorId = c.AuthorId,
+                CreatedAt = c.CreatedAt
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load comments: {ex.Message}";
+            comments = new List<CommentItem>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void DeleteComment(long id)
+    {
+        try
+        {
+            LocalDbService.DeleteBadgeComment(id);
+            successMessage = "Comment deleted successfully.";
+            confirmDeleteId = null;
+            LoadComments();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete comment: {ex.Message}";
+        }
+    }
+
+    private string ExtractHandle(string authorUrl)
+    {
+        try
+        {
+            var uri = new Uri(authorUrl);
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            var username = segments.LastOrDefault() ?? authorUrl;
+            return $"@{username}@{uri.Host}";
+        }
+        catch
+        {
+            return authorUrl;
+        }
+    }
+
+    private class CommentItem
+    {
+        public long Id { get; set; }
+        public long BadgeRecordId { get; set; }
+        public string NoteId { get; set; } = "";
+        public string AuthorId { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+    }
+}

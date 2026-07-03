@@ -417,6 +417,60 @@ public class LocalDbService
         return result;
     }
 
+    public void DeleteBadgeComment(long id)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM BadgeRecordComment WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id);
+
+        command.ExecuteNonQuery();
+    }
+
+    public List<(long Id, long BadgeRecordId, string NoteId, string AuthorId, DateTime CreatedAt)> GetAllBadgeComments(string? ownerGroupId = null)
+    {
+        var result = new List<(long, long, string, string, DateTime)>();
+
+        using var connection = GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        if (ownerGroupId == null)
+        {
+            command.CommandText = @"
+                SELECT c.Id, c.BadgeRecordId, c.NoteId, c.AuthorId, c.CreatedAt
+                FROM BadgeRecordComment AS c
+                ORDER BY c.CreatedAt DESC";
+        }
+        else
+        {
+            command.CommandText = @"
+                SELECT c.Id, c.BadgeRecordId, c.NoteId, c.AuthorId, c.CreatedAt
+                FROM BadgeRecordComment AS c
+                INNER JOIN BadgeRecord AS br ON c.BadgeRecordId = br.Id
+                INNER JOIN Badge AS b ON br.BadgeId = b.Id
+                WHERE b.OwnerId = @OwnerId
+                ORDER BY c.CreatedAt DESC";
+            command.Parameters.AddWithValue("@OwnerId", ownerGroupId);
+        }
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add((
+                reader.GetInt64(0),
+                reader.GetInt64(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                DateTime.Parse(reader.GetString(4))
+            ));
+        }
+
+        return result;
+    }
+
 
 
     private string? SerializeSocialUri(SocialUri? socialUri)
@@ -554,6 +608,16 @@ public class LocalDbService
         else
         {
             command.ExecuteNonQuery();
+
+            var badgeOwnerUpdateCommand = connection.CreateCommand();
+            badgeOwnerUpdateCommand.CommandText = @"
+                UPDATE Badge
+                SET OwnerId = @OwnerId
+                WHERE IssuedBy = @ActorId;
+            ";
+            badgeOwnerUpdateCommand.Parameters.AddWithValue("@OwnerId", actor.OwnerId ?? (object)DBNull.Value);
+            badgeOwnerUpdateCommand.Parameters.AddWithValue("@ActorId", actor.Id);
+            badgeOwnerUpdateCommand.ExecuteNonQuery();
         }
 
         transaction.Commit();
@@ -1038,6 +1102,7 @@ public class LocalDbService
                     Hashtags = reader["Hashtags"] == DBNull.Value ? null : reader["Hashtags"].ToString(),
                     InfoUri = reader["InfoUri"] == DBNull.Value ? null : reader["InfoUri"].ToString(),
                     IsCertificate = reader["IsCertificate"] != DBNull.Value && Convert.ToBoolean(reader["IsCertificate"]),
+                    OwnerId = reader["OwnerId"] == DBNull.Value ? string.Empty : reader["OwnerId"].ToString()!,
                     Issuer = actor
                 });
             } 

@@ -15,6 +15,7 @@
 @inject CurrentUser CurrentUser
 @inject IBillingService BillingService
 @inject IHttpContextAccessor HttpContextAccessor
+@inject EmailTemplateService EmailTemplateService
 
 @rendermode InteractiveServer
 
@@ -767,6 +768,57 @@
         }
     </div>
 }
+
+@if (!string.IsNullOrEmpty(ActorId))
+{
+    <div class="form-section">
+        <div class="form-header">
+            <h2 class="form-title">
+                <i class="fas fa-envelope"></i> Email Templates
+            </h2>
+            <p class="form-subtitle">Customize the email templates sent when granting badges. Use <code>{badgeTitle}</code>, <code>{badgeDescription}</code>, <code>{issuerName}</code>, <code>{issuedDate}</code>, <code>{acceptLink}</code>, <code>{badgeLink}</code> as placeholders.</p>
+        </div>
+
+        <div class="field">
+            <label class="field-label">Badge Award Notification</label>
+            <p class="help-text mb-2">Sent when a recipient is notified about a new badge award (includes accept link).</p>
+            <div class="control">
+                <textarea class="textarea" rows="12" @bind="badgeAwardTemplate"></textarea>
+            </div>
+        </div>
+
+        <div class="field mt-4">
+            <label class="field-label">Badge Processed Notification</label>
+            <p class="help-text mb-2">Sent when a badge has been processed and is ready to share.</p>
+            <div class="control">
+                <textarea class="textarea" rows="12" @bind="badgeProcessedTemplate"></textarea>
+            </div>
+        </div>
+
+        <div class="field is-grouped mt-4">
+            <div class="control">
+                <button type="button" class="button is-primary" @onclick="SaveEmailTemplates">
+                    <span class="icon"><i class="fas fa-save"></i></span>
+                    <span>Save Templates</span>
+                </button>
+            </div>
+            <div class="control">
+                <button type="button" class="button is-warning" @onclick="ResetEmailTemplates">
+                    <span class="icon"><i class="fas fa-undo"></i></span>
+                    <span>Reset to Defaults</span>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(templateSaveMessage))
+        {
+            <div class="notification is-success is-light mt-3">
+                <button class="delete" @onclick="() => templateSaveMessage = string.Empty"></button>
+                @templateSaveMessage
+            </div>
+        }
+    </div>
+}
   
 @code {
     [Parameter]
@@ -789,6 +841,9 @@
     private bool showRegenerateModal = false;
     private List<UserGroup> availableGroups = new();
     private bool usernameManuallyEdited = false;
+    private string badgeAwardTemplate = "";
+    private string badgeProcessedTemplate = "";
+    private string? templateSaveMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -838,6 +893,14 @@
         while (Model.Socials.Count < 3)
         {
             Model.Socials.Add(new SocialUri());
+        }
+
+        // Load email templates for existing actors
+        if (!string.IsNullOrEmpty(ActorId))
+        {
+            var actorIdLong = long.Parse(ActorId);
+            badgeAwardTemplate = EmailTemplateService.GetBadgeAwardTemplate(actorIdLong);
+            badgeProcessedTemplate = EmailTemplateService.GetBadgeProcessedTemplate(actorIdLong);
         }
     }
 
@@ -1197,5 +1260,30 @@
             "discord" => "https://discord.gg/invite-code",
             _ => "Enter URL or handle..."
         };
+    }
+
+    private void SaveEmailTemplates()
+    {
+        if (string.IsNullOrEmpty(ActorId)) return;
+        var actorIdLong = long.Parse(ActorId);
+        EmailTemplateService.SaveBadgeAwardTemplate(actorIdLong, badgeAwardTemplate);
+        EmailTemplateService.SaveBadgeProcessedTemplate(actorIdLong, badgeProcessedTemplate);
+        templateSaveMessage = "Email templates saved successfully.";
+        StateHasChanged();
+    }
+
+    private void ResetEmailTemplates()
+    {
+        badgeAwardTemplate = EmailTemplateService.DefaultBadgeAwardTemplate;
+        badgeProcessedTemplate = EmailTemplateService.DefaultBadgeProcessedTemplate;
+
+        if (!string.IsNullOrEmpty(ActorId))
+        {
+            var actorIdLong = long.Parse(ActorId);
+            EmailTemplateService.SaveBadgeAwardTemplate(actorIdLong, badgeAwardTemplate);
+            EmailTemplateService.SaveBadgeProcessedTemplate(actorIdLong, badgeProcessedTemplate);
+        }
+        templateSaveMessage = "Email templates reset to defaults.";
+        StateHasChanged();
     }
 }

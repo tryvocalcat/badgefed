@@ -11,6 +11,7 @@
 @layout BadgeFed.Components.Layouts.MinimalLayout
 @inject IJSRuntime JSRuntime
 @inject ICustomAssetPathService CustomAssetPathService
+@inject IConfiguration Configuration
 
 <HeadContent>
   <meta name="author" content="@badgeRecord!.IssuedBy" />
@@ -187,15 +188,6 @@
 /* ── Comments card ────────────────────────────────── */
 .vr-comments { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:1.4rem 1.6rem; margin-bottom:1.5rem; }
 .vr-comments-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:.6rem; display:flex; align-items:center; gap:.4rem; }
-.vr-comments-intro { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; margin-bottom:1.1rem; }
-.vr-comments-intro p { font-size:.82rem; color:#64748b; margin:0; }
-.vr-copy-btn {
-    display:inline-flex; align-items:center; gap:.3rem;
-    background:#f8fafc; border:1px solid #e2e8f0; color:#64748b;
-    border-radius:8px; padding:.3rem .75rem; font-size:.73rem; font-weight:600;
-    cursor:pointer; font-family:inherit; transition:background .15s;
-}
-.vr-copy-btn:hover { background:#f1f5f9; }
 .vr-comments-empty { text-align:center; padding:2rem; color:#94a3b8; }
 .vr-comments-empty i { font-size:1.5rem; display:block; margin-bottom:.5rem; color:#e2e8f0; }
 .vr-comments-empty p { font-size:.83rem; }
@@ -206,6 +198,136 @@
 .comment-author { font-size:.82rem; font-weight:700; color:#0f172a; }
 .comment-date   { font-size:.72rem; color:#94a3b8; }
 .comment-content { font-size:.83rem; color:#475569; line-height:1.6; }
+.comment-media-wrap { margin-top:.6rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+.comment-media { max-width:200px; max-height:150px; border-radius:8px; border:1px solid #e2e8f0; object-fit:cover; }
+
+/* ── Mastodon interaction bar ─────────────────────── */
+.vr-interactions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:1.1rem; padding:.75rem 0; border-bottom:1px solid #f1f5f9; }
+.vr-interact-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    background:#f8fafc; border:1px solid #e2e8f0; color:#64748b;
+    border-radius:8px; padding:.4rem .85rem; font-size:.76rem; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap;
+}
+.vr-interact-btn:hover { background:#f1f5f9; border-color:#cbd5e1; color:#334155; }
+.vr-interact-btn.active { background:#eff6ff; border-color:#6366f1; color:#6366f1; }
+.vr-interact-btn.liked { background:#fef2f2; border-color:#ef4444; color:#ef4444; }
+.vr-interact-btn.boosted { background:#f0fdf4; border-color:#22c55e; color:#22c55e; }
+.vr-interact-btn:disabled { opacity:.5; cursor:not-allowed; }
+.vr-interact-btn .count { font-weight:700; }
+.vr-interact-btn.vr-interact-logout { margin-left:auto; color:#94a3b8; border-color:#e2e8f0; }
+.vr-interact-btn.vr-interact-logout:hover { color:#ef4444; border-color:#fca5a5; background:#fef2f2; }
+.vr-interact-separator { width:1px; height:20px; background:#e2e8f0; margin:0 .25rem; }
+.vr-interact-status { font-size:.72rem; color:#94a3b8; margin-left:auto; }
+.vr-interact-login { font-size:.78rem; color:#64748b; }
+.vr-interact-login a, .vr-interact-login button.vr-login-link { color:#6366f1; font-weight:600; text-decoration:none; background:none; border:none; cursor:pointer; font-size:inherit; font-family:inherit; padding:0; }
+.vr-interact-login a:hover, .vr-interact-login button.vr-login-link:hover { text-decoration:underline; }
+.vr-interact-alt { display:block; margin-top:.35rem; color:#94a3b8; font-size:.74rem; }
+
+/* ── Login modal ──────────────────────────────────── */
+.vr-login-modal {
+    display:none; position:fixed; inset:0; z-index:10000;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
+}
+.vr-login-modal.show {
+    display:flex; align-items:center; justify-content:center;
+    animation:vr-fadein .25s ease;
+}
+.vr-login-modal-content {
+    background:#fff; border-radius:20px; width:90%; max-width:440px;
+    max-height:90vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.25);
+    animation:vr-slideup .25s ease; padding:2rem;
+}
+.vr-login-modal-header {
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;
+}
+.vr-login-modal-title { font-size:1.1rem; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:.5rem; }
+.vr-login-modal-close {
+    background:#f1f5f9; border:none; color:#64748b; width:32px; height:32px;
+    border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:.9rem; transition:background .15s;
+}
+.vr-login-modal-close:hover { background:#e2e8f0; color:#0f172a; }
+.vr-login-modal-subtitle { font-size:.83rem; color:#64748b; margin-bottom:1.25rem; }
+.vr-login-provider-list { display:flex; flex-direction:column; gap:.6rem; }
+.vr-login-btn {
+    display:flex; align-items:center; gap:.65rem; width:100%;
+    padding:.7rem 1rem; border-radius:10px; border:1.5px solid #e2e8f0;
+    background:#fff; cursor:pointer; font-family:inherit; font-size:.82rem;
+    font-weight:600; color:#334155; transition:all .15s; text-decoration:none;
+}
+.vr-login-btn:hover { border-color:#6366f1; background:#f8fafc; }
+.vr-login-btn i { font-size:1.1rem; width:22px; text-align:center; }
+.vr-login-btn i.fa-mastodon { color:#6364ff; }
+.vr-login-btn i.fa-linkedin { color:#0a66c2; }
+.vr-login-btn i.fa-google { color:#ea4335; }
+.vr-login-picker {
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;
+    padding:1rem; margin-top:.5rem;
+}
+.vr-login-picker-title { font-size:.78rem; font-weight:700; color:#475569; margin-bottom:.5rem; }
+.vr-login-picker-field {
+    display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem;
+}
+.vr-login-picker-field input {
+    flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:.45rem .7rem;
+    font-size:.8rem; font-family:inherit; color:#0f172a; background:#fff;
+}
+.vr-login-picker-field input:focus { outline:none; border-color:#6366f1; }
+.vr-login-picker-field button {
+    background:#6366f1; color:#fff; border:none; border-radius:8px;
+    padding:.45rem .85rem; font-size:.78rem; font-weight:600; cursor:pointer;
+    font-family:inherit; white-space:nowrap;
+}
+.vr-login-picker-field button:hover { background:#4f46e5; }
+.vr-login-picker-field button:disabled { opacity:.5; cursor:not-allowed; }
+.vr-login-suggestions {
+    display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem;
+}
+.vr-login-suggestion {
+    background:#fff; border:1px solid #e2e8f0; border-radius:6px;
+    padding:.25rem .55rem; font-size:.7rem; color:#64748b; cursor:pointer;
+    font-family:inherit; transition:all .12s;
+}
+.vr-login-suggestion:hover { border-color:#6366f1; color:#6366f1; background:#eff6ff; }
+.vr-login-footnote { font-size:.72rem; color:#94a3b8; margin-top:1.25rem; text-align:center; }
+
+/* ── Reply form ───────────────────────────────────── */
+.vr-reply-form { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1rem; margin-bottom:1rem; }
+.vr-reply-form textarea {
+    width:100%; min-height:80px; border:1px solid #e2e8f0; border-radius:8px;
+    padding:.65rem .85rem; font-size:.82rem; font-family:inherit; resize:vertical;
+    color:#0f172a; background:#fff; transition:border-color .15s;
+}
+.vr-reply-form textarea:focus { outline:none; border-color:#6366f1; }
+.vr-reply-actions { display:flex; align-items:center; justify-content:space-between; margin-top:.6rem; gap:.5rem; flex-wrap:wrap; }
+.vr-reply-submit {
+    display:inline-flex; align-items:center; gap:.35rem;
+    background:#6366f1; border:none; color:#fff; border-radius:8px;
+    padding:.45rem 1rem; font-size:.78rem; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:background .15s;
+}
+.vr-reply-submit:hover { background:#4f46e5; }
+.vr-reply-submit:disabled { opacity:.5; cursor:not-allowed; }
+.vr-reply-upload {
+    display:inline-flex; align-items:center; gap:.3rem;
+    background:#fff; border:1px solid #e2e8f0; color:#64748b;
+    border-radius:8px; padding:.35rem .75rem; font-size:.73rem; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:background .15s;
+}
+.vr-reply-upload:hover { background:#f1f5f9; }
+.vr-reply-preview { margin-top:.5rem; }
+.vr-reply-preview img { max-width:120px; max-height:80px; border-radius:6px; border:1px solid #e2e8f0; }
+.vr-reply-preview .remove-media {
+    display:inline-flex; align-items:center; gap:.2rem; margin-left:.5rem;
+    font-size:.7rem; color:#ef4444; cursor:pointer; background:none; border:none;
+}
+.vr-toast {
+    position:fixed; top:20px; right:20px; background:#10b981; color:#fff;
+    padding:12px 20px; border-radius:10px; font-weight:600; z-index:10000;
+    font-family:Inter,sans-serif; font-size:.85rem; transition:opacity .3s;
+}
+.vr-toast.error { background:#ef4444; }
 
 /* ── Fingerprint block ────────────────────────────── */
 .vr-fingerprint {
@@ -530,18 +652,48 @@ else
             @if (!badgeRecord.IsExternal)
             {
                 <div class="vr-comments">
-                    <div class="vr-comments-title"><i class="fas fa-comments"></i> Comments</div>
-                    <div class="vr-comments-intro">
-                        <p>Reply to this badge from your Fediverse account to leave a comment.</p>
-                        <button class="vr-copy-btn" onclick="copyBadgeUrl()">
-                            <i class="fas fa-copy"></i> Copy Badge URL
+                    <div class="vr-comments-title"><i class="fas fa-comments"></i> Comments &amp; Interactions</div>
+
+                    @* ── Mastodon interaction buttons ── *@
+                    <div class="vr-interactions" id="interactionBar">
+                        <button class="vr-interact-btn" id="btnLike" onclick="doLike()" disabled>
+                            <i class="far fa-heart"></i> <span id="likeLabel">Like</span>
                         </button>
+                        <button class="vr-interact-btn" id="btnBoost" onclick="doBoost()" disabled>
+                            <i class="fas fa-retweet"></i> <span id="boostLabel">Boost</span>
+                        </button>
+                        <div class="vr-interact-separator"></div>
+                        <span class="vr-interact-status" id="interactStatus"></span>
+                        <button class="vr-interact-btn vr-interact-logout" id="btnLogout" onclick="doLogout()" style="display:none;">
+                            <i class="fas fa-sign-out-alt"></i> Log out
+                        </button>
+                    </div>
+                    <div id="interactLoginHint" class="vr-interact-login" style="display:none;">
+                        <i class="fas fa-info-circle"></i> <button class="vr-login-link" onclick="openLoginModal()">Log in with Mastodon</button> to like, boost, or comment directly.
+                        <span class="vr-interact-alt">Or <button class="vr-login-link" onclick="copyBadgeUrl()">copy the badge URL</button> and interact from your own Fediverse client.</span>
+                    </div>
+
+                    @* ── Reply form (shown when logged in) ── *@
+                    <div class="vr-reply-form" id="replyForm" style="display:none;">
+                        <textarea id="replyContent" placeholder="Write a comment..."></textarea>
+                        <div class="vr-reply-preview" id="mediaPreview" style="display:none;"></div>
+                        <div class="vr-reply-actions">
+                            <div>
+                                <label class="vr-reply-upload" for="mediaUpload">
+                                    <i class="fas fa-image"></i> Photo
+                                </label>
+                                <input type="file" id="mediaUpload" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="handleMediaUpload(this)" />
+                            </div>
+                            <button class="vr-reply-submit" id="btnReply" onclick="doReply()">
+                                <i class="fas fa-paper-plane"></i> Comment
+                            </button>
+                        </div>
                     </div>
                     @if (comments == null || !comments.Any())
                     {
                         <div class="vr-comments-empty">
                             <i class="far fa-comment-dots"></i>
-                            <p>No comments yet. Be the first to comment from the Fediverse!</p>
+                            <p>No comments yet. Be the first to comment!</p>
                         </div>
                     }
                     else
@@ -571,7 +723,16 @@ else
                                         const validResponses = responses.filter(r => r);
                                         validResponses.sort((a, b) => new Date(a.published) - new Date(b.published));
                                         if (validResponses.length > 0) {
-                                            commentsWrapper.innerHTML = validResponses.map(status => `
+                                            commentsWrapper.innerHTML = validResponses.map(status => {
+                                                var mediaHtml = '';
+                                                if (status.media_attachments && status.media_attachments.length > 0) {
+                                                    var imgs = status.media_attachments
+                                                        .filter(m => m.type === 'image' && m.preview_url)
+                                                        .map(m => `<img src="${m.preview_url}" alt="" class="comment-media" loading="lazy" referrerpolicy="no-referrer" />`)
+                                                        .join('');
+                                                    if (imgs) mediaHtml = `<div class="comment-media-wrap">${imgs}</div>`;
+                                                }
+                                                return `
                                                 <div class="comment-card">
                                                     <div class="comment-header">
                                                         <div class="comment-avatar"><img src="${status.account.avatar}" /></div>
@@ -581,8 +742,9 @@ else
                                                         </div>
                                                     </div>
                                                     <div class="comment-content">${status.content || ''}</div>
-                                                </div>
-                                            `).join("");
+                                                    ${mediaHtml}
+                                                </div>`;
+                                            }).join("");
                                         }
                                     });
                                 }
@@ -623,10 +785,210 @@ else
         window.onclick = function(event) {
             if (event.target === document.getElementById('certificateModal'))  closeCertificateModal();
             if (event.target === document.getElementById('verificationModal')) closeVerificationModal();
+            if (event.target === document.getElementById('loginModal')) closeLoginModal();
         };
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') { closeCertificateModal(); closeVerificationModal(); }
+            if (event.key === 'Escape') { closeCertificateModal(); closeVerificationModal(); closeLoginModal(); }
         });
+    </script>
+
+    @* ── Mastodon Interaction JS ──────────────────── *@
+    <script>
+    (function() {
+        var badgeNoteUrl = '@(badgeRecord?.NoteId ?? "")';
+        var issuerUri = '@(badgeRecord?.Actor?.Uri?.ToString() ?? badgeRecord?.IssuedBy ?? "")';
+        var resolvedStatusId = null;
+        var isLiked = false;
+        var isBoosted = false;
+        var uploadedMediaId = null;
+        var uploadedMediaUrl = null;
+
+        function showToast(msg, isError) {
+            var t = document.createElement('div');
+            t.className = 'vr-toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 3000);
+        }
+
+        function setStatus(msg) {
+            var el = document.getElementById('interactStatus');
+            if (el) el.textContent = msg;
+        }
+
+        async function apiCall(endpoint, body, method) {
+            method = method || 'POST';
+            var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+            if (body) opts.body = JSON.stringify(body);
+            var resp = await fetch('/api/mastodon/' + endpoint, opts);
+            if (resp.status === 401) {
+                showToast('Please log in to interact', true);
+                return null;
+            }
+            if (!resp.ok) {
+                var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
+                showToast(err.error || 'Request failed', true);
+                return null;
+            }
+            return resp.json();
+        }
+
+        async function initInteractions() {
+            // Check auth status
+            var status = await apiCall('status', null, 'GET');
+            if (!status || !status.authenticated) {
+                document.getElementById('interactLoginHint').style.display = 'block';
+                return;
+            }
+
+            // Show reply form and logout button for logged-in users
+            var replyForm = document.getElementById('replyForm');
+            if (replyForm) replyForm.style.display = 'block';
+            var btnLogout = document.getElementById('btnLogout');
+            if (btnLogout) btnLogout.style.display = '';
+
+            setStatus('Resolving post...');
+
+            // Resolve the badge status on the user's instance
+            if (badgeNoteUrl) {
+                var resolved = await apiCall('resolve', { statusUrl: badgeNoteUrl });
+                if (resolved && resolved.id) {
+                    resolvedStatusId = resolved.id;
+                    isLiked = resolved.favourited || false;
+                    isBoosted = resolved.reblogged || false;
+
+                    // Enable buttons
+                    document.getElementById('btnLike').disabled = false;
+                    document.getElementById('btnBoost').disabled = false;
+                    document.getElementById('btnReply').disabled = false;
+
+                    // Set initial state
+                    updateLikeButton();
+                    updateBoostButton();
+                    setStatus('');
+                } else {
+                    setStatus('Could not resolve post');
+                }
+            }
+        }
+
+        function updateLikeButton() {
+            var btn = document.getElementById('btnLike');
+            var label = document.getElementById('likeLabel');
+            if (isLiked) {
+                btn.classList.add('liked');
+                btn.querySelector('i').className = 'fas fa-heart';
+                label.textContent = 'Liked';
+            } else {
+                btn.classList.remove('liked');
+                btn.querySelector('i').className = 'far fa-heart';
+                label.textContent = 'Like';
+            }
+        }
+
+        function updateBoostButton() {
+            var btn = document.getElementById('btnBoost');
+            var label = document.getElementById('boostLabel');
+            if (isBoosted) {
+                btn.classList.add('boosted');
+                label.textContent = 'Boosted';
+            } else {
+                btn.classList.remove('boosted');
+                label.textContent = 'Boost';
+            }
+        }
+
+        window.doLike = async function() {
+            if (!resolvedStatusId) return;
+            var btn = document.getElementById('btnLike');
+            btn.disabled = true;
+            var endpoint = isLiked ? 'unfavourite' : 'favourite';
+            var result = await apiCall(endpoint, { statusId: resolvedStatusId });
+            if (result) {
+                isLiked = !isLiked;
+                updateLikeButton();
+                showToast(isLiked ? 'Liked!' : 'Unliked');
+            }
+            btn.disabled = false;
+        };
+
+        window.doBoost = async function() {
+            if (!resolvedStatusId) return;
+            var btn = document.getElementById('btnBoost');
+            btn.disabled = true;
+            var endpoint = isBoosted ? 'unboost' : 'boost';
+            var result = await apiCall(endpoint, { statusId: resolvedStatusId });
+            if (result) {
+                isBoosted = !isBoosted;
+                updateBoostButton();
+                showToast(isBoosted ? 'Boosted!' : 'Unboosted');
+            }
+            btn.disabled = false;
+        };
+
+        window.doReply = async function() {
+            if (!resolvedStatusId) return;
+            var content = document.getElementById('replyContent').value.trim();
+            if (!content && !uploadedMediaId) {
+                showToast('Write something or attach a photo', true);
+                return;
+            }
+            var btn = document.getElementById('btnReply');
+            btn.disabled = true;
+            var mediaIds = uploadedMediaId ? [uploadedMediaId] : null;
+            var result = await apiCall('reply', { statusId: resolvedStatusId, content: content, mediaIds: mediaIds });
+            if (result) {
+                showToast('Comment posted!');
+                document.getElementById('replyContent').value = '';
+                clearMedia();
+                // Refresh comments after a short delay
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+            btn.disabled = false;
+        };
+
+        window.handleMediaUpload = async function(input) {
+            if (!input.files || !input.files[0]) return;
+            var file = input.files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('File too large (max 10MB)', true);
+                input.value = '';
+                return;
+            }
+            setStatus('Uploading...');
+            var formData = new FormData();
+            formData.append('file', file);
+            var resp = await fetch('/api/mastodon/upload', { method: 'POST', body: formData });
+            if (resp.ok) {
+                var media = await resp.json();
+                uploadedMediaId = media.id;
+                uploadedMediaUrl = media.preview_url || media.url;
+                var preview = document.getElementById('mediaPreview');
+                preview.style.display = 'block';
+                preview.innerHTML = '<img src="' + uploadedMediaUrl + '" alt="Upload preview" />' +
+                    '<button class="remove-media" onclick="clearMedia()"><i class="fas fa-times"></i> Remove</button>';
+                setStatus('');
+            } else {
+                showToast('Upload failed', true);
+                setStatus('');
+            }
+            input.value = '';
+        };
+
+        window.clearMedia = function() {
+            uploadedMediaId = null;
+            uploadedMediaUrl = null;
+            var preview = document.getElementById('mediaPreview');
+            if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+        };
+
+        window.doLogout = function() {
+            var returnUrl = encodeURIComponent(window.location.pathname);
+            window.location.href = '/admin/logout?returnUrl=' + returnUrl;
+        };
+
+        document.addEventListener('DOMContentLoaded', initInteractions);
+    })();
     </script>
 
     @* ── Certificate modal ────────────────────────── *@
@@ -860,6 +1222,121 @@ else
         </div>
     </div>
 }
+
+@* ── Login Modal ──────────────────────────────────── *@
+<div class="vr-login-modal" id="loginModal">
+    <div class="vr-login-modal-content">
+        <div class="vr-login-modal-header">
+            <h2 class="vr-login-modal-title"><i class="fas fa-sign-in-alt"></i> Sign In</h2>
+            <button class="vr-login-modal-close" onclick="closeLoginModal()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <p class="vr-login-modal-subtitle">Sign in to like, boost, or comment on this badge.</p>
+        <div class="vr-login-provider-list">
+            @if (isMastodonConfigured)
+            {
+                <button class="vr-login-btn" id="btnMastodonLogin" onclick="toggleMastodonPicker()">
+                    <i class="fab fa-mastodon"></i> Sign in with Mastodon
+                    <i class="fas fa-chevron-down" style="margin-left:auto;font-size:.7rem;color:#94a3b8;"></i>
+                </button>
+                <div class="vr-login-picker" id="mastodonPicker" style="display:none;">
+                    <div class="vr-login-picker-title">Enter your Mastodon server</div>
+                    <div class="vr-login-picker-field">
+                        <input type="text" id="mastodonServerInput" placeholder="mastodon.social" />
+                        <button onclick="loginWithMastodon()" id="btnMastodonGo">Continue</button>
+                    </div>
+                    <div class="vr-login-suggestions">
+                        <button class="vr-login-suggestion" onclick="pickServer('mastodon.social')">mastodon.social</button>
+                        <button class="vr-login-suggestion" onclick="pickServer('mastodon.world')">mastodon.world</button>
+                        <button class="vr-login-suggestion" onclick="pickServer('fosstodon.org')">fosstodon.org</button>
+                        <button class="vr-login-suggestion" onclick="pickServer('hachyderm.io')">hachyderm.io</button>
+                        <button class="vr-login-suggestion" onclick="pickServer('infosec.exchange')">infosec.exchange</button>
+                    </div>
+                </div>
+            }
+            @if (isLinkedInConfigured && false)
+            {
+                <button class="vr-login-btn" onclick="loginWithLinkedIn()">
+                    <i class="fab fa-linkedin"></i> Sign in with LinkedIn
+                </button>
+            }
+            @if (isGoogleConfigured)
+            {
+                <button class="vr-login-btn" onclick="loginWithGoogle()">
+                    <i class="fab fa-google"></i> Sign in with Google
+                </button>
+            }
+        </div>
+        <p class="vr-login-footnote">We never store your password. Your existing account is used to verify who you are.</p>
+    </div>
+</div>
+
+<script>
+    function openLoginModal() {
+        document.getElementById('loginModal').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeLoginModal() {
+        document.getElementById('loginModal').classList.remove('show');
+        document.body.style.overflow = 'auto';
+    }
+    function toggleMastodonPicker() {
+        var picker = document.getElementById('mastodonPicker');
+        picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+        if (picker.style.display === 'block') {
+            document.getElementById('mastodonServerInput').focus();
+        }
+    }
+    function pickServer(server) {
+        document.getElementById('mastodonServerInput').value = server;
+    }
+    function loginWithMastodon() {
+        var server = document.getElementById('mastodonServerInput').value.trim();
+        if (!server) return;
+        if (server.startsWith('https://')) server = server.substring(8);
+        if (server.startsWith('http://')) server = server.substring(7);
+        var returnUrl = encodeURIComponent(window.location.pathname);
+        var loginUrl = '/admin/login/oauth/' + encodeURIComponent(server) + '?returnUrl=' + returnUrl;
+        openLoginPopup(loginUrl);
+    }
+    function loginWithLinkedIn() {
+        var returnUrl = encodeURIComponent(window.location.pathname);
+        openLoginPopup('/admin/login/linkedin?returnUrl=' + returnUrl);
+    }
+    function loginWithGoogle() {
+        var returnUrl = encodeURIComponent(window.location.pathname);
+        openLoginPopup('/admin/login/google?returnUrl=' + returnUrl);
+    }
+    function openLoginPopup(url) {
+        var w = 500, h = 650;
+        var left = (screen.width - w) / 2;
+        var top = (screen.height - h) / 2;
+        var popup = window.open(url, 'badgefed_login', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no');
+        if (popup) {
+            var checkInterval = setInterval(function() {
+                try {
+                    if (popup.closed) {
+                        clearInterval(checkInterval);
+                        window.location.reload();
+                    }
+                    // If popup navigated back to our page (returnUrl), close it and reload
+                    if (popup.location && popup.location.pathname === window.location.pathname) {
+                        popup.close();
+                        clearInterval(checkInterval);
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // Cross-origin - popup is on OAuth provider's domain, just wait
+                }
+            }, 500);
+        } else {
+            // Popup blocked - fall back to redirect
+            window.location.href = url;
+        }
+    }
+</script>
+
 @code {
     private List<string> comments = new List<string>();
     [Parameter] public string? NoteIdParam { get; set; }
@@ -869,6 +1346,10 @@ else
 
     private string actorName = string.Empty;
     private string ogImage = string.Empty;
+
+    private bool isMastodonConfigured;
+    private bool isLinkedInConfigured;
+    private bool isGoogleConfigured;
 
     private static readonly string[] TagColors = {
         "is-primary", "is-link", "is-info", "is-success", "is-warning", "is-danger",
@@ -922,6 +1403,18 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Determine configured auth providers
+        var mastodonSection = Configuration.GetSection("MastodonConfig");
+        var adminAuthSection = Configuration.GetSection("AdminAuthentication:AdminUsers");
+        isMastodonConfigured = (!string.IsNullOrEmpty(mastodonSection["ClientId"]) && !string.IsNullOrEmpty(mastodonSection["ClientSecret"]))
+            || (adminAuthSection.GetChildren().Any(u => string.Equals(u["Type"], "Mastodon", StringComparison.OrdinalIgnoreCase)));
+
+        var linkedInSection = Configuration.GetSection("LinkedInConfig");
+        isLinkedInConfigured = !string.IsNullOrEmpty(linkedInSection["ClientId"]) && !string.IsNullOrEmpty(linkedInSection["ClientSecret"]);
+
+        var googleSection = Configuration.GetSection("GoogleConfig");
+        isGoogleConfigured = !string.IsNullOrEmpty(googleSection["ClientId"]) && !string.IsNullOrEmpty(googleSection["ClientSecret"]);
+
         var acceptHeader = HttpContextAccessor.HttpContext?.Request.Headers["Accept"].ToString();
 
         NoteIdParam = NoteIdParam?.Trim();

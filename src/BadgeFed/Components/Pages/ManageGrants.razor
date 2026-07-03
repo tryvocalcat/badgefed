@@ -1,6 +1,7 @@
 @page "/admin/grants"
 
 @using System.IO
+@using BadgeFed.Services
 @using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.WebUtilities
@@ -9,6 +10,8 @@
 @inject NavigationManager NavigationManager
 @inject LocalScopedDb LocalDbService
 @inject CurrentUser CurrentUser
+@inject IHttpClientFactory HttpClientFactory
+@inject GrantCsvExportService GrantCsvExportService
 @layout BadgeFed.Components.Layouts.AdminLayout
 @rendermode InteractiveServer
 
@@ -256,6 +259,10 @@
             <div class="buttons">
                 <button class="button is-primary" @onclick="OnApplyFilters">Apply Filters</button>
                 <button class="button" @onclick="ClearFilters">Clear Filters</button>
+                <button class="button is-info is-light" @onclick="ExportVisibleGrantsToCsv" disabled="@(!CanExportGrants)">
+                    <span class="icon"><i class="fas fa-file-csv"></i></span>
+                    <span>Export CSV</span>
+                </button>
             </div>
         </div>
     </div>
@@ -411,6 +418,10 @@ else
                                     <span class="icon"><i class="fas fa-eye"></i></span>
                                     <span>View</span>
                                 </a>
+                                <button class="button is-small is-warning is-light" title="Send processed badge email notification" @onclick="@(() => ShowEmailModal(record, EmailTypeProcessed))">
+                                    <span class="icon"><i class="fas fa-envelope"></i></span>
+                                    <span>Email</span>
+                                </button>
                             }
                         } 
                         else 
@@ -422,6 +433,10 @@ else
                             <a href="/accept/grant/@record.Id/@record.AcceptKey" target="_blank" class="button is-small is-link is-outlined" title="Open acceptance page">
                                 <span class="icon"><i class="fas fa-external-link-alt"></i></span>
                             </a>
+                            <button class="button is-small is-warning is-light" title="Send email notification with accept link" @onclick="@(() => ShowEmailModal(record, EmailTypeAward))">
+                                <span class="icon"><i class="fas fa-envelope"></i></span>
+                                <span>Email</span>
+                            </button>
                         }
 
                         @{
@@ -547,6 +562,78 @@ else
     </div>
 }
 
+<!-- Email Notification Modal -->
+@if (showEmailModal && emailRecord != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background" @onclick="HideEmailModal"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">
+                    <span class="icon"><i class="fas fa-envelope"></i></span>
+                    <span>Send Email Notification</span>
+                </p>
+                <button class="delete" aria-label="close" @onclick="HideEmailModal"></button>
+            </header>
+            <section class="modal-card-body">
+                <p class="mb-4">Send a <strong>@(emailNotificationType == "award" ? "badge award" : "badge processed")</strong> email for "<strong>@emailRecord.Title</strong>" to <strong>@emailRecord.IssuedToName</strong>.</p>
+                
+                @if (!string.IsNullOrEmpty(emailRecord.IssuedToEmail))
+                {
+                    <div class="notification is-info is-light">
+                        <p class="is-size-7 has-text-weight-semibold mb-1">Email on file:</p>
+                        <p><code>@MaskEmail(emailRecord.IssuedToEmail)</code></p>
+                    </div>
+                }
+                else
+                {
+                    <div class="notification is-warning is-light">
+                        <p>No email address on file for this recipient. Please enter one below.</p>
+                    </div>
+                }
+
+                <div class="field">
+                    <label class="label">Recipient Email</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="email" @bind="emailOverride" placeholder="Override or enter email address" />
+                        <span class="icon is-left"><i class="fas fa-at"></i></span>
+                    </div>
+                    <p class="help">Leave blank to use the email on file. Enter an address to override.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(emailSendError))
+                {
+                    <div class="notification is-danger is-light mt-3">
+                        @emailSendError
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(emailSendSuccess))
+                {
+                    <div class="notification is-success is-light mt-3">
+                        @emailSendSuccess
+                    </div>
+                }
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-primary" @onclick="SendEmailNotification" disabled="@isSendingEmail">
+                    @if (isSendingEmail)
+                    {
+                        <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                        <span>Sending...</span>
+                    }
+                    else
+                    {
+                        <span class="icon"><i class="fas fa-paper-plane"></i></span>
+                        <span>Send</span>
+                    }
+                </button>
+                <button class="button" @onclick="HideEmailModal">Cancel</button>
+            </footer>
+        </div>
+    </div>
+}
+
 @code {
     private List<BadgeRecord?> records;
     private List<BadgeRecord?> filteredRecords = new List<BadgeRecord?>();
@@ -575,6 +662,17 @@ else
     private bool showRevokeConfirmation = false;
     private BadgeRecord? recordToDelete = null;
     private bool showCopyToast = false;
+
+    // Email notification modal properties
+    private const string EmailTypeAward = "award";
+    private const string EmailTypeProcessed = "processed";
+    private bool showEmailModal = false;
+    private BadgeRecord? emailRecord = null;
+    private string emailNotificationType = "award"; // "award" or "processed"
+    private string emailOverride = "";
+    private string? emailSendError;
+    private string? emailSendSuccess;
+    private bool isSendingEmail = false;
 
     private string MaskEmail(string email) {
         if (string.IsNullOrEmpty(email)) return "";
@@ -605,6 +703,41 @@ else
         filter.Where = string.Join(" AND ", whereClauses);
         
         records = LocalDbService.GetBadgeRecords(filter, true)!;
+    }
+
+    private bool CanExportGrants => records != null && GetExportRecords().Count > 0;
+
+    private List<BadgeRecord> GetExportRecords()
+    {
+        if (records == null) return new List<BadgeRecord>();
+
+        return records
+            .Where(r => r != null)
+            .Cast<BadgeRecord>()
+            .Where(r => {
+                bool matchesIssuer = string.IsNullOrEmpty(issuerFilter) || r.IssuedBy == issuerFilter;
+                bool matchesDateFrom = !dateFromFilter.HasValue || r.IssuedOn >= dateFromFilter.Value;
+                bool matchesDateTo = !dateToFilter.HasValue || r.IssuedOn <= dateToFilter.Value.AddDays(1);
+                return matchesIssuer && matchesDateFrom && matchesDateTo;
+            })
+            .OrderByDescending(r => r.IssuedOn)
+            .ToList();
+    }
+
+    private async Task ExportVisibleGrantsToCsv()
+    {
+        var exportRecords = GetExportRecords();
+        if (exportRecords.Count == 0)
+        {
+            errorMessage = "No grants are available to export for the current filters.";
+            return;
+        }
+
+        var csvContent = GrantCsvExportService.BuildCsv(exportRecords);
+        var fileName = $"badge-grants-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+        var dataUrl = $"data:text/csv;charset=utf-8,{Uri.EscapeDataString(csvContent)}";
+
+        await JS.InvokeVoidAsync("triggerFileDownload", dataUrl, fileName);
     }
 
     private void ApplyFilters() {
@@ -862,6 +995,80 @@ else
             {
                 errorMessage = $"Error deleting badge record: {ex.Message}";
             }
+        }
+    }
+
+    private void ShowEmailModal(BadgeRecord record, string type)
+    {
+        emailRecord = record;
+        emailNotificationType = type;
+        emailOverride = "";
+        emailSendError = null;
+        emailSendSuccess = null;
+        showEmailModal = true;
+    }
+
+    private void HideEmailModal()
+    {
+        showEmailModal = false;
+        emailRecord = null;
+        emailOverride = "";
+        emailSendError = null;
+        emailSendSuccess = null;
+    }
+
+    private async Task SendEmailNotification()
+    {
+        if (emailRecord == null) return;
+
+        var targetEmail = !string.IsNullOrWhiteSpace(emailOverride) ? emailOverride.Trim() : emailRecord.IssuedToEmail;
+
+        if (string.IsNullOrWhiteSpace(targetEmail))
+        {
+            emailSendError = "No email address provided. Please enter a recipient email.";
+            return;
+        }
+
+        isSendingEmail = true;
+        emailSendError = null;
+        emailSendSuccess = null;
+        StateHasChanged();
+
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient();
+            var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
+
+            string url;
+            if (emailNotificationType == "award")
+            {
+                url = $"{baseUrl}/admin/grant/{emailRecord.Id}/notify/email?email={Uri.EscapeDataString(targetEmail)}";
+            }
+            else
+            {
+                url = $"{baseUrl}/admin/grant/{emailRecord.Id}/notify-processed/email?email={Uri.EscapeDataString(targetEmail)}";
+            }
+
+            var response = await httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Redirect)
+            {
+                emailSendSuccess = $"Email sent successfully to {MaskEmail(targetEmail)}.";
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                emailSendError = $"Failed to send email: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            emailSendError = $"Error sending email: {ex.Message}";
+        }
+        finally
+        {
+            isSendingEmail = false;
+            StateHasChanged();
         }
     }
 }

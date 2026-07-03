@@ -34,10 +34,12 @@ public class JobProcessor
             
             // domain could be localhost:5000 we need to take just the hostname portion of it
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
 
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
             
             // 3 actions: notify of grant, process grant, broadcast grant
             try
@@ -276,9 +278,11 @@ public class JobProcessor
             await jobQueue.AddJobLogAsync(job.Id, $"Processing notify grant ID: {grantId}");
 
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
 
             var record = await badgeProcessor.NotifyGrantAcceptLink(grantId);
 
@@ -319,9 +323,11 @@ public class JobProcessor
             await jobQueue.AddJobLogAsync(job.Id, $"Processing grant ID: {grantId}");
 
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
 
             var record = await badgeProcessor.SignAndGenerateBadge(grantId);
 
@@ -378,9 +384,11 @@ public class JobProcessor
             await jobQueue.AddJobLogAsync(job.Id, $"Broadcasting processed grant ID: {grantId}");
 
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
 
             var record = await badgeProcessor.BroadcastGrant(grantId);
 
@@ -551,10 +559,12 @@ public class JobProcessor
             
             // Create database and services
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
             var repliesService = new RepliesService();
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
             var externalBadgeService = new ExternalBadgeService(badgeProcessor);
             var createNoteService = new CreateNoteService(repliesService, externalBadgeService);
             createNoteService.Logger = Logger;
@@ -631,11 +641,13 @@ public class JobProcessor
             
             // Create database and services
             var db = new LocalScopedDb(domain);
+            var analyticsDb = new AnalyticsDbService(domain + "_analytics.db");
+            var analytics = new FederationAnalyticsService(db, analyticsDb);
             var mainActor = db.GetMainActor();
             var repliesService = new RepliesService();
             var openBadgeService = new OpenBadgeService(db);
             var badgeService = new BadgeService(db, openBadgeService);
-            var badgeProcessor = new BadgeProcessor(db, badgeService);
+            var badgeProcessor = new BadgeProcessor(db, badgeService, analytics: analytics);
             var externalBadgeService = new ExternalBadgeService(badgeProcessor);
             var createNoteService = new CreateNoteService(repliesService, externalBadgeService);
             createNoteService.Logger = Logger;

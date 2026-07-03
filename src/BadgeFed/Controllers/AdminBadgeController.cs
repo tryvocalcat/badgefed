@@ -11,14 +11,16 @@ namespace BadgeFed.Controllers
         private readonly IConfiguration _configuration;
         private readonly BadgeProcessor _badgeProcessor;
         private readonly MailService _mailService;
+        private readonly EmailTemplateService _emailTemplateService;
         private readonly LocalScopedDb _localDbService;
         private readonly ILogger<AdminBadgeController> _logger;
 
-        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, LocalScopedDb localDbService, ILogger<AdminBadgeController> logger)
+        public AdminBadgeController(IConfiguration configuration, BadgeProcessor badgeProcessor, MailService mailService, EmailTemplateService emailTemplateService, LocalScopedDb localDbService, ILogger<AdminBadgeController> logger)
         {
             _configuration = configuration;
             _badgeProcessor = badgeProcessor;
             _mailService = mailService;
+            _emailTemplateService = emailTemplateService;
             _localDbService = localDbService;
             _logger = logger;
         }
@@ -92,24 +94,7 @@ namespace BadgeFed.Controllers
                 return BadRequest("No email address available for notification");
             }
 
-            var template = @"
-                <h1>Your Badge Has Been Processed!</h1>
-                
-                <p>Your badge has been successfully processed and is now available for sharing.</p>
-                
-                <p><strong>Badge Details:</strong></p>
-                <ul>
-                    <li>Title: {badgeTitle}</li>
-                    <li>Description: {badgeDescription}</li>
-                    <li>Issued By: {issuerName}</li>
-                    <li>Issued On: {issuedDate}</li>
-                </ul>
-                
-                <p>You can view your badge here:</p>
-                <p><a href='{badgeLink}' class='button'>View Badge</a></p>
-                
-                <p>Best regards,<br>
-                The BadgeFed Team</p>";
+            var template = _emailTemplateService.GetBadgeProcessedTemplate(record.Actor.Id);
             var variables = new Dictionary<string, string>
             {
                 { "recipientName", record.IssuedToName },
@@ -124,11 +109,12 @@ namespace BadgeFed.Controllers
             {
                 _logger.LogInformation("[{RequestHost}] Sending processed badge email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
-                await _mailService.SendTemplatedEmailAsync(
+                await _mailService.SendTemplatedEmailAsIssuerAsync(
                     recipientEmail,
-                    $"Your badge {record.Title} has been processed!",
+                    $"{record.Actor.FullName}: Your badge {record.Title} has been processed!",
                     template,
                     variables,
+                    record.Actor.FullName,
                     true
                 );
 
@@ -165,28 +151,7 @@ namespace BadgeFed.Controllers
                 return BadRequest("No email address available for notification");
             }
 
-            var template = @"
-                <h1>Congratulations on Your Badge Award!</h1>
-                
-                <p>You have been awarded the <strong>{badgeTitle}</strong> badge!</p>
-                
-                <p><strong>Badge Details:</strong></p>
-                <ul>
-                    <li>Title: {badgeTitle}</li>
-                    <li>Description: {badgeDescription}</li>
-                    <li>Issued By: {issuerName}</li>
-                    <li>Issued On: {issuedDate}</li>
-                </ul>
-                
-                <p>To accept your badge, please click the following link:</p>
-                <p><a href='{acceptLink}' class='button'>Accept Badge</a></p>
-                <small>or copy paste {acceptLink} in your browser.</small>
-                
-                <p>This is a private notification. Please do not share this link with others.</p>
-                
-                <p>Best regards,<br>
-                The BadgeFed Team</p>
-            ";
+            var template = _emailTemplateService.GetBadgeAwardTemplate(record.Actor.Id);
 
             var variables = new Dictionary<string, string>
             {
@@ -202,11 +167,12 @@ namespace BadgeFed.Controllers
             {
                 _logger.LogInformation("[{RequestHost}] Sending badge award email to {RecipientEmail} for badge {BadgeTitle}", Request.Host, recipientEmail, record.Title);
 
-                await _mailService.SendTemplatedEmailAsync(
+                await _mailService.SendTemplatedEmailAsIssuerAsync(
                     recipientEmail,
-                    $"You've been awarded the {record.Title} badge!",
+                    $"{record.Actor.FullName}: You've been awarded the {record.Title} badge!",
                     template,
                     variables,
+                    record.Actor.FullName,
                     true
                 );
 

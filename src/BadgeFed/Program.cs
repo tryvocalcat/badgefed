@@ -98,6 +98,7 @@ builder.Services.AddScoped<BadgeProcessor>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddSingleton<ImpersonationService>();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("MastodonApi");
 
 builder.Services.AddScoped<OpenBadgeService>();
 
@@ -109,6 +110,8 @@ builder.Services.AddScoped<BadgeGrantService>();
 
 builder.Services.AddScoped<TokenGrantService>();
 
+builder.Services.AddScoped<GrantCsvExportService>();
+
 builder.Services.AddScoped<InvitationService>();
 
 builder.Services.AddScoped<OpenRegistrationService>();
@@ -118,6 +121,9 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RelayActorService>();
 
 builder.Services.AddScoped<FederationAnalyticsService>();
+builder.Services.AddScoped<ScopedAnalyticsDbService>();
+
+builder.Services.AddSingleton<MastodonClientService>();
 
 // Add custom asset path service
 builder.Services.AddScoped<ICustomAssetPathService, CustomAssetPathService>();
@@ -160,7 +166,8 @@ builder.Services.AddScoped<MastodonRegistrationService>(provider =>
         redirectUris.Add($"http://{domain}/signin-mastodon-dynamic");
     }
 
-    return new MastodonRegistrationService(httpClient, "BadgeFed", website, redirectUris.ToArray());
+    return new MastodonRegistrationService(httpClient, "BadgeFed", website, redirectUris.ToArray(),
+        new[] { "read", "write:favourites", "write:statuses", "write:media", "follow", "profile" });
 });
 
 // Add a new configuration section for LinkedIn OAuth
@@ -181,6 +188,10 @@ var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.Authe
 // Always add dynamic Mastodon support (no pre-configuration needed)
 auth.AddDynamicMastodon(adminConfig, o => {
     o.Scope.Add("read");
+    o.Scope.Add("write:favourites");
+    o.Scope.Add("write:statuses");
+    o.Scope.Add("write:media");
+    o.Scope.Add("follow");
     o.Scope.Add("profile");
     o.SaveTokens = true;
 }, localDbFactory);
@@ -213,6 +224,11 @@ if (gotoSocialConfig != null)
     {
         auth.AddGotoSocial(adminConfig, gotoSocialConfig, o =>
         {
+            o.Scope.Add("read");
+            o.Scope.Add("write:favourites");
+            o.Scope.Add("write:statuses");
+            o.Scope.Add("write:media");
+            o.Scope.Add("follow");
             o.Scope.Add("profile");
             o.ClientId = gotoSocialConfig.ClientId;
             o.ClientSecret = gotoSocialConfig.ClientSecret;
@@ -250,7 +266,24 @@ builder.Services.AddScoped<JobProcessor>();
 // Configure EmailSettings from appsettings.json
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
+// Register the appropriate IEmailSender based on the configured provider
+builder.Services.AddScoped<IEmailSender>(sp =>
+{
+    var emailSettings = builder.Configuration.GetSection("EmailSettings").Get<EmailSettings>()!;
+    return emailSettings.Provider?.ToLowerInvariant() switch
+    {
+        "azure" => new AzureEmailSender(emailSettings.AzureConnectionString),
+        _ => new SmtpEmailSender(
+            emailSettings.SmtpServer,
+            emailSettings.Port,
+            emailSettings.EnableSsl,
+            emailSettings.Username,
+            emailSettings.Password)
+    };
+});
+
 builder.Services.AddScoped<MailService>();
+builder.Services.AddScoped<EmailTemplateService>();
 
 builder.Services.AddControllers();
 
@@ -443,7 +476,7 @@ static async Task<(string clientId, string clientSecret)> RegisterGotoSocialAppA
     {
         client_name = clientName,
         redirect_uris = string.Join("\n", redirectUris.Distinct()),
-        scopes = "read profile"
+        scopes = "read write:favourites write:statuses write:media follow profile"
     };
 
     Console.WriteLine($"GotoSocial registration request to {url}: {System.Text.Json.JsonSerializer.Serialize(payload)}");

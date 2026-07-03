@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment Environment
 @inject LocalScopedDb LocalDbService
+@inject ScopedAnalyticsDbService AnalyticsDbService
 @inject DatabaseMigrationService MigrationService
 @rendermode InteractiveServer
 
@@ -213,6 +214,19 @@
         </div>
 
         <div class="field">
+            <label class="label">Target Database</label>
+            <div class="control">
+                <div class="select">
+                    <select @bind="selectedDatabase">
+                        <option value="main">Main Database</option>
+                        <option value="analytics">Analytics Database</option>
+                    </select>
+                </div>
+            </div>
+            <p class="help">Select which database to execute the query against.</p>
+        </div>
+
+        <div class="field">
             <label class="label">SQL Query</label>
             <div class="control">
                 <textarea @bind="SqlQuery" class="textarea" rows="6" placeholder="Enter your SQL query here..."></textarea>
@@ -237,6 +251,22 @@
                 </button>
             </div>
         </div>
+
+        @if (!string.IsNullOrEmpty(sqlSuccessMessage))
+        {
+            <div class="notification is-success is-light mt-3">
+                <button class="delete" @onclick="() => sqlSuccessMessage = string.Empty"></button>
+                @sqlSuccessMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(sqlErrorMessage))
+        {
+            <div class="notification is-danger is-light mt-3">
+                <button class="delete" @onclick="() => sqlErrorMessage = string.Empty"></button>
+                @sqlErrorMessage
+            </div>
+        }
 
         @if (!string.IsNullOrEmpty(SqlResult))
         {
@@ -427,6 +457,9 @@
     // SQL execution properties
     private string SqlQuery { get; set; } = string.Empty;
     private string SqlResult { get; set; } = string.Empty;
+    private string sqlSuccessMessage = string.Empty;
+    private string sqlErrorMessage = string.Empty;
+    private string selectedDatabase = "main";
 
     // Database import properties
     private IBrowserFile? selectedBackupFile;
@@ -636,22 +669,33 @@
         }
     }
 
+    private System.Data.SQLite.SQLiteConnection GetSelectedDbConnection()
+    {
+        if (selectedDatabase == "analytics")
+            return AnalyticsDbService.GetConnection();
+        return LocalDbService.GetConnection();
+    }
+
     private void ExecuteSql()
     {
         try
         {
             SqlResult = string.Empty;
-            errorMessage = string.Empty;
-            
-            // Assuming LocalDbService has a method to execute SQL and return results as string
-            LocalDbService.ExecuteSql(SqlQuery);
+            sqlErrorMessage = string.Empty;
+            sqlSuccessMessage = string.Empty;
+
+            using var connection = GetSelectedDbConnection();
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = SqlQuery;
+            command.ExecuteNonQuery();
 
             SqlResult = "SQL executed successfully.";
-            successMessage = "SQL command executed successfully.";
+            sqlSuccessMessage = $"SQL command executed successfully on {(selectedDatabase == "analytics" ? "Analytics" : "Main")} database.";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error executing SQL: {ex.Message}";
+            sqlErrorMessage = $"Error executing SQL: {ex.Message}";
             SqlResult = string.Empty;
         }
     }
@@ -661,17 +705,32 @@
         try
         {
             SqlResult = string.Empty;
-            errorMessage = string.Empty;
-            
-            // Assuming LocalDbService has a method to execute SQL and return results as string
-            var listItems = LocalDbService.ExecuteSqlQuery(SqlQuery);
+            sqlErrorMessage = string.Empty;
+            sqlSuccessMessage = string.Empty;
 
-            SqlResult = System.Text.Json.JsonSerializer.Serialize(listItems, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            successMessage = "SQL query executed successfully.";
+            using var connection = GetSelectedDbConnection();
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = SqlQuery;
+
+            using var reader = command.ExecuteReader();
+            var result = new List<dynamic>();
+            while (reader.Read())
+            {
+                var row = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.GetValue(i);
+                }
+                result.Add(row);
+            }
+
+            SqlResult = System.Text.Json.JsonSerializer.Serialize(result, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            sqlSuccessMessage = $"SQL query executed successfully on {(selectedDatabase == "analytics" ? "Analytics" : "Main")} database.";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error executing SQL query: {ex.Message}";
+            sqlErrorMessage = $"Error executing SQL query: {ex.Message}";
             SqlResult = string.Empty;
         }
     }

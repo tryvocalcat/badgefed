@@ -27,6 +27,11 @@ namespace BadgeFed.Controllers
         [HttpGet("{noteId}")]
         public IActionResult GetBadge(string noteId)
         {
+            // Response varies by Accept header (ActivityPub gets JSON, browsers get redirect)
+            Response.Headers["Vary"] = "Accept";
+            
+            _logger.LogDebug("Fetching badge grant for noteId: {NoteId}", noteId);
+            
             var userAgent = Request.Headers["User-Agent"].ToString();
             var referer = Request.Headers["Referer"].ToString();
             
@@ -41,6 +46,7 @@ namespace BadgeFed.Controllers
                 return Redirect($"/view/grant/{noteId}");
             }
 
+            _logger.LogDebug("Checking in-memory cache for noteId: {NoteId}", noteId);
             if (_notesInMemoryCache.ContainsKey(noteId))
             {
                 _logger.LogInformation("[{RequestHost}] Serving badge grant {NoteId} from in-memory cache", Request.Host, noteId);

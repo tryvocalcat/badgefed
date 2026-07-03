@@ -33,6 +33,8 @@ namespace BadgeFed.Controllers
         [Route("outbox")]
         public async Task<IActionResult> GetDomainOutbox([FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null, [FromQuery] string? attributedTo = null)
         {
+            Response.Headers["Vary"] = "Accept";
+
             _logger.LogInformation("[{RequestHost}] Domain outbox request - page: {Page}, maxId: {MaxId}, minId: {MinId}, attributedTo: {AttributedTo}", Request.Host, page, maxId, minId, attributedTo);
             
             var accept = Request.Headers["Accept"].ToString();
@@ -146,6 +148,8 @@ namespace BadgeFed.Controllers
         [Route("actors/{domain}/{actorName}/outbox")]
         public async Task<IActionResult> GetActorOutbox(string domain, string actorName, [FromQuery] bool page = false, [FromQuery] string? maxId = null, [FromQuery] string? minId = null, [FromQuery] string? attributedTo = null)
         {
+            Response.Headers["Vary"] = "Accept";
+
             _logger.LogInformation("[{RequestHost}] Actor outbox request for {ActorName}@{Domain} - page: {Page}, maxId: {MaxId}, minId: {MinId}, attributedTo: {AttributedTo}", Request.Host, actorName, domain, page, maxId, minId, attributedTo);
             
             var accept = Request.Headers["Accept"].ToString();

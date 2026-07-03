@@ -6,11 +6,18 @@ namespace BadgeFed.Services;
 public class FederationAnalyticsService
 {
     private readonly LocalScopedDb _db;
-    private readonly ILogger<FederationAnalyticsService> _logger;
+    private readonly AnalyticsDbService _analyticsDb;
+    private readonly ILogger<FederationAnalyticsService>? _logger;
 
-    public FederationAnalyticsService(LocalScopedDb db, ILogger<FederationAnalyticsService> logger)
+    public FederationAnalyticsService(LocalScopedDb db, ScopedAnalyticsDbService analyticsDb, ILogger<FederationAnalyticsService> logger)
+        : this(db, (AnalyticsDbService)analyticsDb, logger)
+    {
+    }
+
+    public FederationAnalyticsService(LocalScopedDb db, AnalyticsDbService analyticsDb, ILogger<FederationAnalyticsService>? logger = null)
     {
         _db = db;
+        _analyticsDb = analyticsDb;
         _logger = logger;
     }
 
@@ -58,7 +65,7 @@ public class FederationAnalyticsService
     {
         try
         {
-            using var connection = _db.GetConnection();
+            using var connection = _analyticsDb.GetConnection();
             connection.Open();
 
             using var command = connection.CreateCommand();
@@ -80,7 +87,7 @@ public class FederationAnalyticsService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to track federation event: {EventType}", eventType);
+            _logger?.LogError(ex, "Failed to track federation event: {EventType}", eventType);
         }
     }
 
@@ -88,7 +95,7 @@ public class FederationAnalyticsService
     {
         var events = new List<FederationEvent>();
 
-        using var connection = _db.GetConnection();
+        using var connection = _analyticsDb.GetConnection();
         connection.Open();
 
         using var command = connection.CreateCommand();
@@ -122,7 +129,7 @@ public class FederationAnalyticsService
     {
         var counts = new Dictionary<string, long>();
 
-        using var connection = _db.GetConnection();
+        using var connection = _analyticsDb.GetConnection();
         connection.Open();
 
         using var command = connection.CreateCommand();
@@ -155,7 +162,7 @@ public class FederationAnalyticsService
     {
         var result = new Dictionary<string, Dictionary<string, long>>();
 
-        using var connection = _db.GetConnection();
+        using var connection = _analyticsDb.GetConnection();
         connection.Open();
 
         using var command = connection.CreateCommand();
@@ -188,7 +195,7 @@ public class FederationAnalyticsService
 
     public long GetTotalEvents()
     {
-        using var connection = _db.GetConnection();
+        using var connection = _analyticsDb.GetConnection();
         connection.Open();
 
         using var command = connection.CreateCommand();

@@ -26,6 +26,8 @@ namespace BadgeFed.Controllers
         [HttpGet]
         public IActionResult GetActor(string? domain, string actorName)
         {
+            Response.Headers["Vary"] = "Accept";
+
             if (string.IsNullOrEmpty(domain))
             {
                 domain = HttpContext.Request.Host.Host;

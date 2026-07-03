@@ -267,7 +267,7 @@ public class BadgeProcessor
             // Send the delete activity to all followers
             await NotifyFollowersOfNote(serializedDelete, actor);
 
-            _analytics?.TrackEvent(
+            _analytics?.TrackEventAutoGroup(
                 FederationEventType.BadgeRevocationSent,
                 actorUri: actor.Uri?.ToString(),
                 objectUri: noteId);
@@ -351,7 +351,7 @@ public class BadgeProcessor
 
             await NotifyFollowersOfNote(serializedAnnouncement, mainActor);
 
-            _analytics?.TrackEvent(
+            _analytics?.TrackEventAutoGroup(
                 FederationEventType.BadgeAnnounce,
                 actorUri: mainActor.Uri?.ToString(),
                 objectUri: originalNoteId);
@@ -395,7 +395,7 @@ public class BadgeProcessor
 
                 await actorHelper.SendPostSignedRequest(serializedActivityPubObject, new Uri(fediverseInfo.Inbox));
 
-                _analytics?.TrackEvent(
+                _analytics?.TrackEventAutoGroup(
                     FederationEventType.BadgeDeliveredToFollower,
                     actorUri: actor.Uri?.ToString(),
                     targetUri: follower.FollowerUri,
@@ -445,7 +445,7 @@ public class BadgeProcessor
 
         await NotifyFollowersOfNote(serializedNote, actor);
 
-        _analytics?.TrackEvent(
+        _analytics?.TrackEventAutoGroup(
             FederationEventType.BadgeBroadcast,
             actorUri: actor.Uri?.ToString(),
             objectUri: record.NoteId);
