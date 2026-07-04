@@ -554,10 +554,12 @@
 
     protected override void OnInitialized()
     {
-        badges = LocalDbService.GetAllBadgeDefinitions(true, "a.Featured = TRUE");
+        badges = LocalDbService.GetAllBadgeDefinitions(true, "a.Featured = TRUE")?
+            .OrderBy(_ => Random.Shared.Next())
+            .ToList();
         filteredBadges = badges;
 
-        foreach (var badge in badges)
+        foreach (var badge in badges ?? Enumerable.Empty<Badge>())
         {
             var stats = LocalDbService.GetBadgeStats(badge.Id);
             badgeStats[badge.Id] = stats;
@@ -598,6 +600,8 @@
             query = query.Where(b => b.BadgeType == selectedType);
         }
 
-        filteredBadges = query.ToList();
+        filteredBadges = query
+            .OrderBy(_ => Random.Shared.Next())
+            .ToList();
     }
 }
