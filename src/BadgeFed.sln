@@ -5,10 +5,6 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BadgeFed", "BadgeFed\BadgeFed.csproj", "{12575762-AB62-4B1B-97A6-A6BB4AFE2843}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "plugins", "{07D57EEB-2F50-60C4-C011-FE4FA775C9A8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BadgeFed.AiWizard", "plugins\BadgeFed.AiWizard\BadgeFed.AiWizard.csproj", "{E34766BE-1CA6-4F1B-AEE3-F2985DDE0FA3}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
