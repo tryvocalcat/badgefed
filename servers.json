@@ -55,4 +55,11 @@
         "categories": ["Polish", "Nonprofits", "Event", "Community", "Conference", "OpenSource"],
         "admin": "Fundacja Wolnego Oprogramowania Reszka"
     }
+        {
+        "name": "Ozelite",
+        "url": "https://badges.ozelite.fr",
+        "description": "Provide badges on our expertises",
+        "categories": ["Résilience Numérique", "Souveraineté", "Softwae Craftsmanship", "Craft", "France", "French", "OpenSource"],
+        "admin": "Ozelite SARL"
+    }
 ]
