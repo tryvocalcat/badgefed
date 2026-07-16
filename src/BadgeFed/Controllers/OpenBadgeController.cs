@@ -22,6 +22,13 @@ namespace BadgeFed.Controllers
             _analytics = analytics;
         }
 
+        private bool IsBrowserRequest(string acceptHeader)
+        {
+            if (string.IsNullOrEmpty(acceptHeader)) return false;
+            var accept = acceptHeader.ToLower();
+            return accept.Contains("text/html") || accept.Contains("application/xhtml+xml") || accept.Contains("application/xml");
+        }
+
         [HttpGet("issuer/{domain}/{username}")]
         public IActionResult GetIssuer(string domain, string username)
         {
@@ -31,9 +38,9 @@ namespace BadgeFed.Controllers
 
             var accept = Request.Headers["Accept"].ToString();
 
-            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            if (IsBrowserRequest(accept))
             {
-                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge issuer {Username}@{Domain}, redirecting to view", Request.Host, username, domain);
+                _logger.LogInformation("[{RequestHost}] Browser request for OpenBadge issuer {Username}@{Domain}, redirecting to view", Request.Host, username, domain);
                 return Redirect($"/view/actor/{domain}/{username}");
             }
 
@@ -67,9 +74,9 @@ namespace BadgeFed.Controllers
 
             var accept = Request.Headers["Accept"].ToString();
 
-            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            if (IsBrowserRequest(accept))
             {
-                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge class {BadgeId}, redirecting to view", Request.Host, id);
+                _logger.LogInformation("[{RequestHost}] Browser request for OpenBadge class {BadgeId}, redirecting to view", Request.Host, id);
                 return Redirect($"/view/badge/{id}/grants");
             }
 
@@ -106,9 +113,9 @@ namespace BadgeFed.Controllers
 
             var accept = Request.Headers["Accept"].ToString();
 
-            if (!BadgeFed.Core.ActivityPubHelper.IsActivityPubRequest(accept))
+            if (IsBrowserRequest(accept))
             {
-                _logger.LogInformation("[{RequestHost}] Non-ActivityPub request for OpenBadge {NoteId}, redirecting to view", Request.Host, noteId);
+                _logger.LogInformation("[{RequestHost}] Browser request for OpenBadge {NoteId}, redirecting to view", Request.Host, noteId);
                 return Redirect($"/view/grant/{noteId}");
             }
 
