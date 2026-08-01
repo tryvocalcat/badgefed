@@ -35,6 +35,7 @@ To run BadgeFed in a Docker container, follow these steps:
    ```sh
    docker build -t badgefed src/
    ```
+   or use the pre-build image: ghcr.io/tryvocalcat/badgefed
 
 2. **Run the Container (with persistence for data storage):**
    ```sh
@@ -52,7 +53,7 @@ A fully docker example would be:
 docker run -d \
   -p 5000:80 \
     --name badgefed \
-    -e SQLITE_DB_FILENAME="badgefed.db" \
+    -e DB_DATA="/app/data" \
     -e ASPNETCORE_ENVIRONMENT="Production" \
     -e "AdminAuthentication__AdminUsers__0__Id=mapache@hachyderm.io" \
     -e "AdminAuthentication__AdminUsers__0__Type=Mastodon" \
