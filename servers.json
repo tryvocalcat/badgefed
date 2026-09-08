@@ -14,13 +14,6 @@
         "admin": "VocalCat LLC"
     },
     {
-        "name": "The Tech Baddie Studio",
-        "url": "https://verifiedby.baddie.tech",
-        "description": "A badge server for The Tech Baddie Studio, a company that creates tech-related content.",
-        "categories": ["Company", "Creator", "Media", "Education"],
-        "admin": "The Tech Baddie Studio"
-    },
-    {
         "name": "Fediverse.Games",
         "url": "https://badges.fediverse.games",
         "description": "A badge server for the Fediverse Games Mastodon instance, supporting a friendly and inclusive community for all lovers of games, including board games, video games, and more.",
@@ -37,6 +30,13 @@
     {
         "name": "Community Credentials",
         "url": "https://communitycredentials.org/",
+        "description": "Empowering organizations with verifiable credentials to recognize achievements and contributions.",
+        "categories": ["Organization", "OpenBadges", "Commercial", "Nonprofits"],
+        "admin": "Community Credentials"
+    },
+    {
+        "name": "Community Credentials Canada",
+        "url": "https://communitycredentials.ca/",
         "description": "Empowering organizations with verifiable credentials to recognize achievements and contributions.",
         "categories": ["Organization", "OpenBadges", "Commercial", "Nonprofits"],
         "admin": "Community Credentials"
