@@ -27,6 +27,126 @@ A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md),
 
 ## Getting Started
 
+### Optional local development with Aspire
+
+Aspire runs the **existing web project from source** plus a local Mailpit SMTP
+capture container. It is not required for self-hosting: the standalone .NET and
+Docker workflows below still work without Aspire, a cloud account, or a cloud login.
+SQLite, the in-process worker, and filesystem assets are unchanged.
+
+**Prerequisites**
+
+- .NET **10 SDK** for the `BadgeFed.AppHost` orchestrator, and the .NET **9
+  ASP.NET Core runtime** for BadgeFed. Installing the .NET 9 SDK supplies that
+  runtime too. BadgeFed and ServiceDefaults still target `net9.0`; installing
+  only .NET 10 does not supply the .NET 9 runtime.
+- [Aspire CLI](https://aspire.dev/get-started/install-cli/), version **13.6.4**.
+  The AppHost SDK is pinned to 13.6.4; ServiceDefaults uses stable OpenTelemetry
+  1.17.0 packages. No Aspire workload or preview SDK is needed.
+- Docker with a running **Linux-container** engine, for the pinned
+  `axllent/mailpit:v1.33.0` container. BadgeFed itself runs natively; its SQLite
+  and Magick.NET native libraries must support your OS/architecture.
+- A trusted development HTTPS certificate for the dashboard:
+  `dotnet dev-certs https --trust`.
+
+From the repository root:
+
+```sh
+dotnet build BadgeFed.AppHost/BadgeFed.AppHost.csproj
+aspire run
+```
+
+Open the authenticated dashboard URL printed by Aspire. BadgeFed is at
+**http://localhost:5080**, with login at **http://localhost:5080/admin/login**.
+Mailpit's web UI has a dynamically allocated localhost port shown in the
+dashboard. SMTP host/port are resolved from that container's endpoint for the
+project-hosted app, not from its internal Docker hostname. SMTP TLS is disabled
+**only in this local AppHost**, and no real mail server or SMTP credentials are
+needed. Captured messages are disposable and are lost when the container is
+recreated; use synthetic recipient data.
+
+Use **localhost**, not `127.0.0.1`, a machine name, or another alias. AppHost sets
+`BadgesDomains:0=localhost:5080`, permits only the localhost HTTP host, and clears
+`SQLITE_DB_PATH`. Request-scoped stores use `Request.Host.Host` while the worker
+strips the port from `BadgesDomains`; both therefore use the same `localhost`
+dataset. Do not add domain aliases in local user secrets. Port 5080 is fixed
+(not an Aspire proxy port); free it before starting another instance.
+
+**Authentication and secrets**
+
+Authentication is unchanged, and `OpenRegistration` remains false. Configure a
+real administrator and OAuth provider using **the web project's user secrets**,
+which are loaded in Development, not by committing credentials to appsettings.
+For example, replace the example values with your own:
+
+```sh
+dotnet user-secrets set --project src/BadgeFed "AdminAuthentication:AdminUsers:0:Id" "your-user@your-mastodon-server"
+dotnet user-secrets set --project src/BadgeFed "AdminAuthentication:AdminUsers:0:Type" "Mastodon"
+dotnet user-secrets set --project src/BadgeFed "AdminAuthentication:AdminUsers:1:Id" ""
+dotnet user-secrets set --project src/BadgeFed "AdminAuthentication:AdminUsers:1:Type" ""
+```
+
+This replaces the checked-in sample administrator entries locally. Dynamic
+Mastodon application registration remains available, subject to your provider
+accepting the local redirect URI. For a pre-registered Mastodon application,
+also set `MastodonConfig:Server`, `MastodonConfig:ClientId`, and
+`MastodonConfig:ClientSecret` in those same user secrets, and register
+`http://localhost:5080/signin-mastodon-dynamic` with the provider. Alternatively,
+configure a supported provider such as LinkedIn using `LinkedInConfig:ClientId`
+and `LinkedInConfig:ClientSecret`, an administrator of type `LinkedIn`, and the
+`/signin-linkedin` callback. Provider policies may require an externally reachable
+HTTPS callback. There is no local login bypass; seeing the login page does not
+verify that external OAuth succeeds. User secrets are local development storage,
+not an encrypted production secret store.
+
+**Persistent, private local state**
+
+AppHost supplies an absolute `DB_DATA` under **`.aspire/data` at the repository
+root**, outside `wwwroot` and ignored by git. It contains `localhost.db`
+(including issuer private keys), `localhost-queue.db`, and
+`localhost_analytics.db`, plus any SQLite journal files. Stop/start preserves
+these files; nothing resets them automatically. Keep this directory private.
+Back it up before resetting; to explicitly reset, stop Aspire and remove only
+`.aspire/data`. Do not put database files or private keys in static asset folders.
+Public uploaded assets still use `src/BadgeFed/wwwroot/pages` (already ignored);
+back those up separately. AppHost uses the web project's working directory, so
+`init.sql`, `assets/migrations`, templates and image paths resolve as in
+`dotnet run`.
+
+**Health and telemetry**
+
+In Development, `/alive` checks process responsiveness and `/health` checks
+readiness: initialized relay/schema, pending migrations, all three SQLite files'
+integrity/read-write access, and private data-directory writes. A fresh instance
+needs no issuer, badge, or recipient before it becomes ready; queue/analytics
+schemas are initialized through the existing stores. Failures report unhealthy
+rather than a successful placeholder check. Probes send no mail and make no
+remote federation calls. Endpoints are not mapped in Production.
+
+The dashboard receives OpenTelemetry request/client traces, ASP.NET Core/HTTP/
+runtime metrics, and infrastructure logs after the existing console/debug
+logging setup. Export is enabled only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
+(Aspire supplies it). URL paths/queries are removed from exported spans to avoid
+exposing acceptance links and OAuth secrets; business logs are excluded from
+the OTLP log provider because existing logs may contain recipient data. Existing
+console output is still captured by Aspire and can contain application data:
+keep the dashboard private, use synthetic data, and do not share raw console logs
+or resource environment values. HTTP retries/service discovery are intentionally
+not enabled globally: this single-app setup must not retry federation writes.
+
+Localhost cannot receive public ActivityPub federation. For optional external
+testing, supply your own reachable HTTPS development deployment, matching
+`BadgesDomains`, host/proxy settings and OAuth redirect registration; it will have
+its own domain-specific dataset. This local AppHost does not start a tunnel.
+See [USAGE.md](./USAGE.md#local-development-checks) for a manual workflow.
+
+### Standalone .NET
+
+With the .NET 9 SDK, configure your domains, administrators, OAuth and SMTP as
+described below, then run `dotnet run --project src/BadgeFed`. No AppHost, Docker,
+or Aspire CLI is needed. The existing default data location is unchanged; set
+`DB_DATA` to a private directory outside `wwwroot` for persistent storage.
+
 ### Docker Method
 
 To run BadgeFed in a Docker container, follow these steps:

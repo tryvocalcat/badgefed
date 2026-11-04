@@ -5,8 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.1.5</Version>
+    <UserSecretsId>badgefed-local</UserSecretsId>
     <NoWarn>$(NoWarn);NU1902;NU1903;NU1904;CS8601;CS0169;CS8618;CS8602;CS0105;CS1998;CS8604</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BadgeFed.ServiceDefaults\BadgeFed.ServiceDefaults.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.7.0" />

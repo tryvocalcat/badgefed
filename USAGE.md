@@ -12,7 +12,40 @@ Welcome to BadgeFed! This guide will help you use BadgeFed effectively and provi
 4. **Grant a Badge**: Click the "Grant" button on the badge management page to issue a badge. Provide the recipient's identifier URL (e.g., `https://linkedin.com/in/username`, `https://mastodon.social/@badgefed`), evidence (optional), and email (optional).
 5. **Share the Grant Link**: Copy the generated grant URL and share it with the recipient for badge acceptance.
 
-### Detailed Workflow
+### Local development checks
+
+For the optional Aspire setup, follow the prerequisites and secret configuration
+in [README.md](./README.md#optional-local-development-with-aspire), then run
+`aspire run` from the repository root.
+
+1. Open `http://localhost:5080/health` and `/alive`; both should say `Healthy`.
+   The dashboard should show BadgeFed and Mailpit healthy. Open the homepage and
+   `/admin/login`; log in with your configured real provider and admin identity.
+2. Create an issuer and badge through the existing admin UI. Upload a test image,
+   grant the badge to a synthetic email recipient, and open Mailpit from the
+   dashboard to inspect captured mail. Mailpit never forwards mail externally.
+3. Use the grant's acceptance link, confirm the recipient information, and accept
+   the badge. Check the existing job-queue admin page, processed grant and
+   downloadable baked PNG. A homepage response alone does not exercise SQLite
+   queue processing or Magick.NET image generation. Public federation delivery
+   cannot work against localhost.
+4. Browse a few pages and inspect dashboard traces, metrics and structured logs.
+   Health probes are excluded from traces. Console logs retain the application's
+   existing behavior; do not use real recipient data or publish raw diagnostics.
+5. Stop Aspire with Ctrl+C, restart with `aspire run`, and confirm the same issuer,
+   badge and grant remain. Mailpit capture is disposable, but the three SQLite
+   databases in `.aspire/data` and public uploads in `src/BadgeFed/wwwroot/pages`
+   survive. Reset only by explicitly removing the relevant local state while
+   Aspire is stopped, after making any required backup.
+
+If readiness fails, inspect the health-check log in the dashboard for storage,
+schema or migration errors. Verify the .NET 9 runtime, native SQLite libraries,
+web-project working directory and writable private `DB_DATA`. For a Mailpit
+startup failure, check the Linux Docker engine and container logs. Do not resolve
+errors by moving databases into `wwwroot`, changing to a second host alias, or
+setting a universal `SQLITE_DB_PATH` override.
+
+### Detailed workflow steps
 
 #### Step 1: Create an Issuer
 - Navigate to the issuer management page.

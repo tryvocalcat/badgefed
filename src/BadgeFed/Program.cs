@@ -41,6 +41,9 @@ builder.Services.AddLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Information);
 });
 
+builder.AddServiceDefaults();
+builder.Services.AddHealthChecks().AddCheck<StorageHealthCheck>("storage");
+
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddResponseCaching();
@@ -297,6 +300,8 @@ builder.Services.Configure<StaticFileOptions>(options =>
 });
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 try
 {
