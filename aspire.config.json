@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "BadgeFed.AppHost/BadgeFed.AppHost.csproj"
+  }
+}
