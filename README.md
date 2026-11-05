@@ -11,7 +11,7 @@ BadgeFed (aka ActivityPub Badges) is a minimalistic, federated badge system insp
 
 - Issue and manage digital badges and grants
 - ActivityPub protocol support for federation ([see implementation details](./FEDERATION.md))
-- Built with .NET 9
+- Built with .NET 10 (LTS)
 - OAuth login (Mastodon, LinkedIn)
 - Email notifications
 - Easily extensible and self-hostable
@@ -26,6 +26,11 @@ A list of public BadgeFed servers is maintained in [`SERVERS.md`](./SERVERS.md),
 ---
 
 ## Getting Started
+
+Local development requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+The Docker build includes the SDK and ASP.NET Core runtime, so no host SDK is required.
+Use current .NET 10 servicing updates; .NET 10 is supported through November 14, 2028
+([support policy](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)).
 
 ### Docker Method
 
